@@ -186,8 +186,8 @@ if __name__ == "__main__":
     print("\nValidating all generated logs...")
     for log_file in log_files:
         os.system(f"python validation/run_validation.py {log_file}")
-    # Step 3: Generate dashboard report from all logs
-    print("\nGenerating dashboard report from logs...")
+    # Step 3: Generate visual graph from all logs
+    print("\nGenerating visual graph from logs...")
     log_files_str = ' '.join(log_files)
     os.system(f"python validation/report_generator.py {log_files_str} data/logs/report.html")
-    print("✓ Dashboard report generated at data/logs/report.html")
+    print("✓ Visual graph generated at data/logs/report.html")
