@@ -1,5 +1,5 @@
 # GenAI-ML-SecAudit
-It implements the OWASP 2025 Top 10 ML and Gen AI Apps vulnerabilities. The scripts automate breaches and attacks, capture logs from the attacks, and generate an interactive HTML graph that visualizes the results.
+It implements a simulation of the OWASP 2025 Top 10 ML and Gen AI Apps vulnerabilities attacks on Tafsiri (a speech-to-speech translator S2ST GenAI app). The scripts automate attacks, capture logs, and generate an interactive HTML graph that visualizes the results.
 
 SETUP
 1. Change the API endpoint to match the actual endpoint your model is listening to.
