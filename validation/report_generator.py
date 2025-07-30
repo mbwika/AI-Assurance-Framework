@@ -1,6 +1,5 @@
 # speech_attack_sim/validation/report_generator.py
 import pandas as pd
-import plotly.express as px
 import os
 from datetime import datetime
 
@@ -13,16 +12,16 @@ def generate_html_report(log_files, output_file="data/logs/report.html"):
 
     # Map log file names to user-friendly attack names
     attack_titles = {
-        'misbehavior_log_sensitive_info_disclosure.csv': 'Sensitive Information Disclosure',
-        'misbehavior_log_supply_chain.csv': 'Supply Chain',
-        'misbehavior_log_data_model_poisoning.csv': 'Data Model Poisoning',
-        'misbehavior_log_improper_output_handling.csv': 'Improper Output Handling',
-        'misbehavior_log_excessive_agency.csv': 'Excessive Agency',
-        'misbehavior_log_system_prompt_leakage.csv': 'System Prompt Leakage',
-        'misbehavior_log_vector_embedding_weakness.csv': 'Vector & Embedding Weaknesses',
-        'misbehavior_log_misinformation.csv': 'Misinformation',
-        'misbehavior_log_unbounded_consumption.csv': 'Unbounded Consumption',
-        'misbehavior_log_prompt_injection.csv': 'Prompt Injection',
+        'log_sensitive_info_disclosure.csv': 'Sensitive Information Disclosure',
+        'log_supply_chain.csv': 'Supply Chain',
+        'log_data_model_poisoning.csv': 'Data Model Poisoning',
+        'log_improper_output_handling.csv': 'Improper Output Handling',
+        'log_excessive_agency.csv': 'Excessive Agency',
+        'log_system_prompt_leakage.csv': 'System Prompt Leakage',
+        'log_vector_embedding_weakness.csv': 'Vector & Embedding Weaknesses',
+        'log_misinformation.csv': 'Misinformation',
+        'log_unbounded_consumption.csv': 'Unbounded Consumption',
+        'log_prompt_injection.csv': 'Prompt Injection',
     }
     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 
@@ -80,6 +79,6 @@ if __name__ == '__main__':
         logs = sys.argv[1:-1]
         output_file = sys.argv[-1]
     else:
-        logs = glob.glob("data/logs/misbehavior_log_*.csv")
+        logs = glob.glob("data/logs/log_*.csv")
         output_file = "data/logs/report.html"
     generate_html_report(logs, output_file)

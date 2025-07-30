@@ -14,12 +14,13 @@ from test_harness.logger import log_result, log_result_to_file
 import json
 import re
 import tempfile
+import time
 from docx import Document
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 
 # Argument parser for runtime configuration
-parser = argparse.ArgumentParser(description="Run BAS pipeline against multiple API endpoints dynamically.")
+parser = argparse.ArgumentParser(description="Run GenAI-ML attack Simulation pipeline against multiple API endpoints dynamically.")
 parser.add_argument('--config', type=str, default="test_harness/api_config.json", help="Path to API config JSON file")
 parser.add_argument('--input', type=str, help="Input text for attack simulation")
 parser.add_argument('--email', type=str, help="Email address for endpoints that require it")
@@ -164,6 +165,8 @@ def get_param_value(param, attack_values=None):
                     value = generate_malicious_pdf(malicious_text)
                 elif '.json' in accept:
                     value = generate_malicious_json(malicious_text)
+                elif '.mp3' in accept:
+                    value = generate_adversarial_audio(malicious_text)
                 else:
                     # Default to creating a text file with the extension
                     ext = accept[0] if accept else '.txt'
@@ -199,7 +202,16 @@ def get_param_value(param, attack_values=None):
     
     return value
 
-def process_dynamic_api(endpoint_cfg, attack_values=None):
+def is_rate_limit_or_connection_error(exception):
+    """Check if the exception indicates rate limiting or connection issues"""
+    error_str = str(exception).lower()
+    return any(keyword in error_str for keyword in [
+        'connection aborted', 'connection timeout', 'remote end closed', 
+        'rate limit', 'too many requests', 'service unavailable',
+        'connection reset', 'timeout', 'connection error'
+    ])
+
+def process_dynamic_api(endpoint_cfg, attack_values=None, max_retries=3, base_delay=2):
     url = endpoint_cfg['endpoint']
     method = endpoint_cfg.get('method', 'POST').upper()
     params = endpoint_cfg.get('parameters', [])
@@ -214,52 +226,75 @@ def process_dynamic_api(endpoint_cfg, attack_values=None):
             files[param['name']] = open(value, 'rb')
         else:
             data[param['name']] = value
-    print(f"→ Sending request to {url} with data: {data} and files: {list(files.keys())}")
-    log_file = f"data/logs/misbehavior_log_{endpoint_cfg['name']}.csv"
-    try:
-        if method == 'POST':
-            response = requests.post(url, data=data, files=files if files else None, timeout=30)
-        else:
-            response = requests.get(url, params=data, timeout=30)
-        response.raise_for_status()
-        result = response.json() if response.headers.get('Content-Type', '').startswith('application/json') else response.text
-        print(f"✓ Response from {url}: {result}")
-        # Log result
-        result_data = {
-            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "endpoint": url,
-            "parameters": data,
-            "result": result,
-            "status": "success",
-            "misbehavior_detected": "false",
-            "misbehavior_reason": ""
-        }
-        log_result_to_file(result_data, log_file)
-        print(f"✓ Results logged to {log_file}")
-        return True
-    except Exception as e:
-        print(f"✗ Error calling {url}: {e}")
-        # Log error result
-        error_data = {
-            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "endpoint": url,
-            "parameters": data,
-            "error": str(e),
-            "status": "error",
-            "misbehavior_detected": "false",
-            "misbehavior_reason": ""
-        }
-        log_result_to_file(error_data, log_file)
-        print(f"✓ Error logged to {log_file}")
-        return False
-    finally:
-        for f in files.values():
-            f.close()
+    
+    log_file = f"data/logs/log_{endpoint_cfg['name']}.csv"
+    
+    for attempt in range(max_retries + 1):
+        try:
+            if attempt > 0:
+                delay = base_delay * (2 ** (attempt - 1))  # Exponential backoff
+                print(f"⏰ Waiting {delay} seconds before retry {attempt}/{max_retries}...")
+                time.sleep(delay)
+            
+            print(f"→ Sending request to {url} with data: {data}")
+            
+            if method == 'POST':
+                response = requests.post(url, data=data, files=files if files else None, timeout=30)
+            else:
+                response = requests.get(url, params=data, timeout=30)
+            response.raise_for_status()
+            result = response.json() if response.headers.get('Content-Type', '').startswith('application/json') else response.text
+            print(f"✓ Response from {url}: {result}")
+            # Log result
+            result_data = {
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "endpoint": url,
+                "parameters": data,
+                "result": result,
+                "status": "success",
+                "misbehavior_detected": "false",
+                "misbehavior_reason": ""
+            }
+            log_result_to_file(result_data, log_file)
+            print(f"✓ Results logged to {log_file}")
+            return True
+        except Exception as e:
+            if attempt < max_retries and is_rate_limit_or_connection_error(e):
+                print(f"⚠️ Connection/rate limit error (attempt {attempt + 1}/{max_retries + 1}): {e}")
+                continue  # Retry with backoff
+            else:
+                print(f"✗ Error calling {url}: {e}")
+                # Log error result
+                error_data = {
+                    "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "endpoint": url,
+                    "parameters": data,
+                    "error": str(e),
+                    "status": "error",
+                    "misbehavior_detected": "false",
+                    "misbehavior_reason": ""
+                }
+                log_result_to_file(error_data, log_file)
+                print(f"✓ Error logged to {log_file}")
+                return False
+        finally:
+            # Always close files on each attempt to avoid resource leaks
+            for f in files.values():
+                if hasattr(f, 'close'):
+                    f.close()
+            # Reopen files for retry if needed
+            if attempt < max_retries:
+                files = {}
+                for param in params:
+                    if param['type'] == 'file':
+                        value = get_param_value(param, attack_values)
+                        if value:
+                            files[param['name']] = open(value, 'rb')
 
 
 if __name__ == "__main__":
 
-    print(f"Running BAS simulation for all API endpoints defined in {CONFIG_PATH}")
+    print(f"Running BAS pipeline for all API endpoints defined in {CONFIG_PATH}")
     with open(CONFIG_PATH, 'r') as f:
         api_configs = json.load(f)
 
@@ -300,18 +335,21 @@ if __name__ == "__main__":
                     # Only add to processed list if not skipped
                     if result is not None:
                         processed_endpoints.append(endpoint_cfg)
+                    
+                    # Small delay between requests to avoid overwhelming the API
+                    time.sleep(0.5)
 
     # Step 2: Validate all generated logs
     print("\nValidating all generated logs...")
     for endpoint_cfg in processed_endpoints:
-        log_file = f"data/logs/misbehavior_log_{endpoint_cfg['name']}.csv"
+        log_file = f"data/logs/log_{endpoint_cfg['name']}.csv"
         if os.path.exists(log_file):
             os.system(f"python validation/run_validation.py {log_file}")
         else:
             print(f"Skipping validation for {log_file} (file not found)")
     # Step 3: Generate visual graph from all logs
     print("\nGenerating visual graph from logs...")
-    log_files_str = ' '.join([f"data/logs/misbehavior_log_{cfg['name']}.csv" for cfg in processed_endpoints if os.path.exists(f"data/logs/misbehavior_log_{cfg['name']}.csv")])
+    log_files_str = ' '.join([f"data/logs/log_{cfg['name']}.csv" for cfg in processed_endpoints if os.path.exists(f"data/logs/log_{cfg['name']}.csv")])
     if log_files_str:
         os.system(f"python validation/report_generator.py {log_files_str} data/logs/report.html")
         print("✓ Visual graph generated at data/logs/report.html")

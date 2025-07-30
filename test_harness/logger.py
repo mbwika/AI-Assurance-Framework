@@ -2,7 +2,7 @@
 import csv
 import os
 
-LOG_FILE = "data/logs/misbehavior_log.csv"
+LOG_FILE = "data/logs/log.csv"
 
 def log_result(row):
     # Appends a result row to the misbehavior log CSV file

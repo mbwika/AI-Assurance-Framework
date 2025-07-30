@@ -42,15 +42,14 @@
       {"name": "country", "type": "string", "required": true, "default": "hacker world"}
     ]
   },
- {
+   {
     "name": "translate",
     "endpoint": "http://localhost:8000/translate/",
     "method": "POST",
     "parameters": [
-    {"name": "input", "type": "audio", "default": "Hello, how are you today?", "required": true},
+    {"name": "input", "type": "file", "accept": [".mp3"], "required": true},
     {"name": "lang", "type": "string", "default": "spa", "required": true},
     {"name": "voice", "type": "string", "default": "es-BO-SofiaNeural", "required": true}
     ]
   }
-
 ]
