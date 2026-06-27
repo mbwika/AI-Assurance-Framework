@@ -3,13 +3,15 @@
 import pytest
 
 from aiaf.analysis.backdoor_heuristics import (
+    _PROV_CRITICALLY_LOW,
+    _PROV_LOW,
     ANALYSIS_VERSION,
     STATUS_CLEAN,
-    STATUS_SUSPICIOUS,
     STATUS_HIGH_RISK,
     STATUS_INSUFFICIENT_DATA,
-    STATUS_ERROR,
-    analyse,
+    STATUS_SUSPICIOUS,
+    _aggregate_status,
+    _by_severity,
     _h1_finetuned_unverified,
     _h2_merge_component_unverified,
     _h3_provenance_critically_low,
@@ -17,13 +19,9 @@ from aiaf.analysis.backdoor_heuristics import (
     _h5_dtype_anomaly,
     _h6_lineage_unverifiable,
     _h7_low_provenance_with_artifact,
-    _aggregate_status,
-    _by_severity,
     _safe_float,
-    _PROV_CRITICALLY_LOW,
-    _PROV_LOW,
+    analyse,
 )
-
 
 # ── Fixture builders ──────────────────────────────────────────────────────────
 

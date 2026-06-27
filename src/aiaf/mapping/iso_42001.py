@@ -8,7 +8,6 @@ Reference: ISO/IEC 42001:2023 — Information technology — Artificial intellig
            — Management system.
 """
 from dataclasses import dataclass, field
-from typing import List, Optional
 
 
 @dataclass
@@ -16,12 +15,12 @@ class ISO42001Clause:
     clause_id: str
     title: str
     description: str
-    aiaf_control_ids: List[str] = field(default_factory=list)
-    evidence_examples: List[str] = field(default_factory=list)
+    aiaf_control_ids: list[str] = field(default_factory=list)
+    evidence_examples: list[str] = field(default_factory=list)
     notes: str = ""
 
 
-ISO_42001_CLAUSES: List[ISO42001Clause] = [
+ISO_42001_CLAUSES: list[ISO42001Clause] = [
     ISO42001Clause(
         clause_id="4",
         title="Context of the organization",
@@ -156,15 +155,15 @@ ISO_42001_CLAUSES: List[ISO42001Clause] = [
 ]
 
 
-def map_aiaf_controls_to_iso42001(aiaf_control_id: str) -> List[ISO42001Clause]:
+def map_aiaf_controls_to_iso42001(aiaf_control_id: str) -> list[ISO42001Clause]:
     """Return clauses that reference the given AIAF control ID."""
     return [c for c in ISO_42001_CLAUSES if aiaf_control_id in c.aiaf_control_ids]
 
 
-def get_clause(clause_id: str) -> Optional[ISO42001Clause]:
+def get_clause(clause_id: str) -> ISO42001Clause | None:
     """Look up a clause by its ID string."""
     return next((c for c in ISO_42001_CLAUSES if c.clause_id == clause_id), None)
 
 
-def get_all_clauses() -> List[ISO42001Clause]:
+def get_all_clauses() -> list[ISO42001Clause]:
     return list(ISO_42001_CLAUSES)

@@ -1,13 +1,11 @@
 """Phase 2 adoption engine tests: serialization scan + behavioral probe evaluators."""
 
-import pytest
 
 from aiaf.core.adoption_engine import (
     ADOPTION_SCORING_VERSION,
     AdoptionVerdict,
     recommend_adoption,
 )
-
 
 # ---------------------------------------------------------------------------
 # Minimal model record (no ledger, triggers evidence-gap path only)

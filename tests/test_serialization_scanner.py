@@ -6,20 +6,14 @@ import pickle
 import struct
 import tempfile
 import zipfile
-from pathlib import Path
-
-import pytest
 
 from aiaf.registry.serialization_scanner import (
+    SCAN_VERSION,
     STATUS_CLEAN,
-    STATUS_ERROR,
     STATUS_NO_FILE,
     STATUS_UNSAFE,
-    STATUS_UNSUPPORTED,
-    SCAN_VERSION,
     scan_file,
 )
-
 
 # ---------------------------------------------------------------------------
 # Test fixture helpers
@@ -45,7 +39,7 @@ def _write_dangerous_pickle(path: str) -> None:
 
 def _write_zip_pytorch(path: str, dangerous: bool = False) -> None:
     """Write a minimal ZIP-based PyTorch-style archive with a data.pkl inside."""
-    buf = io.BytesIO()
+    io.BytesIO()
     if dangerous:
         class _ExploitFixture:
             def __reduce__(self):

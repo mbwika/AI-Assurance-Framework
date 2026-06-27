@@ -37,7 +37,7 @@ tool_count              Number of tools (int, default 0)
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 SYSTEM_REDTEAM_VERSION = "1.0"
 
@@ -74,7 +74,7 @@ SYSTEM_RISK_MEDIUM = "MEDIUM"
 SYSTEM_RISK_HIGH = "HIGH"
 SYSTEM_RISK_CRITICAL = "CRITICAL"
 
-_RISK_RANK: Dict[str, int] = {
+_RISK_RANK: dict[str, int] = {
     SYSTEM_RISK_CRITICAL: 3, SYSTEM_RISK_HIGH: 2,
     SYSTEM_RISK_MEDIUM: 1, SYSTEM_RISK_LOW: 0,
 }
@@ -85,7 +85,7 @@ SEV_HIGH = "HIGH"
 SEV_MEDIUM = "MEDIUM"
 SEV_LOW = "LOW"
 
-_SEV_RANK: Dict[str, int] = {
+_SEV_RANK: dict[str, int] = {
     SEV_CRITICAL: 3, SEV_HIGH: 2, SEV_MEDIUM: 1, SEV_LOW: 0,
 }
 
@@ -108,13 +108,13 @@ def _worst_sev(a: str, b: str) -> str:
     return a if _SEV_RANK.get(a, 0) >= _SEV_RANK.get(b, 0) else b
 
 
-def _cfg(system_config: Dict[str, Any], key: str, default: Any = False) -> Any:
+def _cfg(system_config: dict[str, Any], key: str, default: Any = False) -> Any:
     return system_config.get(key, default)
 
 
 # ── Layer assessments ──────────────────────────────────────────────────────────
 
-def _assess_model_layer(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _assess_model_layer(cfg: dict[str, Any]) -> list[dict[str, Any]]:
     findings = []
     if _cfg(cfg, "external_models"):
         findings.append({
@@ -137,7 +137,7 @@ def _assess_model_layer(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     return findings
 
 
-def _assess_app_layer(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _assess_app_layer(cfg: dict[str, Any]) -> list[dict[str, Any]]:
     findings = []
     if not _cfg(cfg, "has_guardrails"):
         findings.append({
@@ -154,7 +154,7 @@ def _assess_app_layer(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     return findings
 
 
-def _assess_retrieval_layer(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _assess_retrieval_layer(cfg: dict[str, Any]) -> list[dict[str, Any]]:
     findings = []
     if not _cfg(cfg, "has_rag"):
         return findings
@@ -172,7 +172,7 @@ def _assess_retrieval_layer(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     return findings
 
 
-def _assess_tools_layer(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _assess_tools_layer(cfg: dict[str, Any]) -> list[dict[str, Any]]:
     findings = []
     if not _cfg(cfg, "has_tools") and not _cfg(cfg, "has_mcp_servers"):
         return findings
@@ -197,7 +197,7 @@ def _assess_tools_layer(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     return findings
 
 
-def _assess_identity_layer(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _assess_identity_layer(cfg: dict[str, Any]) -> list[dict[str, Any]]:
     findings = []
     if _cfg(cfg, "has_agents") and not _cfg(cfg, "has_identity_management"):
         findings.append({
@@ -214,7 +214,7 @@ def _assess_identity_layer(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     return findings
 
 
-def _assess_telemetry_layer(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _assess_telemetry_layer(cfg: dict[str, Any]) -> list[dict[str, Any]]:
     findings = []
     if not _cfg(cfg, "has_audit_logging"):
         findings.append({
@@ -231,7 +231,7 @@ def _assess_telemetry_layer(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     return findings
 
 
-def _assess_approval_layer(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _assess_approval_layer(cfg: dict[str, Any]) -> list[dict[str, Any]]:
     findings = []
     if _cfg(cfg, "has_agents") and not _cfg(cfg, "has_human_approval"):
         findings.append({
@@ -244,7 +244,7 @@ def _assess_approval_layer(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 # ── Cross-layer scenario analysis ──────────────────────────────────────────────
 
-def _scenario_prompt_injection_cascade(cfg: Dict[str, Any], layers: frozenset) -> Dict[str, Any]:
+def _scenario_prompt_injection_cascade(cfg: dict[str, Any], layers: frozenset) -> dict[str, Any]:
     applicable = (
         LAYER_RETRIEVAL in layers and _cfg(cfg, "has_rag")
         and LAYER_TOOLS in layers and _cfg(cfg, "has_tools")
@@ -274,7 +274,7 @@ def _scenario_prompt_injection_cascade(cfg: Dict[str, Any], layers: frozenset) -
     }
 
 
-def _scenario_supply_chain_tool_abuse(cfg: Dict[str, Any], layers: frozenset) -> Dict[str, Any]:
+def _scenario_supply_chain_tool_abuse(cfg: dict[str, Any], layers: frozenset) -> dict[str, Any]:
     applicable = (
         _cfg(cfg, "external_models")
         and _cfg(cfg, "has_agents")
@@ -304,7 +304,7 @@ def _scenario_supply_chain_tool_abuse(cfg: Dict[str, Any], layers: frozenset) ->
     }
 
 
-def _scenario_rag_poisoning_exfil(cfg: Dict[str, Any], layers: frozenset) -> Dict[str, Any]:
+def _scenario_rag_poisoning_exfil(cfg: dict[str, Any], layers: frozenset) -> dict[str, Any]:
     applicable = LAYER_RETRIEVAL in layers and _cfg(cfg, "has_rag")
     path = [
         {"step": 1, "layer": LAYER_RETRIEVAL, "technique": "Adversarial document injection",
@@ -330,7 +330,7 @@ def _scenario_rag_poisoning_exfil(cfg: Dict[str, Any], layers: frozenset) -> Dic
     }
 
 
-def _scenario_identity_escalation(cfg: Dict[str, Any], layers: frozenset) -> Dict[str, Any]:
+def _scenario_identity_escalation(cfg: dict[str, Any], layers: frozenset) -> dict[str, Any]:
     applicable = (
         _cfg(cfg, "has_agents")
         and not _cfg(cfg, "has_identity_management")
@@ -360,7 +360,7 @@ def _scenario_identity_escalation(cfg: Dict[str, Any], layers: frozenset) -> Dic
     }
 
 
-def _scenario_denial_of_wallet(cfg: Dict[str, Any], layers: frozenset) -> Dict[str, Any]:
+def _scenario_denial_of_wallet(cfg: dict[str, Any], layers: frozenset) -> dict[str, Any]:
     applicable = (
         _cfg(cfg, "has_agents")
         and not _cfg(cfg, "has_resource_limits")
@@ -396,11 +396,11 @@ def run_system_redteam(
     system_id: str,
     store: Any,
     *,
-    layers: Optional[List[str]] = None,
-    system_config: Optional[Dict[str, Any]] = None,
-    model_ids: Optional[List[str]] = None,
-    agent_ids: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    layers: list[str] | None = None,
+    system_config: dict[str, Any] | None = None,
+    model_ids: list[str] | None = None,
+    agent_ids: list[str] | None = None,
+) -> dict[str, Any]:
     """Run a cross-layer system-level red team assessment.
 
     Parameters
@@ -419,7 +419,7 @@ def run_system_redteam(
         Agent IDs to pull from the store for additional context.
     """
     if layers is not None:
-        unknown = [l for l in layers if l not in ALL_LAYERS]
+        unknown = [layer for layer in layers if layer not in ALL_LAYERS]
         if unknown:
             raise SystemRedTeamError(
                 f"Unknown layers: {unknown}. Valid: {sorted(ALL_LAYERS)}"
@@ -449,8 +449,8 @@ def run_system_redteam(
         LAYER_APPROVAL: _assess_approval_layer,
     }
 
-    layer_findings: Dict[str, List[Dict[str, Any]]] = {}
-    all_layer_findings: List[Dict[str, Any]] = []
+    layer_findings: dict[str, list[dict[str, Any]]] = {}
+    all_layer_findings: list[dict[str, Any]] = []
     for layer in sorted(active_layers):
         assessor = layer_assessors.get(layer)
         findings = assessor(cfg) if assessor else []
@@ -480,7 +480,7 @@ def run_system_redteam(
         overall_risk = _worst_risk(overall_risk, sev_to_risk.get(s["severity"], SYSTEM_RISK_LOW))
 
     # Priority fixes (deduplicated controls from critical/high findings)
-    priority_controls: List[str] = []
+    priority_controls: list[str] = []
     for f in sorted(all_layer_findings, key=lambda x: _SEV_RANK.get(x["severity"], 0) * -1):
         ctrl = f.get("control", "")
         if ctrl and ctrl not in priority_controls:

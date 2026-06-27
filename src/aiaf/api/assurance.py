@@ -12,27 +12,29 @@ REST endpoints for:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from .models import get_api_key, get_store
-from ..analysis.poisoning_tests import PoisoningTestError, assess_poisoning_risk
-from ..analysis.extraction_tests import ExtractionTestError, assess_extraction_risk
-from ..analysis.training_data_assurance import assess_training_data_assurance
-from ..analysis.benchmark_contamination import ContaminationError, check_contamination
 from ..analysis.adversary_simulation import (
-    SimulationError, simulate_adversary, THREAT_PROFILES,
+    THREAT_PROFILES,
+    SimulationError,
+    simulate_adversary,
 )
+from ..analysis.benchmark_contamination import ContaminationError, check_contamination
+from ..analysis.extraction_tests import ExtractionTestError, assess_extraction_risk
+from ..analysis.poisoning_tests import PoisoningTestError, assess_poisoning_risk
+from ..analysis.training_data_assurance import assess_training_data_assurance
 from ..core.risk_confidence import RiskConfidenceError, compute_risk_confidence
+from .models import get_api_key, get_store
 
 router = APIRouter(prefix="/v1/advanced", tags=["advanced-assurance"])
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
-def _get_record(model_id: str, store: Any) -> Dict[str, Any]:
+def _get_record(model_id: str, store: Any) -> dict[str, Any]:
     """Retrieve model record from store; return stub if not found."""
     try:
         record = store.get_model(model_id)
@@ -46,32 +48,32 @@ def _get_record(model_id: str, store: Any) -> Dict[str, Any]:
 class BehavioralResponse(BaseModel):
     input: str = ""
     output: str = ""
-    control_output: Optional[str] = None
+    control_output: str | None = None
 
 
 class PoisoningAssessRequest(BaseModel):
     model_id: str
-    behavioral_responses: Optional[List[BehavioralResponse]] = None
+    behavioral_responses: list[BehavioralResponse] | None = None
 
 
 class ExtractionAssessRequest(BaseModel):
     model_id: str
-    sample_outputs: Optional[List[str]] = None
-    candidate_records: Optional[List[str]] = None
+    sample_outputs: list[str] | None = None
+    candidate_records: list[str] | None = None
 
 
 class BenchmarkScoreEntry(BaseModel):
     benchmark_name: str
     score: float
-    population_mean: Optional[float] = None
-    population_std: Optional[float] = None
-    benchmark_release_date: Optional[str] = None
-    verified_score: Optional[float] = None
+    population_mean: float | None = None
+    population_std: float | None = None
+    benchmark_release_date: str | None = None
+    verified_score: float | None = None
 
 
 class ContaminationCheckRequest(BaseModel):
     model_id: str
-    benchmark_scores: List[BenchmarkScoreEntry]
+    benchmark_scores: list[BenchmarkScoreEntry]
 
 
 class DeploymentContext(BaseModel):
@@ -86,7 +88,7 @@ class DeploymentContext(BaseModel):
 class AdversarySimulateRequest(BaseModel):
     model_id: str
     threat_profile: str
-    deployment_context: Optional[DeploymentContext] = None
+    deployment_context: DeploymentContext | None = None
 
 
 class EvidenceItem(BaseModel):
@@ -98,7 +100,7 @@ class EvidenceItem(BaseModel):
 
 
 class ConfidenceScoreRequest(BaseModel):
-    evidence_items: List[EvidenceItem]
+    evidence_items: list[EvidenceItem]
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
@@ -108,7 +110,7 @@ def assess_poisoning(
     req: PoisoningAssessRequest,
     _key: str = Depends(get_api_key),
     store: Any = Depends(get_store),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Assess poisoning and backdoor risk for a registered model."""
     record = _get_record(req.model_id, store)
     responses = (
@@ -127,7 +129,7 @@ def assess_extraction(
     req: ExtractionAssessRequest,
     _key: str = Depends(get_api_key),
     store: Any = Depends(get_store),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Assess model extraction and membership-inference vulnerability."""
     record = _get_record(req.model_id, store)
     try:
@@ -146,7 +148,7 @@ def assess_training_data(
     req: ExtractionAssessRequest,
     _key: str = Depends(get_api_key),
     store: Any = Depends(get_store),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Assess training-data lineage and governance assurance."""
     record = _get_record(req.model_id, store)
     return assess_training_data_assurance(record, store)
@@ -157,7 +159,7 @@ def check_benchmark_contamination(
     req: ContaminationCheckRequest,
     _key: str = Depends(get_api_key),
     store: Any = Depends(get_store),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Check benchmark scores for training-data contamination indicators."""
     record = _get_record(req.model_id, store)
     scores = [s.model_dump() for s in req.benchmark_scores]
@@ -172,7 +174,7 @@ def adversary_simulate(
     req: AdversarySimulateRequest,
     _key: str = Depends(get_api_key),
     store: Any = Depends(get_store),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Simulate a threat actor's capability against a deployed model."""
     if req.threat_profile.upper() not in THREAT_PROFILES:
         raise HTTPException(
@@ -193,7 +195,7 @@ def confidence_score(
     req: ConfidenceScoreRequest,
     _key: str = Depends(get_api_key),
     store: Any = Depends(get_store),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Compute a formally justified, origin-weighted risk confidence score."""
     items = [i.model_dump() for i in req.evidence_items]
     try:
@@ -208,7 +210,7 @@ def advanced_summary(
     threat_profile: str = "MOTIVATED_ATTACKER",
     _key: str = Depends(get_api_key),
     store: Any = Depends(get_store),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return a combined Phase-E advanced assurance summary for a model.
 
     Runs poisoning assessment, extraction risk, training-data assurance, and adversary simulation

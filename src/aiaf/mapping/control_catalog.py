@@ -1,9 +1,8 @@
 """Security control catalog for AI assurance evaluations."""
 from copy import deepcopy
-from typing import Any, Dict, List
+from typing import Any
 
-
-CONTROL_CATALOG: List[Dict[str, Any]] = [
+CONTROL_CATALOG: list[dict[str, Any]] = [
     {
         "id": "AIAF-GOV-001",
         "title": "Accountability and risk ownership",
@@ -472,12 +471,12 @@ CONTROL_CATALOG: List[Dict[str, Any]] = [
 ]
 
 
-def get_control_catalog() -> List[Dict[str, Any]]:
+def get_control_catalog() -> list[dict[str, Any]]:
     """Return a copy of the control catalog for API responses and reports."""
     return deepcopy(CONTROL_CATALOG)
 
 
-def evaluate_catalog_controls(artifact: Dict[str, Any]) -> List[Dict[str, Any]]:
+def evaluate_catalog_controls(artifact: dict[str, Any]) -> list[dict[str, Any]]:
     """Evaluate all catalog controls against evidence in an artifact record."""
     evaluations = []
     for control in CONTROL_CATALOG:
@@ -504,16 +503,16 @@ def evaluate_catalog_controls(artifact: Dict[str, Any]) -> List[Dict[str, Any]]:
     return evaluations
 
 
-def summarize_control_evaluations(evaluations: List[Dict[str, Any]]) -> Dict[str, Any]:
+def summarize_control_evaluations(evaluations: list[dict[str, Any]]) -> dict[str, Any]:
     """Create status, objective, and domain summaries for control evaluations.
 
     The domain breakdown makes analyzer-backed control areas individually
     visible (e.g. ``Model Reliability`` for the bias/fairness and
     factual-reliability controls), which the broad objective grouping hides.
     """
-    by_status: Dict[str, int] = {}
-    by_objective: Dict[str, Dict[str, int]] = {}
-    by_domain: Dict[str, Dict[str, int]] = {}
+    by_status: dict[str, int] = {}
+    by_objective: dict[str, dict[str, int]] = {}
+    by_domain: dict[str, dict[str, int]] = {}
 
     for evaluation in evaluations:
         status = evaluation["status"]
@@ -533,7 +532,7 @@ def summarize_control_evaluations(evaluations: List[Dict[str, Any]]) -> Dict[str
     }
 
 
-def _control_applies(control: Dict[str, Any], artifact: Dict[str, Any]) -> bool:
+def _control_applies(control: dict[str, Any], artifact: dict[str, Any]) -> bool:
     applies_when_any = control.get("applies_when_any")
     if not applies_when_any:
         return True
@@ -553,11 +552,11 @@ def _has_evidence(value: Any) -> bool:
 
 
 def _evaluation(
-    control: Dict[str, Any],
+    control: dict[str, Any],
     status: str,
-    missing_evidence: List[str],
-    provided_evidence: List[str],
-) -> Dict[str, Any]:
+    missing_evidence: list[str],
+    provided_evidence: list[str],
+) -> dict[str, Any]:
     return {
         "id": control["id"],
         "title": control["title"],

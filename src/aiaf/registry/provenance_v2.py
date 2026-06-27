@@ -1,11 +1,11 @@
 """Evidence-derived, uncertainty-aware provenance scoring for model artifacts."""
 
-from datetime import datetime, timezone
 import math
 import re
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from collections.abc import Iterable
+from datetime import datetime, timezone
+from typing import Any
 from urllib.parse import urlsplit
-
 
 PROVENANCE_SCORING_VERSION = "2.0"
 _MAX_DEPENDENCIES = 2_000
@@ -34,13 +34,13 @@ _DIMENSION_WEIGHTS = {
 
 
 def assess_provenance_v2(
-    model_record: Dict[str, Any],
-    assessment_context: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    model_record: dict[str, Any],
+    assessment_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Derive a conservative 0-100 provenance trust score from evidence."""
-    factors: List[Dict[str, Any]] = []
-    recommendations: List[str] = []
-    trust_caps: List[Dict[str, Any]] = []
+    factors: list[dict[str, Any]] = []
+    recommendations: list[str] = []
+    trust_caps: list[dict[str, Any]] = []
     assessment_complete = True
     malformed_root = not isinstance(model_record, dict)
     if malformed_root:
@@ -869,5 +869,5 @@ def _normalize(value):
     return "_".join(re.findall(r"[a-z0-9]+", str(value or "").lower()))
 
 
-def _unique(values: Iterable[str]) -> List[str]:
+def _unique(values: Iterable[str]) -> list[str]:
     return list(dict.fromkeys(values))

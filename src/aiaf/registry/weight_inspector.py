@@ -42,7 +42,7 @@ import struct
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 INSPECTOR_VERSION = "1.0"
 
@@ -53,7 +53,7 @@ STATUS_UNSUPPORTED = "UNSUPPORTED_FORMAT"
 STATUS_ERROR = "INSPECTION_ERROR"
 
 # (regex pattern, architecture family label)
-_ARCH_PATTERNS: List[Tuple[str, str]] = [
+_ARCH_PATTERNS: list[tuple[str, str]] = [
     (r"\.self_attn\.|\.attention\.|transformer\.h\.", "transformer"),
     (r"model\.layers\.", "transformer"),
     (r"encoder\.layer\.", "transformer_encoder"),
@@ -64,7 +64,7 @@ _ARCH_PATTERNS: List[Tuple[str, str]] = [
 ]
 
 # GGUF value type → struct format string (scalar types only)
-_GGUF_SCALAR_FMT: Dict[int, str] = {
+_GGUF_SCALAR_FMT: dict[int, str] = {
     0: "<B",   # UINT8
     1: "<b",   # INT8
     2: "<H",   # UINT16
@@ -78,7 +78,7 @@ _GGUF_SCALAR_FMT: Dict[int, str] = {
     12: "<d",  # FLOAT64
 }
 
-_GGUF_FILE_TYPES: Dict[int, str] = {
+_GGUF_FILE_TYPES: dict[int, str] = {
     0: "fp32", 1: "fp16", 2: "q4_0", 3: "q4_1",
     6: "q5_0", 7: "q5_1", 8: "q8_0", 9: "q8_1",
     10: "q2_k", 11: "q3_k_s", 12: "q3_k_m", 13: "q3_k_l",
@@ -87,7 +87,7 @@ _GGUF_FILE_TYPES: Dict[int, str] = {
 }
 
 # Safetensors dtype → readable quantization label
-_SAFETENSORS_DTYPE_QUANT: Dict[str, str] = {
+_SAFETENSORS_DTYPE_QUANT: dict[str, str] = {
     "F64": "fp64", "F32": "fp32", "F16": "fp16", "BF16": "bf16",
     "F8_E4M3": "fp8", "F8_E5M2": "fp8",
     "I32": "int32", "I16": "int16", "I8": "int8", "I4": "int4",
@@ -105,7 +105,7 @@ _DTYPE_PRIORITY = ["F64", "F32", "BF16", "F16", "F8_E4M3", "F8_E5M2",
 # ---------------------------------------------------------------------------
 
 
-def inspect_file(file_path: str) -> Dict[str, Any]:
+def inspect_file(file_path: str) -> dict[str, Any]:
     """Inspect a model artifact and return an evidence dict of derived facts.
 
     Only the file header is read; tensor weights are never loaded.  The caller
@@ -176,7 +176,7 @@ def _detect_magic(path: Path) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _inspect_safetensors(path: Path, file_size: int) -> Dict[str, Any]:
+def _inspect_safetensors(path: Path, file_size: int) -> dict[str, Any]:
     with open(path, "rb") as f:
         hdr_len_raw = f.read(8)
         if len(hdr_len_raw) < 8:
@@ -194,7 +194,7 @@ def _inspect_safetensors(path: Path, file_size: int) -> Dict[str, Any]:
         header_bytes = f.read(header_length)
 
     try:
-        header: Dict[str, Any] = json.loads(header_bytes.decode("utf-8"))
+        header: dict[str, Any] = json.loads(header_bytes.decode("utf-8"))
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         return _result(STATUS_ERROR, file_path=str(path),
                        file_size_bytes=file_size, format_detected="safetensors",
@@ -217,13 +217,13 @@ def _inspect_safetensors(path: Path, file_size: int) -> Dict[str, Any]:
 
 
 def _derive_from_safetensors(
-    names: List[str], header: Dict[str, Any]
-) -> Dict[str, Any]:
+    names: list[str], header: dict[str, Any]
+) -> dict[str, Any]:
     arch_family = _detect_arch_family(names)
     layer_count = _count_layers(names)
 
     param_count = 0
-    dtypes_seen: List[str] = []
+    dtypes_seen: list[str] = []
     for tensor_meta in header.values():
         if not isinstance(tensor_meta, dict):
             continue
@@ -262,7 +262,7 @@ def _derive_from_safetensors(
 # ---------------------------------------------------------------------------
 
 
-def _inspect_gguf(path: Path, file_size: int) -> Dict[str, Any]:
+def _inspect_gguf(path: Path, file_size: int) -> dict[str, Any]:
     with open(path, "rb") as f:
         if f.read(4) != b"GGUF":
             return _result(STATUS_ERROR, file_path=str(path),
@@ -272,7 +272,7 @@ def _inspect_gguf(path: Path, file_size: int) -> Dict[str, Any]:
         tensor_count = struct.unpack("<Q", f.read(8))[0]
         kv_count = struct.unpack("<Q", f.read(8))[0]
 
-        kv: Dict[str, Any] = {}
+        kv: dict[str, Any] = {}
         for _ in range(min(int(kv_count), 300)):
             try:
                 key, value = _read_gguf_kv(f, version)
@@ -321,7 +321,7 @@ def _read_gguf_value(f, vtype: int, version: int) -> Any:
     raise ValueError(f"Unknown GGUF value type {vtype}")
 
 
-def _read_gguf_kv(f, version: int) -> Tuple[Optional[str], Any]:
+def _read_gguf_kv(f, version: int) -> tuple[str | None, Any]:
     try:
         key = _read_gguf_string(f)
         (vtype,) = struct.unpack("<I", f.read(4))
@@ -331,7 +331,7 @@ def _read_gguf_kv(f, version: int) -> Tuple[Optional[str], Any]:
         return None, None
 
 
-def _derive_from_gguf_kv(kv: Dict[str, Any]) -> Dict[str, Any]:
+def _derive_from_gguf_kv(kv: dict[str, Any]) -> dict[str, Any]:
     arch = str(kv.get("general.architecture") or "")
     prefix = f"{arch}." if arch else ""
 
@@ -370,7 +370,7 @@ def _derive_from_gguf_kv(kv: Dict[str, Any]) -> Dict[str, Any]:
 
 def _estimate_params_gguf(
     layer_count: Any, hidden_size: Any, vocab_size: Any
-) -> Optional[int]:
+) -> int | None:
     """Rough transformer parameter estimate from GGUF architecture metadata."""
     if layer_count is None or hidden_size is None:
         return None
@@ -389,7 +389,7 @@ def _estimate_params_gguf(
 # ---------------------------------------------------------------------------
 
 
-def _inspect_pytorch(path: Path, file_size: int) -> Dict[str, Any]:
+def _inspect_pytorch(path: Path, file_size: int) -> dict[str, Any]:
     is_zip = False
     try:
         is_zip = zipfile.is_zipfile(str(path))
@@ -414,7 +414,7 @@ def _inspect_pytorch(path: Path, file_size: int) -> Dict[str, Any]:
     )
 
 
-def _inspect_onnx(path: Path, file_size: int) -> Dict[str, Any]:
+def _inspect_onnx(path: Path, file_size: int) -> dict[str, Any]:
     return _result(
         STATUS_HEADER_ONLY,
         file_path=str(path),
@@ -434,7 +434,7 @@ def _inspect_onnx(path: Path, file_size: int) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _detect_arch_family(names: List[str]) -> Optional[str]:
+def _detect_arch_family(names: list[str]) -> str | None:
     sample = " ".join(names[:300])
     for pattern, family in _ARCH_PATTERNS:
         if re.search(pattern, sample):
@@ -442,7 +442,7 @@ def _detect_arch_family(names: List[str]) -> Optional[str]:
     return "unknown" if names else None
 
 
-def _count_layers(names: List[str]) -> Optional[int]:
+def _count_layers(names: list[str]) -> int | None:
     """Find the highest zero-based layer index from repeated naming patterns."""
     patterns = [
         r"\.layers\.(\d+)\.",
@@ -463,7 +463,7 @@ def _count_layers(names: List[str]) -> Optional[int]:
     return max_idx + 1 if max_idx >= 0 else None
 
 
-def _infer_hidden_size(names: List[str], header: Dict[str, Any]) -> Optional[int]:
+def _infer_hidden_size(names: list[str], header: dict[str, Any]) -> int | None:
     """Infer hidden_size from the query weight of the first attention layer."""
     for name in names:
         lower = name.lower()
@@ -475,7 +475,7 @@ def _infer_hidden_size(names: List[str], header: Dict[str, Any]) -> Optional[int
     return None
 
 
-def _infer_vocab_size(names: List[str], header: Dict[str, Any]) -> Optional[int]:
+def _infer_vocab_size(names: list[str], header: dict[str, Any]) -> int | None:
     """Infer vocab_size from the token embedding weight shape."""
     for name in names:
         lower = name.lower()
@@ -487,7 +487,7 @@ def _infer_vocab_size(names: List[str], header: Dict[str, Any]) -> Optional[int]
     return None
 
 
-def _summarise_dtypes(dtypes: List[str]) -> Optional[str]:
+def _summarise_dtypes(dtypes: list[str]) -> str | None:
     """Return the highest-fidelity dtype label seen in the tensor set."""
     for d in _DTYPE_PRIORITY:
         if d in dtypes:
@@ -506,14 +506,14 @@ def _result(
     status: str,
     *,
     file_path: str = "",
-    file_size_bytes: Optional[int] = None,
+    file_size_bytes: int | None = None,
     format_detected: str = "unknown",
-    derived_facts: Optional[Dict[str, Any]] = None,
-    tensor_names_sample: Optional[List[str]] = None,
-    tensor_count: Optional[int] = None,
-    notes: Optional[str] = None,
-    error: Optional[str] = None,
-) -> Dict[str, Any]:
+    derived_facts: dict[str, Any] | None = None,
+    tensor_names_sample: list[str] | None = None,
+    tensor_count: int | None = None,
+    notes: str | None = None,
+    error: str | None = None,
+) -> dict[str, Any]:
     return {
         "inspector_version": INSPECTOR_VERSION,
         "status": status,

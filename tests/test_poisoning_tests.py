@@ -1,13 +1,13 @@
 """Tests for analysis.poisoning_tests (Phase E)."""
 
 import pytest
+
 from aiaf.analysis.poisoning_tests import (
     POISONING_VERSION,
-    STATUS_CLEAN, STATUS_SUSPICIOUS, STATUS_BACKDOOR_SUSPECTED, STATUS_POISONING_SUSPECTED,
-    PoisoningTestError,
-    assess_poisoning_risk,
-    _jaccard_distance,
-    _status_from_count,
+    STATUS_BACKDOOR_SUSPECTED,
+    STATUS_CLEAN,
+    STATUS_POISONING_SUSPECTED,
+    STATUS_SUSPICIOUS,
     _h1_unknown_training_data,
     _h2_low_trust_provenance,
     _h3_capability_mismatch,
@@ -15,6 +15,9 @@ from aiaf.analysis.poisoning_tests import (
     _h5_unverified_architecture,
     _h6_output_length_anomaly,
     _h7_output_consistency_failure,
+    _jaccard_distance,
+    _status_from_count,
+    assess_poisoning_risk,
 )
 
 

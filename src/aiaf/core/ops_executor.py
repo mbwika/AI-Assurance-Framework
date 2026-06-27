@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
+from ..analysis.telemetry_ingest import detect_anomalies, ingest_event
 from .incident_manager import create_incident
 from .ops_scheduler import (
     JOB_ANOMALY_SCAN,
@@ -22,14 +23,13 @@ from .ops_scheduler import (
     OUTCOME_FAILURE,
     OUTCOME_SKIPPED,
     OUTCOME_SUCCESS,
-    get_schedule,
     due_schedules,
+    get_schedule,
     mark_job_run,
 )
 from .redteam_engine import run_redteam
 from .report_snapshot_engine import AssuranceReportSnapshotEngine
 from .vulnerability_engine import VulnerabilityIntelligenceEngine
-from ..analysis.telemetry_ingest import ingest_event, detect_anomalies
 
 EXECUTOR_VERSION = "1.0"
 _TELEMETRY_EVENT_ALIASES = {
@@ -51,7 +51,7 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def execute_schedule(schedule_id: str, store: Any) -> Dict[str, Any]:
+def execute_schedule(schedule_id: str, store: Any) -> dict[str, Any]:
     schedule = get_schedule(schedule_id, store)
     if not schedule:
         raise OpsExecutorError(f"Schedule '{schedule_id}' not found.")
@@ -103,9 +103,9 @@ def execute_schedule(schedule_id: str, store: Any) -> Dict[str, Any]:
 def execute_due_schedules(
     store: Any,
     *,
-    job_type: Optional[str] = None,
-    limit: Optional[int] = None,
-) -> Dict[str, Any]:
+    job_type: str | None = None,
+    limit: int | None = None,
+) -> dict[str, Any]:
     due = due_schedules(store, job_type=job_type)
     if limit is not None:
         due = due[: max(int(limit), 0)]
@@ -128,7 +128,7 @@ def execute_due_schedules(
     }
 
 
-def _run_anomaly_scan(model_id: str, config: Dict[str, Any], store: Any) -> Dict[str, Any]:
+def _run_anomaly_scan(model_id: str, config: dict[str, Any], store: Any) -> dict[str, Any]:
     window_minutes = int(config.get("window_minutes") or 60)
     anomalies = detect_anomalies(model_id, store, window_minutes=window_minutes)
     if (config.get("create_incident", True) and
@@ -148,7 +148,7 @@ def _run_anomaly_scan(model_id: str, config: Dict[str, Any], store: Any) -> Dict
     return anomalies
 
 
-def _run_vulnerability_scan(model_id: str, config: Dict[str, Any], store: Any) -> Dict[str, Any]:
+def _run_vulnerability_scan(model_id: str, config: dict[str, Any], store: Any) -> dict[str, Any]:
     result = VulnerabilityIntelligenceEngine(store).scan_model(model_id)
     if not result:
         return {"status": "SKIPPED", "reason": "model_not_found", "model_id": model_id}
@@ -174,7 +174,7 @@ def _run_vulnerability_scan(model_id: str, config: Dict[str, Any], store: Any) -
     return result
 
 
-def _run_redteam(model_id: str, config: Dict[str, Any], store: Any) -> Dict[str, Any]:
+def _run_redteam(model_id: str, config: dict[str, Any], store: Any) -> dict[str, Any]:
     endpoint_url = str(config.get("endpoint_url") or "").strip()
     if not endpoint_url:
         return {"status": "SKIPPED", "reason": "missing_endpoint_url", "model_id": model_id}
@@ -211,7 +211,7 @@ def _run_redteam(model_id: str, config: Dict[str, Any], store: Any) -> Dict[str,
     return result
 
 
-def _run_snapshot(target_id: str, config: Dict[str, Any], store: Any) -> Dict[str, Any]:
+def _run_snapshot(target_id: str, config: dict[str, Any], store: Any) -> dict[str, Any]:
     engine = AssuranceReportSnapshotEngine(
         store,
         signing_key=config.get("signing_key"),
@@ -220,7 +220,7 @@ def _run_snapshot(target_id: str, config: Dict[str, Any], store: Any) -> Dict[st
         verification_public_key_pem=config.get("verification_public_key_pem"),
     )
     scope_type = str(config.get("scope_type") or "MODEL").upper()
-    kwargs: Dict[str, Any] = {
+    kwargs: dict[str, Any] = {
         "created_by": str(config.get("created_by") or "ops-scheduler"),
         "sign": bool(config.get("sign", False)),
     }
@@ -234,7 +234,7 @@ def _run_snapshot(target_id: str, config: Dict[str, Any], store: Any) -> Dict[st
     return {"status": "COMPLETED", "snapshot": snapshot}
 
 
-def _run_telemetry_ingest(model_id: str, config: Dict[str, Any], store: Any) -> Dict[str, Any]:
+def _run_telemetry_ingest(model_id: str, config: dict[str, Any], store: Any) -> dict[str, Any]:
     events = list(config.get("events") or [])
     if not events:
         return {"status": "SKIPPED", "reason": "no_events_supplied", "model_id": model_id}

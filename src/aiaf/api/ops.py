@@ -6,41 +6,53 @@ anomaly detection, incident lifecycle, SIEM export, and remediation tracking.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from .models import get_api_key, get_store
-from ..core.ops_scheduler import (
-    OpsSchedulerError,
-    create_schedule, get_schedule, list_schedules,
-    pause_schedule, resume_schedule, delete_schedule,
-    mark_job_run, due_schedules,
-    JOB_TYPES, SCHEDULE_TYPES, OUTCOME_VALUES,
-)
-from ..core.ops_executor import (
-    OpsExecutorError,
-    execute_schedule,
-    execute_due_schedules,
-)
 from ..analysis.telemetry_ingest import (
     TelemetryIngestError,
-    ingest_event, get_window_summary, list_events, detect_anomalies,
-    EVENT_TYPES,
+    detect_anomalies,
+    get_window_summary,
+    ingest_event,
+    list_events,
 )
 from ..core.incident_manager import (
     IncidentError,
-    create_incident, get_incident, list_incidents,
-    update_incident_state, add_incident_note, snapshot_incident,
+    add_incident_note,
+    create_incident,
+    get_incident,
+    list_incidents,
+    snapshot_incident,
+    update_incident_state,
 )
-from ..core.siem_export import SiemExportError, export_batch, EXPORT_FORMATS
+from ..core.ops_executor import (
+    OpsExecutorError,
+    execute_due_schedules,
+    execute_schedule,
+)
+from ..core.ops_scheduler import (
+    OpsSchedulerError,
+    create_schedule,
+    delete_schedule,
+    due_schedules,
+    get_schedule,
+    list_schedules,
+    mark_job_run,
+    pause_schedule,
+    resume_schedule,
+)
 from ..core.remediation_tracker import (
     RemediationError,
-    create_remediation, get_remediation, list_remediations,
-    update_remediation_status, link_to_incident,
-    ACTION_TYPES, REMEDIATION_STATUSES,
+    create_remediation,
+    get_remediation,
+    link_to_incident,
+    list_remediations,
+    update_remediation_status,
 )
+from ..core.siem_export import SiemExportError, export_batch
+from .models import get_api_key, get_store
 
 router = APIRouter(prefix="/v1/ops", tags=["ops"])
 
@@ -52,23 +64,23 @@ class CreateScheduleRequest(BaseModel):
     job_type: str
     target_id: str
     schedule_type: str
-    interval_seconds: Optional[int] = None
-    cron_time: Optional[str] = None
-    cron_day: Optional[str] = None
-    config: Optional[Dict[str, Any]] = None
+    interval_seconds: int | None = None
+    cron_time: str | None = None
+    cron_day: str | None = None
+    config: dict[str, Any] | None = None
 
 
 class MarkRunRequest(BaseModel):
     outcome: str = "SUCCESS"
-    details: Optional[Dict[str, Any]] = None
+    details: dict[str, Any] | None = None
 
 
 class IngestEventRequest(BaseModel):
     model_id: str
     event_type: str
     value: float
-    metadata: Optional[Dict[str, Any]] = None
-    timestamp: Optional[str] = None
+    metadata: dict[str, Any] | None = None
+    timestamp: str | None = None
 
 
 class CreateIncidentRequest(BaseModel):
@@ -77,24 +89,24 @@ class CreateIncidentRequest(BaseModel):
     severity: str
     source: str
     model_id: str
-    description: Optional[str] = None
-    findings: Optional[List[Dict[str, Any]]] = None
-    evidence_origin: Optional[str] = None
-    tags: Optional[List[str]] = None
+    description: str | None = None
+    findings: list[dict[str, Any]] | None = None
+    evidence_origin: str | None = None
+    tags: list[str] | None = None
 
 
 class UpdateStateRequest(BaseModel):
     new_state: str
-    note: Optional[str] = None
+    note: str | None = None
 
 
 class AddNoteRequest(BaseModel):
     note: str
-    author: Optional[str] = None
+    author: str | None = None
 
 
 class SiemExportRequest(BaseModel):
-    incident_ids: Optional[List[str]] = None
+    incident_ids: list[str] | None = None
     export_format: str = "JSON"
     max_records: int = Field(default=1000, ge=1, le=10000)
 
@@ -104,14 +116,14 @@ class CreateRemediationRequest(BaseModel):
     incident_id: str
     action_type: str
     description: str
-    model_id: Optional[str] = None
-    assigned_to: Optional[str] = None
-    due_date: Optional[str] = None
+    model_id: str | None = None
+    assigned_to: str | None = None
+    due_date: str | None = None
 
 
 class UpdateRemediationStatusRequest(BaseModel):
     new_status: str
-    resolution_note: Optional[str] = None
+    resolution_note: str | None = None
 
 
 class LinkIncidentRequest(BaseModel):
@@ -119,8 +131,8 @@ class LinkIncidentRequest(BaseModel):
 
 
 class RunDueSchedulesRequest(BaseModel):
-    job_type: Optional[str] = None
-    limit: Optional[int] = Field(default=None, ge=1, le=500)
+    job_type: str | None = None
+    limit: int | None = Field(default=None, ge=1, le=500)
 
 
 # ── Scheduler routes ───────────────────────────────────────────────────────────
@@ -139,8 +151,8 @@ def api_create_schedule(req: CreateScheduleRequest, store=Depends(get_store), _=
 
 @router.get("/schedules")
 def api_list_schedules(
-    job_type: Optional[str] = None,
-    status: Optional[str] = None,
+    job_type: str | None = None,
+    status: str | None = None,
     limit: int = 50,
     store=Depends(get_store),
     _=Depends(get_api_key),
@@ -149,7 +161,7 @@ def api_list_schedules(
 
 
 @router.get("/schedules/due")
-def api_due_schedules(job_type: Optional[str] = None, store=Depends(get_store), _=Depends(get_api_key)):
+def api_due_schedules(job_type: str | None = None, store=Depends(get_store), _=Depends(get_api_key)):
     return due_schedules(store, job_type=job_type)
 
 
@@ -278,9 +290,9 @@ def api_create_incident(req: CreateIncidentRequest, store=Depends(get_store), _=
 
 @router.get("/incidents")
 def api_list_incidents(
-    severity: Optional[str] = None,
-    state: Optional[str] = None,
-    model_id: Optional[str] = None,
+    severity: str | None = None,
+    state: str | None = None,
+    model_id: str | None = None,
     limit: int = 50,
     store=Depends(get_store),
     _=Depends(get_api_key),
@@ -360,9 +372,9 @@ def api_create_remediation(
 
 @router.get("/remediations")
 def api_list_remediations(
-    incident_id: Optional[str] = None,
-    model_id: Optional[str] = None,
-    status: Optional[str] = None,
+    incident_id: str | None = None,
+    model_id: str | None = None,
+    status: str | None = None,
     limit: int = 50,
     store=Depends(get_store),
     _=Depends(get_api_key),

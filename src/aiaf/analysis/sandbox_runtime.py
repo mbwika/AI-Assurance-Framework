@@ -38,27 +38,25 @@ running environment.
 from __future__ import annotations
 
 import os
-import socket
 import resource as _resource_module
+import socket
+from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any
 
 from .sandbox_posture import (
+    _ISOLATION_RANK,
+    EGRESS_BLOCKED,
+    EGRESS_FILTERED,
+    EGRESS_MONITORED,
+    EGRESS_NONE,
+    ISOLATION_CONTAINER,
     ISOLATION_NONE,
     ISOLATION_PROCESS,
-    ISOLATION_CONTAINER,
-    ISOLATION_GVISOR,
-    ISOLATION_VM,
-    ISOLATION_HARDWARE,
-    EGRESS_NONE,
-    EGRESS_MONITORED,
-    EGRESS_FILTERED,
-    EGRESS_BLOCKED,
-    PRIVILEGE_ROOT,
-    PRIVILEGE_USER,
     PRIVILEGE_RESTRICTED,
+    PRIVILEGE_ROOT,
     PRIVILEGE_SANDBOXED,
-    _ISOLATION_RANK,
+    PRIVILEGE_USER,
 )
 
 SANDBOX_RUNTIME_VERSION = "1.0"
@@ -90,7 +88,7 @@ VERDICT_INCONCLUSIVE = "INCONCLUSIVE"
 
 # ── CVE scenario indicator files/conditions ───────────────────────────────────
 # Each tuple: (path_or_callable, description, isolation_applies_to)
-_CVE_INDICATORS: List[Tuple] = [
+_CVE_INDICATORS: list[tuple] = [
     # CVE-2024-21626: runc /proc/self/fd escape
     ("/proc/self/fd", "Writable /proc/self/fd directory (runc CVE-2024-21626 vector)", (ISOLATION_CONTAINER,)),
     # Privileged container: can write to /proc/sys/kernel/core_pattern
@@ -125,8 +123,8 @@ def _make_probe_result(
     result: str,
     *,
     detail: str = "",
-    findings: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    findings: list[str] | None = None,
+) -> dict[str, Any]:
     return {
         "probe_type": probe_type,
         "result": result,
@@ -144,8 +142,8 @@ def probe_egress(
     target_host: str = _EGRESS_PROBE_HOST,
     target_port: int = _EGRESS_PROBE_PORT,
     timeout_sec: float = _EGRESS_PROBE_TIMEOUT,
-    connect_fn: Optional[Callable] = None,
-) -> Dict[str, Any]:
+    connect_fn: Callable | None = None,
+) -> dict[str, Any]:
     """Probe outbound TCP connectivity and compare to declared egress control.
 
     Parameters
@@ -161,7 +159,7 @@ def probe_egress(
             sock = socket.create_connection((target_host, target_port), timeout=timeout_sec)
             sock.close()
             reachable = True
-        except (OSError, socket.timeout, socket.gaierror):
+        except (TimeoutError, OSError, socket.gaierror):
             reachable = False
 
     if declared_egress == EGRESS_BLOCKED:
@@ -206,9 +204,9 @@ def probe_egress(
 def probe_privilege(
     declared_privilege: str,
     *,
-    getuid_fn: Optional[Callable] = None,
-    getgid_fn: Optional[Callable] = None,
-) -> Dict[str, Any]:
+    getuid_fn: Callable | None = None,
+    getgid_fn: Callable | None = None,
+) -> dict[str, Any]:
     """Check effective UID/GID against declared privilege level.
 
     Parameters
@@ -227,18 +225,18 @@ def probe_privilege(
     gid = (getgid_fn or os.getgid)()
     is_root = uid == 0
 
-    findings: List[str] = []
+    findings: list[str] = []
     result = RESULT_PASS
 
     if declared_privilege == PRIVILEGE_SANDBOXED and is_root:
         result = RESULT_FAIL
-        findings.append(f"Declared SANDBOXED privilege but running as UID 0 (root).")
+        findings.append("Declared SANDBOXED privilege but running as UID 0 (root).")
     elif declared_privilege == PRIVILEGE_RESTRICTED and is_root:
         result = RESULT_FAIL
-        findings.append(f"Declared RESTRICTED privilege but running as UID 0 (root).")
+        findings.append("Declared RESTRICTED privilege but running as UID 0 (root).")
     elif declared_privilege == PRIVILEGE_USER and is_root:
         result = RESULT_FAIL
-        findings.append(f"Declared USER privilege but running as UID 0 (root).")
+        findings.append("Declared USER privilege but running as UID 0 (root).")
     elif declared_privilege == PRIVILEGE_ROOT and not is_root:
         result = RESULT_PASS  # Lower than declared is acceptable
 
@@ -249,10 +247,10 @@ def probe_privilege(
 def probe_filesystem(
     declared_isolation: str,
     *,
-    test_paths: Optional[List[str]] = None,
-    path_exists_fn: Optional[Callable] = None,
-    is_writable_fn: Optional[Callable] = None,
-) -> Dict[str, Any]:
+    test_paths: list[str] | None = None,
+    path_exists_fn: Callable | None = None,
+    is_writable_fn: Callable | None = None,
+) -> dict[str, Any]:
     """Verify filesystem writability constraints match declared isolation.
 
     For CONTAINER+ isolation, /proc/sysrq-trigger and /proc/sys/kernel/dmesg
@@ -284,7 +282,7 @@ def probe_filesystem(
         "/proc/kcore",
     ]
 
-    findings: List[str] = []
+    findings: list[str] = []
     for p in sensitive_paths:
         if exists(p) and writable(p):
             findings.append(f"Sensitive path is writable: {p}")
@@ -303,10 +301,10 @@ def probe_filesystem(
 
 
 def probe_resources(
-    declared_config: Dict[str, Any],
+    declared_config: dict[str, Any],
     *,
-    getrlimit_fn: Optional[Callable] = None,
-) -> Dict[str, Any]:
+    getrlimit_fn: Callable | None = None,
+) -> dict[str, Any]:
     """Verify ulimit resource limits are active.
 
     Parameters
@@ -324,8 +322,8 @@ def probe_resources(
     declared_timeout = int(declared_config.get("timeout_sec", 0))
     declared_memory_mb = int(declared_config.get("memory_mb", 0))
 
-    findings: List[str] = []
-    detail_parts: List[str] = []
+    findings: list[str] = []
+    detail_parts: list[str] = []
 
     try:
         soft_cpu, hard_cpu = _getrlimit(_resource_module.RLIMIT_CPU)
@@ -339,7 +337,7 @@ def probe_resources(
 
     try:
         soft_as, hard_as = _getrlimit(_resource_module.RLIMIT_AS)
-        declared_bytes = declared_memory_mb * 1024 * 1024
+        declared_memory_mb * 1024 * 1024
         if declared_memory_mb > 0 and soft_as == _resource_module.RLIM_INFINITY:
             findings.append(
                 f"Declared memory_mb={declared_memory_mb} but RLIMIT_AS is UNLIMITED."
@@ -361,9 +359,9 @@ def probe_proc_isolation(
     *,
     ns_pid_path: str = "/proc/self/ns/pid",
     ns_init_pid_path: str = "/proc/1/ns/pid",
-    read_link_fn: Optional[Callable] = None,
-    path_exists_fn: Optional[Callable] = None,
-) -> Dict[str, Any]:
+    read_link_fn: Callable | None = None,
+    path_exists_fn: Callable | None = None,
+) -> dict[str, Any]:
     """Verify PID namespace isolation by comparing /proc/self/ns/pid to /proc/1/ns/pid.
 
     If both point to the same namespace inode, we share the host PID namespace,
@@ -420,9 +418,9 @@ def probe_proc_isolation(
 def probe_cve_scenarios(
     declared_isolation: str,
     *,
-    path_exists_fn: Optional[Callable] = None,
-    is_writable_fn: Optional[Callable] = None,
-) -> Dict[str, Any]:
+    path_exists_fn: Callable | None = None,
+    is_writable_fn: Callable | None = None,
+) -> dict[str, Any]:
     """Detect known container-escape indicator conditions.
 
     Checks for file paths and configurations that characterise published
@@ -438,7 +436,7 @@ def probe_cve_scenarios(
     exists = path_exists_fn or os.path.exists
     writable = is_writable_fn or (lambda p: os.access(p, os.W_OK))
 
-    findings: List[str] = []
+    findings: list[str] = []
     checked = 0
 
     for indicator_path, description, applies_to in _CVE_INDICATORS:
@@ -470,17 +468,17 @@ def probe_cve_scenarios(
 # ── Orchestrator ───────────────────────────────────────────────────────────────
 
 def validate_sandbox_runtime(
-    declared_config: Dict[str, Any],
+    declared_config: dict[str, Any],
     *,
-    probes: Optional[List[str]] = None,
-    egress_connect_fn: Optional[Callable] = None,
-    getuid_fn: Optional[Callable] = None,
-    getgid_fn: Optional[Callable] = None,
-    getrlimit_fn: Optional[Callable] = None,
-    path_exists_fn: Optional[Callable] = None,
-    is_writable_fn: Optional[Callable] = None,
-    read_link_fn: Optional[Callable] = None,
-) -> Dict[str, Any]:
+    probes: list[str] | None = None,
+    egress_connect_fn: Callable | None = None,
+    getuid_fn: Callable | None = None,
+    getgid_fn: Callable | None = None,
+    getrlimit_fn: Callable | None = None,
+    path_exists_fn: Callable | None = None,
+    is_writable_fn: Callable | None = None,
+    read_link_fn: Callable | None = None,
+) -> dict[str, Any]:
     """Run all applicable runtime validation probes for a declared sandbox config.
 
     Parameters
@@ -504,7 +502,7 @@ def validate_sandbox_runtime(
     egress = declared_config.get("egress", EGRESS_NONE)
     privilege = declared_config.get("privilege", PRIVILEGE_ROOT)
 
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
 
     if PROBE_EGRESS in active_probes:
         results.append(probe_egress(egress, connect_fn=egress_connect_fn))
@@ -534,7 +532,7 @@ def validate_sandbox_runtime(
     fail_count = sum(1 for r in results if r["result"] == RESULT_FAIL)
     skip_count = sum(1 for r in results if r["result"] == RESULT_SKIP)
     error_count = sum(1 for r in results if r["result"] == RESULT_ERROR)
-    all_findings: List[str] = [f for r in results for f in r.get("findings", [])]
+    all_findings: list[str] = [f for r in results for f in r.get("findings", [])]
 
     # Determine overall verdict
     if fail_count > 0:

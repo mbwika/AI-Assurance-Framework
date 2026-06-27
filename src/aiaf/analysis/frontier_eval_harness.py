@@ -39,19 +39,14 @@ import re
 import threading
 import time
 import uuid
+from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import (
     Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
     Protocol,
-    Sequence,
-    Tuple,
 )
 
 logger = logging.getLogger(__name__)
@@ -82,7 +77,7 @@ class EvidenceStrength(str, Enum):
         return _STRENGTH_RANK[self]
 
 
-_STRENGTH_RANK: Dict["EvidenceStrength", int] = {
+_STRENGTH_RANK: dict["EvidenceStrength", int] = {
     EvidenceStrength.NOT_EVALUATED: 0,
     EvidenceStrength.INSUFFICIENT: 1,
     EvidenceStrength.POSSIBLE: 2,
@@ -129,9 +124,9 @@ class Probe:
     id: str
     category: str
     prompt: str
-    rubrics: Tuple[IndicatorRubric, ...]
+    rubrics: tuple[IndicatorRubric, ...]
     expected_behavior: str = ""
-    tags: Tuple[str, ...] = ()
+    tags: tuple[str, ...] = ()
     source: str = ""
 
 
@@ -144,14 +139,14 @@ class Finding:
     job_id: str
     response: str
     strength: EvidenceStrength
-    matched_indicators: List[str]
+    matched_indicators: list[str]
     latency_ms: float
-    error: Optional[str] = None
+    error: str | None = None
     timestamp: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["strength"] = self.strength.value
         return d
@@ -166,17 +161,17 @@ class Job:
     created_at: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
-    started_at: Optional[str] = None
-    finished_at: Optional[str] = None
-    findings: List[Finding] = field(default_factory=list)
-    error: Optional[str] = None
+    started_at: str | None = None
+    finished_at: str | None = None
+    findings: list[Finding] = field(default_factory=list)
+    error: str | None = None
     abort_event: threading.Event = field(default_factory=threading.Event)
 
     def request_abort(self) -> None:
         """Signal cooperative abort. The runner checks between probes."""
         self.abort_event.set()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "job_id": self.job_id,
             "state": self.state.value,
@@ -224,14 +219,14 @@ class DictCatalogProvider:
     non-file source (e.g. parsing a signed bundle in memory).
     """
 
-    def __init__(self, catalog: Dict[str, Any]) -> None:
+    def __init__(self, catalog: dict[str, Any]) -> None:
         self.catalog = catalog
 
     def load(self) -> Sequence[Probe]:
         return tuple(_probe_from_dict(item) for item in self.catalog["probes"])
 
 
-def _probe_from_dict(item: Dict[str, Any]) -> Probe:
+def _probe_from_dict(item: dict[str, Any]) -> Probe:
     rubrics = tuple(
         IndicatorRubric(
             label=r["label"],
@@ -268,11 +263,11 @@ class RubricScorer:
 
     def score(
         self, probe: Probe, response: str
-    ) -> Tuple[EvidenceStrength, List[str]]:
+    ) -> tuple[EvidenceStrength, list[str]]:
         if not probe.rubrics:
             return EvidenceStrength.NOT_EVALUATED, []
 
-        matched: List[Tuple[str, EvidenceStrength]] = [
+        matched: list[tuple[str, EvidenceStrength]] = [
             (r.label, r.target_strength)
             for r in probe.rubrics
             if r.matches(response)
@@ -298,9 +293,9 @@ def execute_harness_job(
     tasks: Sequence[Probe],
     endpoint_callable: EndpointCallable,
     *,
-    scorer: Optional[RubricScorer] = None,
-    job: Optional[Job] = None,
-    on_finding: Optional[Callable[[Finding], None]] = None,
+    scorer: RubricScorer | None = None,
+    job: Job | None = None,
+    on_finding: Callable[[Finding], None] | None = None,
 ) -> Job:
     """Execute the harness for ``tasks`` against ``endpoint_callable``.
 
@@ -432,9 +427,9 @@ def write_job_report(job: Job, path: Path | str) -> None:
     Path(path).write_text(json.dumps(out, indent=2), encoding="utf-8")
 
 
-def _summarize(job: Job) -> Dict[str, Any]:
-    by_strength: Dict[str, int] = {s.value: 0 for s in EvidenceStrength}
-    by_category: Dict[str, Dict[str, int]] = {}
+def _summarize(job: Job) -> dict[str, Any]:
+    by_strength: dict[str, int] = {s.value: 0 for s in EvidenceStrength}
+    by_category: dict[str, dict[str, int]] = {}
     for f in job.findings:
         by_strength[f.strength.value] += 1
         cat = by_category.setdefault(

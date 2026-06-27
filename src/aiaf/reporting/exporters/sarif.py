@@ -8,7 +8,7 @@ so they can be uploaded to code-scanning or CI/CD pipelines.
 Reference: https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html
 """
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 SARIF_VERSION = "2.1.0"
 SARIF_SCHEMA = (
@@ -36,10 +36,10 @@ _SEVERITY_TO_CVSS = {
 
 
 def export_sarif(
-    findings: List[Dict[str, Any]],
+    findings: list[dict[str, Any]],
     tool_version: str = "0.2.0",
-    invocation_id: Optional[str] = None,
-) -> Dict[str, Any]:
+    invocation_id: str | None = None,
+) -> dict[str, Any]:
     """Convert a list of AIAF findings to a SARIF 2.1.0 document.
 
     Parameters
@@ -56,8 +56,8 @@ def export_sarif(
     dict
         A SARIF 2.1.0 JSON-serialisable document.
     """
-    rules: Dict[str, Any] = {}
-    results: List[Dict[str, Any]] = []
+    rules: dict[str, Any] = {}
+    results: list[dict[str, Any]] = []
 
     for finding in findings:
         finding_type = finding.get("type", "unknown")
@@ -80,7 +80,7 @@ def export_sarif(
                 },
             }
 
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "ruleId": rule_id,
             "level": _SEVERITY_TO_LEVEL.get(severity, "none"),
             "message": {

@@ -41,8 +41,8 @@ application; AIAF performs velocity computation and anomaly detection locally.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
 ADOPTION_VELOCITY_VERSION = "1.0"
 
@@ -58,7 +58,7 @@ EVENT_TYPES: frozenset = frozenset(
 )
 
 # Event weights for velocity scoring (installs/deploys count more than stars)
-_EVENT_WEIGHT: Dict[str, float] = {
+_EVENT_WEIGHT: dict[str, float] = {
     EVENT_DOWNLOAD: 1.0,
     EVENT_INSTALL: 2.0,
     EVENT_DEPLOY: 3.0,
@@ -117,7 +117,7 @@ def _profile_key(artifact_id: str) -> str:
     return f"{_PROFILE_PREFIX}{artifact_id}"
 
 
-def _load_meta(record: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def _load_meta(record: dict[str, Any] | None) -> dict[str, Any]:
     return (record or {}).get("metadata") or {}
 
 
@@ -129,11 +129,11 @@ def record_adoption_event(
     store: Any,
     *,
     count: int = 1,
-    source: Optional[str] = None,
-    region: Optional[str] = None,
-    occurred_at: Optional[str] = None,
-    attributes: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    source: str | None = None,
+    region: str | None = None,
+    occurred_at: str | None = None,
+    attributes: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Record an adoption event for an artifact.
 
     Parameters
@@ -158,7 +158,7 @@ def record_adoption_event(
     ts = occurred_at or _utc_now()
     weight = _EVENT_WEIGHT.get(event_type, 1.0) * max(1, count)
 
-    event_record: Dict[str, Any] = {
+    event_record: dict[str, Any] = {
         "model_id": _event_key(artifact_id, event_id),
         "id": _event_key(artifact_id, event_id),
         "metadata": {
@@ -200,7 +200,7 @@ def set_velocity_baseline(
     artifact_id: str,
     baseline_weight_per_hour: float,
     store: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Declare the expected adoption velocity for an artifact.
 
     This baseline is compared against actual velocity when detecting anomalies.
@@ -228,7 +228,7 @@ def get_velocity_profile(
     store: Any,
     *,
     window_hours: float = DEFAULT_VELOCITY_WINDOW_HOURS,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Compute current velocity metrics for an artifact.
 
     Returns None if no events have been recorded.
@@ -250,7 +250,7 @@ def get_velocity_profile(
 
     window_weight = 0.0
     window_count = 0
-    all_weights_by_hour: Dict[int, float] = {}  # hour_offset → weight
+    all_weights_by_hour: dict[int, float] = {}  # hour_offset → weight
 
     first_seen_dt = None
     if profile.get("first_seen_at"):
@@ -317,7 +317,7 @@ def detect_velocity_anomaly(
     cold_start_threshold: float = DEFAULT_COLD_START_THRESHOLD,
     dormancy_days: float = DEFAULT_DORMANCY_DAYS,
     velocity_window_hours: float = DEFAULT_VELOCITY_WINDOW_HOURS,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Detect velocity anomalies for an artifact.
 
     Returns
@@ -339,7 +339,7 @@ def detect_velocity_anomaly(
             "assessed_at": _utc_now(),
         }
 
-    anomalies: List[Dict[str, Any]] = []
+    anomalies: list[dict[str, Any]] = []
     now_dt = datetime.now(timezone.utc)
 
     # ── Velocity spike ─────────────────────────────────────────────────────────
@@ -386,11 +386,11 @@ def detect_velocity_anomaly(
     first_seen_str = profile.get("first_seen_at")
     if last_seen_str and first_seen_str:
         try:
-            last_seen_dt = _parse_ts(last_seen_str)
+            _parse_ts(last_seen_str)
             first_seen_dt = _parse_ts(first_seen_str)
             # Check if there was a long gap before the most recent events
             artifact_age_days = (now_dt - first_seen_dt).total_seconds() / 86400
-            recent_gap = profile.get("age_hours", 0)
+            profile.get("age_hours", 0)
             if (
                 artifact_age_days > dormancy_days * 2
                 and current > 0
@@ -460,7 +460,7 @@ def list_at_risk_artifacts(
     spike_multiplier: float = DEFAULT_SPIKE_MULTIPLIER,
     cold_start_hours: float = DEFAULT_COLD_START_HOURS,
     cold_start_threshold: float = DEFAULT_COLD_START_THRESHOLD,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Return all artifacts with velocity anomalies at or above min_risk level.
 
     This is a convenience method for bulk monitoring dashboards.

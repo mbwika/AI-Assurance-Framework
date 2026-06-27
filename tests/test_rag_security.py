@@ -1,24 +1,22 @@
 """Tests for aiaf.analysis.rag_security."""
 
-import pytest
 
 from aiaf.analysis.rag_security import (
     SCAN_VERSION,
     STATUS_CLEAN,
-    STATUS_SUSPICIOUS,
     STATUS_INJECTION_DETECTED,
     STATUS_LEAKAGE_DETECTED,
+    STATUS_SUSPICIOUS,
     STATUS_TRUST_VIOLATION,
-    _sha256,
-    _worst_status,
     _by_severity,
     _by_type,
     _check_trust_violations,
+    _sha256,
+    _worst_status,
+    assess_store_security,
     scan_chunks,
     scan_document_for_ingestion,
-    assess_store_security,
 )
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -402,7 +400,7 @@ class TestScanDocumentForIngestion:
 
 class TestAssessStoreSecurity:
     def _setup(self):
-        from aiaf.registry.rag_inventory import register_store, register_document
+        from aiaf.registry.rag_inventory import register_store
 
         class _FakeStore:
             def __init__(self):
@@ -420,7 +418,6 @@ class TestAssessStoreSecurity:
         return store
 
     def test_nonexistent_store_returns_not_found(self):
-        from aiaf.registry.rag_inventory import register_store
 
         class _FakeStore:
             def __init__(self):
@@ -457,7 +454,7 @@ class TestAssessStoreSecurity:
         assert result["store_id"] == "as1"
 
     def test_doc_with_injection_scan_counted_as_high_risk(self):
-        from aiaf.registry.rag_inventory import register_store, register_document
+        from aiaf.registry.rag_inventory import register_document, register_store
 
         class _FakeStore:
             def __init__(self):
@@ -483,7 +480,7 @@ class TestAssessStoreSecurity:
         assert result["status"] == STATUS_INJECTION_DETECTED
 
     def test_untrusted_docs_counted_as_low_trust(self):
-        from aiaf.registry.rag_inventory import register_store, register_document
+        from aiaf.registry.rag_inventory import register_document, register_store
 
         class _FakeStore:
             def __init__(self):

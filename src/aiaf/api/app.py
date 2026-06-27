@@ -1,39 +1,39 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from . import architecture as architecture_router
+from . import adoption_velocity as adoption_velocity_router
+from . import agent_security as agent_security_module
+from . import agent_topology as agent_topology_router
 from . import agentic as agentic_router
+from . import architecture as architecture_router
+from . import assurance as assurance_router
+from . import frontier_eval as frontier_eval_router
+from . import governance as governance_router
 from . import guardrail as guardrail_router
+from . import human_oversight as human_oversight_router
+from . import identity as identity_router
+from . import intake as intake_router
+from . import interop as interop_router
 from . import ledger as ledger_router
 from . import mcp as mcp_router
-from . import telemetry as telemetry_router
-from . import agent_security as agent_security_module
-from . import ops as ops_router
-from . import assurance as assurance_router
-from . import threat_intel as threat_intel_router
-from . import resources as resources_router
-from . import identity as identity_router
-from . import system_redteam as system_redteam_router
 from . import memory_integrity as memory_integrity_router
-from . import agent_topology as agent_topology_router
-from . import nhi as nhi_router
-from . import policy_enforcement as policy_enforcement_router
-from . import skill_scanner as skill_scanner_router
-from . import adoption_velocity as adoption_velocity_router
-from . import sandbox_posture as sandbox_posture_router
-from . import frontier_eval as frontier_eval_router
-from . import human_oversight as human_oversight_router
-from . import governance as governance_router
-from . import intake as intake_router
-from . import rag as rag_router
-from . import interop as interop_router
 from . import models as models_router
 from . import monitoring as monitoring_router
+from . import nhi as nhi_router
+from . import ops as ops_router
+from . import policy_enforcement as policy_enforcement_router
 from . import portal as portal_router
+from . import rag as rag_router
 from . import reporting as reporting_router
+from . import resources as resources_router
 from . import risk as risk_router
 from . import risk_register as risk_register_router
+from . import sandbox_posture as sandbox_posture_router
+from . import skill_scanner as skill_scanner_router
 from . import supply_chain as supply_chain_router
+from . import system_redteam as system_redteam_router
+from . import telemetry as telemetry_router
+from . import threat_intel as threat_intel_router
 
 app = FastAPI(title="AI Assurance Framework API")
 app.include_router(portal_router.router)

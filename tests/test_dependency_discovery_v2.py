@@ -1,14 +1,13 @@
 import io
 import json
 import os
-from pathlib import Path
 import stat
 import sys
 import tarfile
 import zipfile
+from pathlib import Path
 
 import pytest
-
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = str(ROOT / "src")

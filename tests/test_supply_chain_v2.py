@@ -2,7 +2,6 @@ import json
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 SRC = str(ROOT / "src")
 if SRC not in sys.path:
@@ -25,7 +24,6 @@ from aiaf.registry.attestation_v2 import (  # noqa: E402
     create_provenance_attestation_v2,
     verify_provenance_attestation_v2,
 )
-
 
 V2_KEY = "0123456789abcdef" * 4
 V2_ISSUED = "2026-06-20T12:00:00Z"

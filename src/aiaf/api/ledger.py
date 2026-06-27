@@ -5,7 +5,7 @@ its predecessor via SHA-256; the ``verify`` endpoint replays the chain to
 detect any tampering or out-of-order insertion.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -28,8 +28,8 @@ class AppendEntryRequest(BaseModel):
     tool_name: str
     input_hash: str
     decision: str = "ALLOW"
-    timestamp: Optional[str] = None
-    metadata: Dict[str, Any] = {}
+    timestamp: str | None = None
+    metadata: dict[str, Any] = {}
 
 
 @router.post(

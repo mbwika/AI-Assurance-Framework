@@ -4,18 +4,13 @@ Advisory content classification for live agent traffic.  Returns a verdict
 and structured findings; enforcement is the caller's responsibility.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from ..core.guardrail_engine import (
-    CHECK_VERSION,
     STAGE_INPUT,
-    STAGE_OUTPUT,
-    VERDICT_PASS,
-    VERDICT_FLAG,
-    VERDICT_BLOCK,
     batch_check,
     check_content,
 )
@@ -27,8 +22,8 @@ router = APIRouter(prefix="/v1/guardrail", tags=["guardrail"])
 class CheckRequest(BaseModel):
     content: str
     stage: str = STAGE_INPUT
-    session_id: Optional[str] = None
-    policy: Optional[Dict[str, Any]] = None
+    session_id: str | None = None
+    policy: dict[str, Any] | None = None
 
 
 class BatchItem(BaseModel):
@@ -37,8 +32,8 @@ class BatchItem(BaseModel):
 
 
 class BatchCheckRequest(BaseModel):
-    items: List[BatchItem]
-    session_id: Optional[str] = None
+    items: list[BatchItem]
+    session_id: str | None = None
 
 
 @router.post("/check", summary="Classify content at input or output stage")

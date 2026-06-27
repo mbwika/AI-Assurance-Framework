@@ -2,14 +2,22 @@
 import unittest
 
 from aiaf.core.policy_enforcement import (
-    POLICY_ENFORCEMENT_VERSION,
-    MODE_ENFORCE, MODE_AUDIT, MODE_PASSTHROUGH,
     ENFORCEMENT_MODES,
-    VERDICT_ALLOW, VERDICT_DENY, VERDICT_CONDITIONAL,
+    MODE_AUDIT,
+    MODE_ENFORCE,
+    MODE_PASSTHROUGH,
+    POLICY_ENFORCEMENT_VERSION,
+    VERDICT_ALLOW,
+    VERDICT_CONDITIONAL,
+    VERDICT_DENY,
     VERDICTS,
     PolicyEnforcementError,
-    create_pep_policy, get_pep_policy, list_pep_policies, delete_pep_policy,
-    enforce_request, get_enforcement_log,
+    create_pep_policy,
+    delete_pep_policy,
+    enforce_request,
+    get_enforcement_log,
+    get_pep_policy,
+    list_pep_policies,
 )
 
 
@@ -261,13 +269,13 @@ class TestEnforcementLog(unittest.TestCase):
     def test_filter_by_verdict(self):
         enforce_request("agent-a", "delete", "db", self.store)
         deny_log = get_enforcement_log("p1", self.store, verdict=VERDICT_DENY)
-        allow_log = get_enforcement_log("p1", self.store, verdict=VERDICT_ALLOW)
+        get_enforcement_log("p1", self.store, verdict=VERDICT_ALLOW)
         # delete is denied, so deny_log should have entries
         for entry in deny_log:
             self.assertEqual(entry["verdict"], VERDICT_DENY)
 
     def test_limit_applied(self):
-        for i in range(5):
+        for _i in range(5):
             enforce_request("agent-a", "delete", "db", self.store)
         log = get_enforcement_log("p1", self.store, limit=3)
         self.assertLessEqual(len(log), 3)

@@ -1,18 +1,16 @@
 """Tests for registry/fact_reconciler.py (Phase 5)."""
 
-import pytest
 
+from aiaf.registry.evidence_origin import EvidenceOrigin, FactLedger
 from aiaf.registry.fact_reconciler import (
-    RECONCILER_VERSION,
     DECIDABILITY_BOUNDS,
-    reconcile,
+    RECONCILER_VERSION,
+    _build_comparisons,
+    _collect_unverifiable,
     _contradicts,
     _provenance_independence_ratio,
-    _collect_unverifiable,
-    _build_comparisons,
+    reconcile,
 )
-from aiaf.registry.evidence_origin import EvidenceOrigin, FactLedger
-
 
 # ---------------------------------------------------------------------------
 # Helpers

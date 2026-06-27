@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import math
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 TELEMETRY_INGEST_VERSION = "1.0"
 
@@ -49,7 +49,7 @@ TELEM_STATUS_ELEVATED = "ELEVATED"
 TELEM_STATUS_ANOMALY_DETECTED = "ANOMALY_DETECTED"
 TELEM_STATUS_CRITICAL = "CRITICAL"
 
-_STATUS_RANK: Dict[str, int] = {
+_STATUS_RANK: dict[str, int] = {
     TELEM_STATUS_CRITICAL: 3,
     TELEM_STATUS_ANOMALY_DETECTED: 2,
     TELEM_STATUS_ELEVATED: 1,
@@ -57,7 +57,7 @@ _STATUS_RANK: Dict[str, int] = {
 }
 
 # ── Default thresholds ─────────────────────────────────────────────────────────
-_DEFAULT_THRESHOLDS: Dict[str, Dict[str, float]] = {
+_DEFAULT_THRESHOLDS: dict[str, dict[str, float]] = {
     EVENT_LATENCY: {"elevated": 2000.0, "anomaly": 5000.0},
     EVENT_ERROR_RATE: {"elevated": 0.05, "anomaly": 0.15},
     EVENT_REFUSAL_RATE: {"elevated": 0.30, "anomaly": 0.60},
@@ -93,7 +93,7 @@ def _worst_status(a: str, b: str) -> str:
     return a if _STATUS_RANK.get(a, 0) >= _STATUS_RANK.get(b, 0) else b
 
 
-def _stddev(values: List[float]) -> float:
+def _stddev(values: list[float]) -> float:
     if len(values) < 2:
         return 0.0
     mean = sum(values) / len(values)
@@ -101,7 +101,7 @@ def _stddev(values: List[float]) -> float:
     return math.sqrt(variance)
 
 
-def _percentile(sorted_vals: List[float], p: float) -> float:
+def _percentile(sorted_vals: list[float], p: float) -> float:
     if not sorted_vals:
         return 0.0
     idx = (len(sorted_vals) - 1) * p
@@ -120,9 +120,9 @@ def ingest_event(
     value: float,
     store: Any,
     *,
-    metadata: Optional[Dict[str, Any]] = None,
-    timestamp: Optional[str] = None,
-) -> Dict[str, Any]:
+    metadata: dict[str, Any] | None = None,
+    timestamp: str | None = None,
+) -> dict[str, Any]:
     """Ingest one telemetry event for (model_id, event_type)."""
     model_id = str(model_id).strip()
     event_type = str(event_type).upper().strip()
@@ -138,7 +138,7 @@ def ingest_event(
 
     key = _telemetry_key(model_id, event_type)
     record = store.get_model(key) or {}
-    events: List[Dict[str, Any]] = list(record.get("metadata", {}).get("events") or [])
+    events: list[dict[str, Any]] = list(record.get("metadata", {}).get("events") or [])
     events.append(event)
     if len(events) > MAX_EVENTS_PER_STORE:
         events = events[-MAX_EVENTS_PER_STORE:]
@@ -163,7 +163,7 @@ def get_window_summary(
     store: Any,
     *,
     window_minutes: int = _DEFAULT_WINDOW_MINUTES,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Aggregate statistics for events in the last window_minutes."""
     event_type = str(event_type).upper().strip()
     key = _telemetry_key(model_id, event_type)
@@ -171,7 +171,7 @@ def get_window_summary(
     all_events = list(record.get("metadata", {}).get("events") or [])
 
     cutoff = _utc_now() - timedelta(minutes=window_minutes)
-    windowed: List[float] = []
+    windowed: list[float] = []
     for e in all_events:
         try:
             if _from_iso(e["timestamp"]) >= cutoff:
@@ -209,7 +209,7 @@ def list_events(
     store: Any,
     *,
     limit: int = 100,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Return the most recent `limit` raw events."""
     event_type = str(event_type).upper().strip()
     key = _telemetry_key(model_id, event_type)
@@ -222,12 +222,12 @@ def detect_anomalies(
     model_id: str,
     store: Any,
     *,
-    thresholds: Optional[Dict[str, Dict[str, float]]] = None,
+    thresholds: dict[str, dict[str, float]] | None = None,
     window_minutes: int = _DEFAULT_WINDOW_MINUTES,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Detect anomalies in telemetry for model_id over the last window_minutes."""
     thresholds = thresholds or _DEFAULT_THRESHOLDS
-    findings: List[Dict[str, Any]] = []
+    findings: list[dict[str, Any]] = []
     overall_status = TELEM_STATUS_NORMAL
 
     for event_type in EVENT_TYPES:
@@ -238,7 +238,7 @@ def detect_anomalies(
             continue
 
         t = thresholds.get(event_type) or {}
-        finding_type: Optional[str] = None
+        finding_type: str | None = None
         status = TELEM_STATUS_NORMAL
 
         if "elevated_count" in t or "anomaly_count" in t:

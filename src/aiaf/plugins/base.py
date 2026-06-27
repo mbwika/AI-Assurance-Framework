@@ -13,7 +13,7 @@ Example
             return {"findings": [], "score": 0.0}
 """
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any
 
 
 class AnalyzerPlugin(ABC):
@@ -33,7 +33,7 @@ class AnalyzerPlugin(ABC):
         return ""
 
     @abstractmethod
-    def analyze(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    def analyze(self, context: dict[str, Any]) -> dict[str, Any]:
         """Run analysis and return a findings dict.
 
         The dict must contain at least::
@@ -59,7 +59,7 @@ class MappingPlugin(ABC):
         """Human-readable name, e.g. ``"EU AI Act (2024/1689)"``."""
 
     @abstractmethod
-    def map_finding(self, finding: Dict[str, Any]) -> List[str]:
+    def map_finding(self, finding: dict[str, Any]) -> list[str]:
         """Map a finding to one or more control / article references.
 
         Returns a list of string references, e.g. ``["Article 9", "Article 13"]``.

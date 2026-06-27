@@ -11,20 +11,27 @@ REST endpoints:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from .models import get_api_key, get_store
 from ..analysis.agent_topology import (
-    TRUST_LEVELS, NODE_TYPES, CHANNEL_TYPES,
-    TOPOLOGY_RISK_LOW, TOPOLOGY_RISK_MEDIUM, TOPOLOGY_RISK_HIGH, TOPOLOGY_RISK_CRITICAL,
+    CHANNEL_TYPES,
+    NODE_TYPES,
+    TOPOLOGY_RISK_CRITICAL,
+    TOPOLOGY_RISK_HIGH,
+    TOPOLOGY_RISK_LOW,
+    TOPOLOGY_RISK_MEDIUM,
+    TRUST_LEVELS,
     AgentTopologyError,
-    register_topology, get_topology,
-    add_agent_node, add_communication_edge,
+    add_agent_node,
+    add_communication_edge,
     analyze_topology,
+    get_topology,
+    register_topology,
 )
+from .models import get_api_key, get_store
 
 router = APIRouter(prefix="/v1/topology", tags=["agent-topology"])
 
@@ -33,8 +40,8 @@ router = APIRouter(prefix="/v1/topology", tags=["agent-topology"])
 
 class RegisterTopologyRequest(BaseModel):
     topology_id: str
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: str | None = None
+    description: str | None = None
 
 
 class AddNodeRequest(BaseModel):
@@ -42,9 +49,9 @@ class AddNodeRequest(BaseModel):
     node_type: str
     trust_level: str
     has_guardrail: bool = False
-    capabilities: Optional[List[str]] = None
+    capabilities: list[str] | None = None
     internet_facing: bool = False
-    attributes: Optional[Dict[str, Any]] = None
+    attributes: dict[str, Any] | None = None
 
 
 class AddEdgeRequest(BaseModel):
@@ -53,7 +60,7 @@ class AddEdgeRequest(BaseModel):
     channel: str = "DIRECT_CALL"
     bidirectional: bool = False
     has_guardrail: bool = False
-    attributes: Optional[Dict[str, Any]] = None
+    attributes: dict[str, Any] | None = None
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────

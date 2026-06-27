@@ -4,8 +4,7 @@ import hashlib
 import hmac
 import json
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
-
+from typing import Any
 
 FEED_SCHEMA_VERSION = "1.0"
 SIGNATURE_ALGORITHM = "HMAC-SHA256"
@@ -17,11 +16,11 @@ def create_advisory_feed(
     sequence: int,
     generated_at: str,
     expires_at: str,
-    advisories: List[Dict[str, Any]],
+    advisories: list[dict[str, Any]],
     signing_key: str,
     key_id: str = "default",
-    source: Optional[str] = None,
-) -> Dict[str, Any]:
+    source: str | None = None,
+) -> dict[str, Any]:
     if not signing_key:
         raise ValueError("A non-empty advisory feed signing key is required")
     feed = {
@@ -46,12 +45,12 @@ def create_advisory_feed(
 
 
 def verify_advisory_feed(
-    feed: Dict[str, Any],
+    feed: dict[str, Any],
     signing_key: str,
     *,
-    expected_key_id: Optional[str] = None,
-    as_of: Optional[str] = None,
-) -> Dict[str, Any]:
+    expected_key_id: str | None = None,
+    as_of: str | None = None,
+) -> dict[str, Any]:
     now = _parse_datetime(as_of) if as_of else datetime.now(timezone.utc)
     generated = _try_datetime(feed.get("generated_at"))
     expires = _try_datetime(feed.get("expires_at"))
@@ -93,7 +92,7 @@ def verify_advisory_feed(
     }
 
 
-def _signed_payload(feed: Dict[str, Any]) -> Dict[str, Any]:
+def _signed_payload(feed: dict[str, Any]) -> dict[str, Any]:
     return {
         "schema_version": feed.get("schema_version"),
         "feed_id": feed.get("feed_id"),
@@ -107,13 +106,13 @@ def _signed_payload(feed: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _sign(value: Dict[str, Any], signing_key: str) -> str:
+def _sign(value: dict[str, Any], signing_key: str) -> str:
     return hmac.new(
         signing_key.encode("utf-8"), _canonical_json(value), hashlib.sha256
     ).hexdigest()
 
 
-def _canonical_json(value: Dict[str, Any]) -> bytes:
+def _canonical_json(value: dict[str, Any]) -> bytes:
     return json.dumps(
         value, sort_keys=True, separators=(",", ":"), ensure_ascii=True
     ).encode("utf-8")
@@ -123,7 +122,7 @@ def _valid_sequence(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value >= 1
 
 
-def _try_datetime(value: Any) -> Optional[datetime]:
+def _try_datetime(value: Any) -> datetime | None:
     try:
         return _parse_datetime(value)
     except (TypeError, ValueError):

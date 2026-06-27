@@ -2,29 +2,23 @@
 
 import json
 import struct
-import tempfile
 import zipfile
 from pathlib import Path
 
-import pytest
-
 from aiaf.registry.weight_inspector import (
-    INSPECTOR_VERSION,
-    STATUS_INSPECTED,
+    STATUS_ERROR,
     STATUS_HEADER_ONLY,
+    STATUS_INSPECTED,
     STATUS_NO_FILE,
     STATUS_UNSUPPORTED,
-    STATUS_ERROR,
-    inspect_file,
-    _detect_arch_family,
     _count_layers,
+    _detect_arch_family,
+    _estimate_params_gguf,
     _infer_hidden_size,
     _infer_vocab_size,
     _summarise_dtypes,
-    _estimate_params_gguf,
-    _derive_from_safetensors,
+    inspect_file,
 )
-
 
 # ---------------------------------------------------------------------------
 # Safetensors helpers

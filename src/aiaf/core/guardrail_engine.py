@@ -26,10 +26,9 @@ Evidence model
 from __future__ import annotations
 
 import hashlib
-import json
 import re
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 CHECK_VERSION = "1.0"
 
@@ -47,7 +46,7 @@ _FLAG_SEVERITIES = frozenset({"MEDIUM"})
 # ── Pattern tables ────────────────────────────────────────────────────────────
 # Each entry: (compiled_regex, severity, finding_type)
 
-_INPUT_INJECTION_PATTERNS: List[Tuple[re.Pattern, str, str]] = [
+_INPUT_INJECTION_PATTERNS: list[tuple[re.Pattern, str, str]] = [
     (re.compile(r"ignore\s+(all\s+)?(previous|prior|above)\s+instructions?", re.I),
      "CRITICAL", "instruction_override"),
     (re.compile(r"disregard\s+(all\s+)?(previous|prior)\s+instructions?", re.I),
@@ -90,7 +89,7 @@ _INPUT_INJECTION_PATTERNS: List[Tuple[re.Pattern, str, str]] = [
      "MEDIUM", "side_channel_instruction"),
 ]
 
-_OUTPUT_PATTERNS: List[Tuple[re.Pattern, str, str]] = [
+_OUTPUT_PATTERNS: list[tuple[re.Pattern, str, str]] = [
     (re.compile(r"(DAN\s*MODE\s*(ENABLED|ACTIVATED|ON)|jailbreak\s*successful|"
                 r"override\s*complete)", re.I),
      "CRITICAL", "injection_success_marker"),
@@ -112,7 +111,7 @@ _OUTPUT_PATTERNS: List[Tuple[re.Pattern, str, str]] = [
 ]
 
 # PII patterns — severity is boosted one tier in output stage (leakage is worse than input)
-_PII_PATTERNS: List[Tuple[re.Pattern, str, str]] = [
+_PII_PATTERNS: list[tuple[re.Pattern, str, str]] = [
     (re.compile(r"\b[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}\b"),
      "LOW", "pii_email"),
     (re.compile(r"\b(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b"),
@@ -150,8 +149,8 @@ def _build_finding(
     severity: str,
     match_text: str,
     stage: str,
-    refs: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    refs: list[str] | None = None,
+) -> dict[str, Any]:
     return {
         "type": pattern_type,
         "severity": severity,
@@ -164,11 +163,11 @@ def _build_finding(
 
 def _scan_patterns(
     content: str,
-    patterns: List[Tuple[re.Pattern, str, str]],
+    patterns: list[tuple[re.Pattern, str, str]],
     stage: str,
     dedup: set,
     boost: bool = False,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     findings = []
     for regex, severity, ptype in patterns:
         if ptype in dedup:
@@ -207,7 +206,7 @@ def _scan_patterns(
     return findings
 
 
-def _compute_verdict(findings: List[Dict[str, Any]]) -> str:
+def _compute_verdict(findings: list[dict[str, Any]]) -> str:
     if not findings:
         return VERDICT_PASS
     severities = {f["severity"] for f in findings}
@@ -218,8 +217,8 @@ def _compute_verdict(findings: List[Dict[str, Any]]) -> str:
     return VERDICT_PASS
 
 
-def _by_severity(findings: List[Dict[str, Any]]) -> Dict[str, int]:
-    result: Dict[str, int] = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
+def _by_severity(findings: list[dict[str, Any]]) -> dict[str, int]:
+    result: dict[str, int] = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
     for f in findings:
         sev = f["severity"]
         result[sev] = result.get(sev, 0) + 1
@@ -232,10 +231,10 @@ def check_content(
     content: str,
     stage: str = STAGE_INPUT,
     *,
-    session_id: Optional[str] = None,
-    store: Optional[Any] = None,
-    policy: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    session_id: str | None = None,
+    store: Any | None = None,
+    policy: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Classify ``content`` at the specified pipeline stage.
 
     Parameters
@@ -259,7 +258,7 @@ def check_content(
     content_hash = _sha256(content)
     checked_at = _utc_now()
     dedup: set = set()
-    findings: List[Dict[str, Any]] = []
+    findings: list[dict[str, Any]] = []
 
     if stage == STAGE_INPUT:
         findings += _scan_patterns(content, _INPUT_INJECTION_PATTERNS, stage, dedup)
@@ -273,7 +272,7 @@ def check_content(
     findings.sort(key=lambda f: -_SEVERITY_RANK.get(f["severity"], 0))
     verdict = _compute_verdict(findings)
 
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "check_version": CHECK_VERSION,
         "verdict": verdict,
         "stage": stage,
@@ -293,11 +292,11 @@ def check_content(
 
 
 def batch_check(
-    items: List[Dict[str, Any]],
+    items: list[dict[str, Any]],
     *,
-    session_id: Optional[str] = None,
-    store: Optional[Any] = None,
-) -> Dict[str, Any]:
+    session_id: str | None = None,
+    store: Any | None = None,
+) -> dict[str, Any]:
     """Check multiple content items in a single call.
 
     Each item must have ``content`` and optionally ``stage``.
@@ -330,7 +329,7 @@ def batch_check(
 def _emit_telemetry(
     session_id: str,
     store: Any,
-    result: Dict[str, Any],
+    result: dict[str, Any],
     content_hash: str,
 ) -> None:
     """Emit a guardrail event into the AIAF telemetry store."""

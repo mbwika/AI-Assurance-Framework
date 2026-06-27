@@ -47,18 +47,19 @@ Default excluded paths (never evaluated)
 from __future__ import annotations
 
 import json
-from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
+from collections.abc import Iterable
+from typing import Any
 
 from ..core.policy_enforcement import (
-    enforce_request,
     VERDICT_ALLOW,
-    VERDICT_DENY,
     VERDICT_CONDITIONAL,
+    VERDICT_DENY,
+    enforce_request,
 )
 
 PEP_MIDDLEWARE_VERSION = "1.0"
 
-_DEFAULT_EXCLUDED_PREFIXES: Tuple[str, ...] = (
+_DEFAULT_EXCLUDED_PREFIXES: tuple[str, ...] = (
     "/docs",
     "/redoc",
     "/openapi.json",
@@ -67,7 +68,7 @@ _DEFAULT_EXCLUDED_PREFIXES: Tuple[str, ...] = (
     "/favicon.ico",
 )
 
-_METHOD_ACTION: Dict[str, str] = {
+_METHOD_ACTION: dict[str, str] = {
     "GET": "read",
     "HEAD": "read",
     "OPTIONS": "read",
@@ -95,8 +96,8 @@ def _path_to_resource(path: str) -> str:
     return ":".join(parts) if parts else "root"
 
 
-def _headers_to_dict(raw_headers: Iterable) -> Dict[bytes, bytes]:
-    result: Dict[bytes, bytes] = {}
+def _headers_to_dict(raw_headers: Iterable) -> dict[bytes, bytes]:
+    result: dict[bytes, bytes] = {}
     for k, v in raw_headers:
         result[k.lower()] = v
     return result
@@ -108,8 +109,8 @@ def evaluate_gateway_request(
     resource: str,
     store: Any,
     *,
-    context: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Synchronously evaluate a gateway request through the PEP engine.
 
     This is the same decision logic the middleware uses internally and can be
@@ -147,15 +148,15 @@ class PEPGatewayMiddleware:
         store: Any,
         *,
         enforce: bool = True,
-        excluded_prefixes: Optional[Tuple[str, ...]] = None,
-        excluded_paths: Optional[Set[str]] = None,
+        excluded_prefixes: tuple[str, ...] | None = None,
+        excluded_paths: set[str] | None = None,
         add_decision_headers: bool = True,
     ) -> None:
         self.app = app
         self.store = store
         self.enforce = enforce
         self.excluded_prefixes = excluded_prefixes if excluded_prefixes is not None else _DEFAULT_EXCLUDED_PREFIXES
-        self.excluded_paths: Set[str] = set(excluded_paths or set())
+        self.excluded_paths: set[str] = set(excluded_paths or set())
         self.add_decision_headers = add_decision_headers
 
     async def __call__(self, scope, receive, send) -> None:  # noqa: D401
@@ -196,7 +197,7 @@ class PEPGatewayMiddleware:
         verdict = decision.get("verdict", VERDICT_ALLOW)
         decision_id = decision.get("decision_id") or decision.get("decided_at", "")[-8:]
 
-        pep_headers: List[Tuple[bytes, bytes]] = []
+        pep_headers: list[tuple[bytes, bytes]] = []
         if self.add_decision_headers:
             pep_headers = [
                 (b"x-pep-verdict", verdict.encode()),
@@ -235,7 +236,7 @@ class PEPGatewayMiddleware:
         await self.app(scope, receive, send)
 
 
-def _make_header_injector(send_fn, extra_headers: List[Tuple[bytes, bytes]]):
+def _make_header_injector(send_fn, extra_headers: list[tuple[bytes, bytes]]):
     """Wrap an ASGI send callable to inject additional headers into the response."""
     async def injected_send(event):
         if event.get("type") == "http.response.start":

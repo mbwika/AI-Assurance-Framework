@@ -36,7 +36,7 @@ LOCALLY_OBSERVED — all NHI data is registered and assessed by AIAF locally.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 NHI_VERSION = "1.0"
 
@@ -68,7 +68,7 @@ NHI_STATES: frozenset = frozenset(
 _TERMINAL_STATES: frozenset = frozenset({NHI_REVOKED})
 
 # Valid state transitions
-_VALID_TRANSITIONS: Dict[str, frozenset] = {
+_VALID_TRANSITIONS: dict[str, frozenset] = {
     NHI_PENDING: frozenset({NHI_ACTIVE, NHI_REVOKED}),
     NHI_ACTIVE: frozenset({NHI_DORMANT, NHI_DEPROVISIONING, NHI_REVOKED}),
     NHI_DORMANT: frozenset({NHI_ACTIVE, NHI_DEPROVISIONING, NHI_REVOKED}),
@@ -104,11 +104,11 @@ def _nhi_key(nhi_id: str) -> str:
     return f"{_NHI_PREFIX}{nhi_id}"
 
 
-def _load_meta(record: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def _load_meta(record: dict[str, Any] | None) -> dict[str, Any]:
     return (record or {}).get("metadata") or {}
 
 
-def _days_since(ts: Optional[str]) -> Optional[float]:
+def _days_since(ts: str | None) -> float | None:
     """Return days elapsed since an ISO-8601 UTC timestamp, or None."""
     if not ts:
         return None
@@ -131,13 +131,13 @@ def _scope_count(scopes: Any) -> int:
 # ── Hygiene scoring ────────────────────────────────────────────────────────────
 
 def _score_hygiene(
-    nhi: Dict[str, Any],
+    nhi: dict[str, Any],
     *,
     stale_days: int = DEFAULT_STALE_DAYS,
     credential_age_days: int = DEFAULT_CREDENTIAL_AGE_DAYS,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Compute hygiene signals and verdict for a single NHI record."""
-    issues: List[str] = []
+    issues: list[str] = []
     severity_rank = 0  # 0=clean, 1=review, 2=at-risk, 3=critical
 
     state = nhi.get("state", NHI_PENDING)
@@ -207,16 +207,16 @@ def register_nhi(
     nhi_type: str,
     store: Any,
     *,
-    display_name: Optional[str] = None,
-    owner_id: Optional[str] = None,
-    environment: Optional[str] = None,
-    granted_scopes: Optional[List[str]] = None,
-    minimum_required_scopes: Optional[List[str]] = None,
-    credential_issued_at: Optional[str] = None,
-    last_seen_at: Optional[str] = None,
+    display_name: str | None = None,
+    owner_id: str | None = None,
+    environment: str | None = None,
+    granted_scopes: list[str] | None = None,
+    minimum_required_scopes: list[str] | None = None,
+    credential_issued_at: str | None = None,
+    last_seen_at: str | None = None,
     is_active_in_environment: bool = False,
-    attributes: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    attributes: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Register a non-human identity.
 
     Parameters
@@ -239,7 +239,7 @@ def register_nhi(
         raise NHIError(f"Unknown nhi_type {nhi_type!r}. Valid: {sorted(NHI_TYPES)}")
 
     now = _utc_now()
-    record: Dict[str, Any] = {
+    record: dict[str, Any] = {
         "model_id": _nhi_key(nhi_id),
         "id": _nhi_key(nhi_id),
         "metadata": {
@@ -267,7 +267,7 @@ def register_nhi(
     return _load_meta(store.get_model(_nhi_key(nhi_id)))
 
 
-def get_nhi(nhi_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def get_nhi(nhi_id: str, store: Any) -> dict[str, Any] | None:
     """Return NHI record, or None if not found."""
     rec = store.get_model(_nhi_key(nhi_id))
     return _load_meta(rec) if rec else None
@@ -276,11 +276,11 @@ def get_nhi(nhi_id: str, store: Any) -> Optional[Dict[str, Any]]:
 def list_nhis(
     store: Any,
     *,
-    nhi_type: Optional[str] = None,
-    state: Optional[str] = None,
-    owner_id: Optional[str] = None,
+    nhi_type: str | None = None,
+    state: str | None = None,
+    owner_id: str | None = None,
     limit: int = 200,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """List registered NHIs with optional filters."""
     all_records = store.list_models() if hasattr(store, "list_models") else []
     results = []
@@ -306,8 +306,8 @@ def update_nhi_state(
     new_state: str,
     store: Any,
     *,
-    reason: Optional[str] = None,
-) -> Dict[str, Any]:
+    reason: str | None = None,
+) -> dict[str, Any]:
     """Transition an NHI to a new lifecycle state.
 
     Enforces valid state machine transitions.
@@ -351,14 +351,14 @@ def update_nhi(
     nhi_id: str,
     store: Any,
     *,
-    granted_scopes: Optional[List[str]] = None,
-    minimum_required_scopes: Optional[List[str]] = None,
-    credential_issued_at: Optional[str] = None,
-    last_seen_at: Optional[str] = None,
-    owner_id: Optional[str] = None,
-    is_active_in_environment: Optional[bool] = None,
-    attributes: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    granted_scopes: list[str] | None = None,
+    minimum_required_scopes: list[str] | None = None,
+    credential_issued_at: str | None = None,
+    last_seen_at: str | None = None,
+    owner_id: str | None = None,
+    is_active_in_environment: bool | None = None,
+    attributes: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Update mutable fields on an NHI record (credential rotation, scope changes, etc.)."""
     nhi = get_nhi(nhi_id, store)
     if not nhi:
@@ -397,7 +397,7 @@ def assess_nhi_hygiene(
     stale_days: int = DEFAULT_STALE_DAYS,
     credential_age_days: int = DEFAULT_CREDENTIAL_AGE_DAYS,
     include_revoked: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return an organisation-wide NHI hygiene report.
 
     Returns
@@ -413,20 +413,20 @@ def assess_nhi_hygiene(
     if not include_revoked:
         all_nhis = [n for n in all_nhis if n.get("state") != NHI_REVOKED]
 
-    by_state: Dict[str, int] = {}
-    by_type: Dict[str, int] = {}
+    by_state: dict[str, int] = {}
+    by_type: dict[str, int] = {}
     stale_count = 0
     over_privileged_count = 0
     orphaned_count = 0
     rotation_needed_count = 0
-    verdict_counts: Dict[str, int] = {
+    verdict_counts: dict[str, int] = {
         HYGIENE_CLEAN: 0,
         HYGIENE_REVIEW_NEEDED: 0,
         HYGIENE_AT_RISK: 0,
         HYGIENE_CRITICAL: 0,
     }
-    critical_nhis: List[Dict[str, Any]] = []
-    at_risk_nhis: List[Dict[str, Any]] = []
+    critical_nhis: list[dict[str, Any]] = []
+    at_risk_nhis: list[dict[str, Any]] = []
 
     for nhi in all_nhis:
         st = nhi.get("state", NHI_PENDING)

@@ -4,8 +4,9 @@ import fnmatch
 import json
 import tarfile
 import zipfile
+from collections.abc import Iterable
 from pathlib import Path, PurePosixPath
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any
 
 try:
     import tomllib
@@ -17,9 +18,9 @@ MAX_MANIFEST_BYTES = 1024 * 1024
 MAX_ARCHIVE_MEMBERS = 10000
 
 
-def discover_dependencies(path: str, artifact_name: str = "") -> Dict[str, Any]:
+def discover_dependencies(path: str, artifact_name: str = "") -> dict[str, Any]:
     """Discover dependencies without extracting untrusted archives."""
-    dependencies: List[Dict[str, Any]] = []
+    dependencies: list[dict[str, Any]] = []
     manifests = []
     errors = []
     try:
@@ -55,7 +56,7 @@ def discover_dependencies(path: str, artifact_name: str = "") -> Dict[str, Any]:
     }
 
 
-def merge_dependencies(declared: Any, discovered: List[Dict[str, Any]]) -> List[Any]:
+def merge_dependencies(declared: Any, discovered: list[dict[str, Any]]) -> list[Any]:
     """Combine declared and discovered inventory without duplicate records."""
     declared_items = declared if isinstance(declared, list) else ([declared] if declared else [])
     combined = list(declared_items)
@@ -71,7 +72,7 @@ def merge_dependencies(declared: Any, discovered: List[Dict[str, Any]]) -> List[
     return combined
 
 
-def _manifest_contents(path: Path, artifact_name: str = "") -> Iterable[Tuple[str, bytes]]:
+def _manifest_contents(path: Path, artifact_name: str = "") -> Iterable[tuple[str, bytes]]:
     if path.is_dir():
         for candidate in path.rglob("*"):
             if candidate.is_file() and _is_manifest(candidate.name):
@@ -118,7 +119,7 @@ def _is_manifest(name: str) -> bool:
     )
 
 
-def _parse_manifest(name: str, content: bytes) -> List[Dict[str, Any]]:
+def _parse_manifest(name: str, content: bytes) -> list[dict[str, Any]]:
     basename = PurePosixPath(name).name.lower()
     text = content.decode("utf-8")
     if fnmatch.fnmatch(basename, "requirements*.txt") or fnmatch.fnmatch(
@@ -134,7 +135,7 @@ def _parse_manifest(name: str, content: bytes) -> List[Dict[str, Any]]:
     return []
 
 
-def _parse_requirements(name: str, text: str) -> List[Dict[str, Any]]:
+def _parse_requirements(name: str, text: str) -> list[dict[str, Any]]:
     dependencies = []
     for line in text.splitlines():
         requirement = line.strip()
@@ -145,7 +146,7 @@ def _parse_requirements(name: str, text: str) -> List[Dict[str, Any]]:
     return dependencies
 
 
-def _parse_pyproject(name: str, content: bytes) -> List[Dict[str, Any]]:
+def _parse_pyproject(name: str, content: bytes) -> list[dict[str, Any]]:
     data = tomllib.loads(content.decode("utf-8"))
     dependencies = []
     project = data.get("project", {})
@@ -164,7 +165,7 @@ def _parse_pyproject(name: str, content: bytes) -> List[Dict[str, Any]]:
     return dependencies
 
 
-def _parse_pipfile_lock(name: str, text: str) -> List[Dict[str, Any]]:
+def _parse_pipfile_lock(name: str, text: str) -> list[dict[str, Any]]:
     data = json.loads(text)
     dependencies = []
     for section in ("default", "develop"):
@@ -182,7 +183,7 @@ def _parse_pipfile_lock(name: str, text: str) -> List[Dict[str, Any]]:
     return dependencies
 
 
-def _parse_package_json(name: str, text: str) -> List[Dict[str, Any]]:
+def _parse_package_json(name: str, text: str) -> list[dict[str, Any]]:
     data = json.loads(text)
     dependencies = []
     for section in ("dependencies", "devDependencies", "optionalDependencies"):
@@ -193,7 +194,7 @@ def _parse_package_json(name: str, text: str) -> List[Dict[str, Any]]:
     return dependencies
 
 
-def _python_requirement(requirement: str, manifest: str) -> Dict[str, Any]:
+def _python_requirement(requirement: str, manifest: str) -> dict[str, Any]:
     if " @ " in requirement:
         package, source = requirement.split(" @ ", 1)
         record = _record(package.strip(), source.strip(), "pypi", manifest)
@@ -206,7 +207,7 @@ def _python_requirement(requirement: str, manifest: str) -> Dict[str, Any]:
     return _record(requirement.split("[", 1)[0].strip(), "", "pypi", manifest)
 
 
-def _record(name: str, version: str, ecosystem: str, manifest: str) -> Dict[str, Any]:
+def _record(name: str, version: str, ecosystem: str, manifest: str) -> dict[str, Any]:
     return {
         "name": name,
         "version": version,

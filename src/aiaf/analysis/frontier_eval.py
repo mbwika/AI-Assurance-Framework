@@ -65,7 +65,7 @@ engine), INDEPENDENTLY_VERIFIED (third-party red-team), or PROVIDER_DECLARED
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 FRONTIER_EVAL_VERSION = "1.0"
 
@@ -96,7 +96,7 @@ EVIDENCE_STRENGTHS: frozenset = frozenset({
     EVIDENCE_INSUFFICIENT, EVIDENCE_NOT_EVALUATED,
 })
 
-_EVIDENCE_RANK: Dict[str, int] = {
+_EVIDENCE_RANK: dict[str, int] = {
     EVIDENCE_NOT_EVALUATED: 0,
     EVIDENCE_INSUFFICIENT: 1,
     EVIDENCE_POSSIBLE: 2,
@@ -105,7 +105,7 @@ _EVIDENCE_RANK: Dict[str, int] = {
 }
 
 # ── Evidence origin trust weights ──────────────────────────────────────────────
-_ORIGIN_WEIGHT: Dict[str, float] = {
+_ORIGIN_WEIGHT: dict[str, float] = {
     "INDEPENDENTLY_VERIFIED": 1.0,
     "LOCALLY_OBSERVED": 0.8,
     "PROVIDER_DECLARED": 0.5,
@@ -123,7 +123,7 @@ ASSESSMENT_VERDICTS: frozenset = frozenset({
 })
 
 # ── GPAI Code of Practice Safety & Security commitments ───────────────────────
-GPAI_COMMITMENTS: Dict[str, Dict[str, Any]] = {
+GPAI_COMMITMENTS: dict[str, dict[str, Any]] = {
     "S1": {
         "id": "S1",
         "title": "Pre-deployment dangerous capability evaluation",
@@ -235,8 +235,8 @@ def _weighted_strength(strength: str, origin: str) -> float:
 
 
 def _strongest_evidence(
-    findings: List[Dict[str, Any]], category: str
-) -> Optional[Dict[str, Any]]:
+    findings: list[dict[str, Any]], category: str
+) -> dict[str, Any] | None:
     """Return the finding with the highest weighted evidence for a category."""
     relevant = [f for f in findings if f.get("capability") == category]
     if not relevant:
@@ -254,12 +254,12 @@ def _strongest_evidence(
 
 def assess_frontier_capabilities(
     model_id: str,
-    capability_findings: List[Dict[str, Any]],
+    capability_findings: list[dict[str, Any]],
     *,
-    training_flops: Optional[float] = None,
-    parameter_count: Optional[float] = None,
-    context: Optional[str] = None,
-) -> Dict[str, Any]:
+    training_flops: float | None = None,
+    parameter_count: float | None = None,
+    context: str | None = None,
+) -> dict[str, Any]:
     """Assess dangerous capabilities from a structured list of evaluation findings.
 
     Parameters
@@ -316,7 +316,7 @@ def assess_frontier_capabilities(
         )
 
     # ── Per-capability assessment ──────────────────────────────────────────────
-    per_capability: Dict[str, Dict[str, Any]] = {}
+    per_capability: dict[str, dict[str, Any]] = {}
     evaluated_categories = set()
 
     for category in CAPABILITY_CATEGORIES:
@@ -374,7 +374,7 @@ def assess_frontier_capabilities(
         overall_verdict = VERDICT_SAFE
 
     # ── GPAI commitment gaps ───────────────────────────────────────────────────
-    gpai_gaps: List[Dict[str, Any]] = []
+    gpai_gaps: list[dict[str, Any]] = []
     for commitment_id, commitment in GPAI_COMMITMENTS.items():
         triggered = False
         for cap in commitment["triggered_by"]:
@@ -407,7 +407,7 @@ def assess_frontier_capabilities(
                 })
 
     # ── Required safeguards ────────────────────────────────────────────────────
-    required_safeguards: List[str] = []
+    required_safeguards: list[str] = []
     for category, result in per_capability.items():
         if result["verdict"] in (VERDICT_UNSAFE, VERDICT_CONDITIONAL) and not result["safeguard_present"]:
             if category == CAP_CYBER_OFFENSE:
@@ -474,7 +474,7 @@ def assess_frontier_capabilities(
     }
 
 
-def map_to_gpai_commitments(capability_assessment: Dict[str, Any]) -> Dict[str, Any]:
+def map_to_gpai_commitments(capability_assessment: dict[str, Any]) -> dict[str, Any]:
     """Map a capability assessment to GPAI Code of Practice Safety & Security commitments.
 
     Parameters
@@ -488,7 +488,7 @@ def map_to_gpai_commitments(capability_assessment: Dict[str, Any]) -> Dict[str, 
     per_cap = capability_assessment.get("per_capability") or {}
     is_systemic = capability_assessment.get("systemic_risk_classification", False)
 
-    mapping: Dict[str, Any] = {}
+    mapping: dict[str, Any] = {}
     for cid, commitment in GPAI_COMMITMENTS.items():
         # Determine if this commitment applies
         applies = is_systemic or any(
@@ -562,7 +562,7 @@ def map_to_gpai_commitments(capability_assessment: Dict[str, Any]) -> Dict[str, 
     }
 
 
-def get_capability_taxonomy() -> Dict[str, Any]:
+def get_capability_taxonomy() -> dict[str, Any]:
     """Return the full dangerous-capability taxonomy and GPAI commitment index."""
     return {
         "capability_categories": sorted(CAPABILITY_CATEGORIES),

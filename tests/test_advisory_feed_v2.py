@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[1]
 SRC = str(ROOT / "src")
 if SRC not in sys.path:
@@ -20,7 +19,6 @@ from aiaf.registry.advisory_feed_v2 import (  # noqa: E402
     create_advisory_feed_v2,
     verify_advisory_feed_v2,
 )
-
 
 KEY = "0123456789abcdef" * 4
 OTHER_KEY = "fedcba9876543210" * 4

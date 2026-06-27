@@ -1,10 +1,9 @@
 """Bounded graph-level security analysis for agentic workflows."""
 
+import re
 from collections import deque
 from dataclasses import dataclass
-import re
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
-
+from typing import Any
 
 WORKFLOW_GRAPH_SCORING_VERSION = "2.0"
 _MAX_NODES = 1_000
@@ -108,14 +107,14 @@ class _Edge:
 
 
 def analyze_workflow_graph(
-    artifact: Dict[str, Any], policy: object = None
-) -> Dict[str, Any]:
+    artifact: dict[str, Any], policy: object = None
+) -> dict[str, Any]:
     """Analyze graph structure, termination, approval cuts, taint, and privilege."""
     artifact = artifact if isinstance(artifact, dict) else {}
-    risks: List[Dict[str, Any]] = []
+    risks: list[dict[str, Any]] = []
     assessment_complete = True
     if policy is None:
-        policy_dict: Dict[str, Any] = {}
+        policy_dict: dict[str, Any] = {}
     elif not isinstance(policy, dict):
         policy_dict = {}
         assessment_complete = False
@@ -153,8 +152,8 @@ def analyze_workflow_graph(
             )
         )
 
-    nodes: Dict[str, Dict[str, Any]] = {}
-    order: List[str] = []
+    nodes: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
     invalid_step_count = 0
     for index, raw_step in enumerate(raw_steps[:_MAX_NODES]):
         if not isinstance(raw_step, dict):
@@ -208,7 +207,7 @@ def analyze_workflow_graph(
     if edge_input_incomplete:
         assessment_complete = False
 
-    edges: List[_Edge] = []
+    edges: list[_Edge] = []
     edge_keys = set()
     adjacency = {node_id: [] for node_id in nodes}
     predecessors = {node_id: [] for node_id in nodes}
@@ -331,7 +330,7 @@ def analyze_workflow_graph(
                 "Workflow iteration bounds must be positive bounded integers.",
             )
         )
-    cycle_bounds: Dict[Tuple[str, ...], Optional[int]] = {}
+    cycle_bounds: dict[tuple[str, ...], int | None] = {}
     for cycle in cycles:
         bound = _component_cycle_bound(
             cycle,
@@ -470,7 +469,7 @@ def _workflow_edges(artifact, nodes, order, risks):
     declared = artifact.get("workflow_edges") if "workflow_edges" in artifact else workflow.get("edges")
     provided = 0
     incomplete = False
-    edges: List[_Edge] = []
+    edges: list[_Edge] = []
     if explicit:
         if declared is None:
             declared = []
@@ -576,7 +575,7 @@ def _workflow_edges(artifact, nodes, order, risks):
         )
         edges = edges[:_MAX_EDGES]
     if not has_step_transitions:
-        edges = [_Edge(source, target) for source, target in zip(order, order[1:])]
+        edges = [_Edge(source, target) for source, target in zip(order, order[1:], strict=False)]
         provided = len(edges)
     return edges, has_step_transitions, provided, incomplete
 

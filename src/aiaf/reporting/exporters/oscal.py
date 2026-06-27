@@ -9,7 +9,7 @@ Reference: https://pages.nist.gov/OSCAL/
 """
 import time
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 OSCAL_VERSION = "1.1.2"
 
@@ -25,12 +25,12 @@ _AIAF_TO_OSCAL_STATUS = {
 
 def export_oscal_ssp(
     system_name: str,
-    controls: List[Dict[str, Any]],
-    evidence: Optional[List[Dict[str, Any]]] = None,
+    controls: list[dict[str, Any]],
+    evidence: list[dict[str, Any]] | None = None,
     version: str = "0.2.0",
     system_description: str = "AI system assessed by the AI Assurance Framework",
-    report: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    report: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Generate an OSCAL 1.1.2 SSP document from AIAF governance data.
 
     Parameters
@@ -52,14 +52,14 @@ def export_oscal_ssp(
     """
     evidence = evidence or []
     report = report or {}
-    evidence_by_control: Dict[str, List[Dict[str, Any]]] = {}
+    evidence_by_control: dict[str, list[dict[str, Any]]] = {}
     for ev in evidence:
         cid = ev.get("control_id", "")
         evidence_by_control.setdefault(cid, []).append(ev)
 
     scope = report.get("scope") or {}
     executive = report.get("executive_summary") or {}
-    governance = report.get("governance") or {}
+    report.get("governance") or {}
     compliance = report.get("compliance") or {}
     inventory = report.get("model_inventory") or {}
     generated_at = report.get("generated_at") or time.strftime(
@@ -67,13 +67,13 @@ def export_oscal_ssp(
     )
     report_snapshots = report.get("report_snapshots") or {}
 
-    implemented_requirements: List[Dict[str, Any]] = []
+    implemented_requirements: list[dict[str, Any]] = []
     for control in controls:
         control_id = control.get("id", "unknown")
         status = control.get("status", "NOT_EVALUATED")
         oscal_status = _AIAF_TO_OSCAL_STATUS.get(status.upper() if status else "", "planned")
 
-        statements: List[Dict[str, Any]] = []
+        statements: list[dict[str, Any]] = []
         for ev in evidence_by_control.get(control_id, []):
             statements.append({
                 "statement-id": f"{control_id.lower().replace('_', '-')}_stmt",
@@ -220,7 +220,7 @@ def export_oscal_ssp(
     }
 
 
-def _impact_label(executive: Dict[str, Any], objective: str) -> str:
+def _impact_label(executive: dict[str, Any], objective: str) -> str:
     score = float(executive.get("current_risk_score") or 0.0)
     findings = int(executive.get("high_or_critical_findings") or 0)
     if score >= 8.0 or findings >= 5:

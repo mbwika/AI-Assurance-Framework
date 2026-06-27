@@ -1,10 +1,10 @@
 """Uncertainty-aware model impact, exposure, and safeguard risk heuristics."""
 
-from collections import OrderedDict
 import math
 import re
-from typing import Any, Dict, Iterable, List, Optional
-
+from collections import OrderedDict
+from collections.abc import Iterable
+from typing import Any
 
 MODEL_RISK_SCORING_VERSION = "2.0"
 _MAX_CAPABILITIES = 100
@@ -143,11 +143,11 @@ _SEVERITY_ORDER = {"LOW": 1, "MEDIUM": 2, "HIGH": 3, "CRITICAL": 4}
 
 
 def estimate_model_risk_v2(
-    artifact: Dict[str, Any], assessment_context: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+    artifact: dict[str, Any], assessment_context: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Estimate conservative residual model risk on a bounded 0-10 scale."""
-    factors: List[Dict[str, Any]] = []
-    recommendations: List[str] = []
+    factors: list[dict[str, Any]] = []
+    recommendations: list[str] = []
     assessment_complete = True
 
     if not isinstance(artifact, dict):
@@ -1173,5 +1173,5 @@ def _severity(score):
     return "LOW"
 
 
-def _unique(values: Iterable[str]) -> List[str]:
+def _unique(values: Iterable[str]) -> list[str]:
     return list(dict.fromkeys(values))

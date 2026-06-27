@@ -22,51 +22,47 @@ Tool manifests
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from .models import get_api_key, get_store
-from ..registry.agent_registry import (
-    REGISTRY_VERSION,
-    CAPABILITY_FLAGS,
-    TRUST_LABELS,
-    STATUS_ACTIVE,
-    STATUS_SUSPENDED,
-    STATUS_QUARANTINED,
-    AgentRegistryError,
-    register_agent,
-    get_agent,
-    list_agents,
-    deregister_agent,
-    link_manifest,
-    set_agent_status,
-    set_tool_block,
-)
 from ..analysis.permission_graph import (
-    GRAPH_VERSION,
     analyse_permissions,
 )
 from ..core.tool_authorization import (
-    AUTH_VERSION,
-    VERDICT_ALLOW,
     VERDICT_DENY,
     AuthorizationError,
-    create_policy,
-    get_policy,
-    delete_policy,
     authorize,
+    create_policy,
+    delete_policy,
+    get_policy,
+)
+from ..registry.agent_registry import (
+    CAPABILITY_FLAGS,
+    REGISTRY_VERSION,
+    STATUS_ACTIVE,
+    STATUS_QUARANTINED,
+    STATUS_SUSPENDED,
+    TRUST_LABELS,
+    AgentRegistryError,
+    deregister_agent,
+    get_agent,
+    list_agents,
+    register_agent,
+    set_agent_status,
+    set_tool_block,
 )
 from ..registry.tool_manifest import (
     MANIFEST_VERSION,
     ManifestError,
     create_manifest,
-    verify_manifest,
-    register_manifest,
     get_manifest,
     list_manifests,
+    register_manifest,
+    verify_manifest,
 )
+from .models import get_api_key, get_store
 
 agents_router = APIRouter(prefix="/v1/agents", tags=["agent-security"])
 tools_router = APIRouter(prefix="/v1/tools", tags=["tool-manifests"])
@@ -77,76 +73,76 @@ tools_router = APIRouter(prefix="/v1/tools", tags=["tool-manifests"])
 class RegisterAgentRequest(BaseModel):
     agent_id: str = Field(..., description="Unique agent identifier")
     name: str = Field(..., description="Human-readable agent name")
-    declared_tools: List[str] = Field(
+    declared_tools: list[str] = Field(
         default_factory=list, description="Tools the agent is authorised to invoke"
     )
     trust_level: str = Field(
         ..., description=f"Trust classification; one of {sorted(TRUST_LABELS)}"
     )
-    capability_flags: List[str] = Field(
+    capability_flags: list[str] = Field(
         default_factory=list,
         description=f"Capability declarations; valid flags: {sorted(CAPABILITY_FLAGS)}",
     )
-    purpose: Optional[str] = Field(None, description="Intended function of the agent")
-    operational_constraints: Optional[Dict[str, Any]] = Field(
+    purpose: str | None = Field(None, description="Intended function of the agent")
+    operational_constraints: dict[str, Any] | None = Field(
         None, description="Operational limits (max_tool_calls_per_session, etc.)"
     )
-    manifest_id: Optional[str] = Field(None, description="ID of a linked signed tool manifest")
-    metadata: Optional[Dict[str, Any]] = None
+    manifest_id: str | None = Field(None, description="ID of a linked signed tool manifest")
+    metadata: dict[str, Any] | None = None
 
 
 class ToolPolicyItem(BaseModel):
     tool_name: str
-    policy_id: Optional[str] = None
-    allow_if: Optional[Dict[str, Any]] = Field(None, description="Conditions dict")
+    policy_id: str | None = None
+    allow_if: dict[str, Any] | None = Field(None, description="Conditions dict")
 
 
 class CreatePolicyRequest(BaseModel):
-    tool_policies: List[ToolPolicyItem] = Field(..., description="Per-tool policy rules")
+    tool_policies: list[ToolPolicyItem] = Field(..., description="Per-tool policy rules")
     default_policy: str = Field(
         VERDICT_DENY,
         description="Verdict when no rule matches: ALLOW or DENY",
     )
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 class AuthorizeRequest(BaseModel):
     tool_name: str = Field(..., description="Tool the agent wants to invoke")
-    session_context: Dict[str, Any] = Field(
+    session_context: dict[str, Any] = Field(
         default_factory=dict,
         description="Runtime context (data_sensitivity, user_consent_given, call_count, …)",
     )
 
 
 class SetStatusRequest(BaseModel):
-    reason: Optional[str] = Field(None, description="Why the agent is being re-stated")
+    reason: str | None = Field(None, description="Why the agent is being re-stated")
 
 
 class CreateManifestRequest(BaseModel):
     tool_name: str = Field(..., description="Unique tool identifier")
     version: str = Field(..., description="Semantic version string")
     description: str = Field(..., description="What this tool does")
-    input_schema: Dict[str, Any] = Field(
+    input_schema: dict[str, Any] = Field(
         default_factory=dict, description="JSON Schema for tool inputs"
     )
-    declared_capabilities: List[str] = Field(
+    declared_capabilities: list[str] = Field(
         default_factory=list, description="Capability flags this tool grants"
     )
     signing_key_hex: str = Field(
         ..., description="HMAC signing key as a hex string (min 64 hex chars = 32 bytes)"
     )
-    allowed_agents: Optional[List[str]] = Field(
+    allowed_agents: list[str] | None = Field(
         None, description="Agent IDs authorised to use this tool (None = unrestricted)"
     )
-    issuer: Optional[str] = Field(None, description="Issuer identifier")
-    expires_at: Optional[str] = Field(None, description="ISO-8601 expiry timestamp")
+    issuer: str | None = Field(None, description="Issuer identifier")
+    expires_at: str | None = Field(None, description="ISO-8601 expiry timestamp")
 
 
 class VerifyManifestRequest(BaseModel):
     signing_key_hex: str = Field(
         ..., description="HMAC signing key as hex string"
     )
-    current_schema: Optional[Dict[str, Any]] = Field(
+    current_schema: dict[str, Any] | None = Field(
         None, description="Current input schema for drift detection"
     )
 
@@ -181,7 +177,7 @@ def register(
 @agents_router.get("")
 def list_all_agents(
     limit: int = 50,
-    trust_level: Optional[str] = None,
+    trust_level: str | None = None,
     _key: str = Depends(get_api_key),
     store: Any = Depends(get_store),
 ):
@@ -414,7 +410,7 @@ def create_and_register_manifest(
 
 @tools_router.get("/manifests")
 def list_all_manifests(
-    tool_name: Optional[str] = None,
+    tool_name: str | None = None,
     limit: int = 50,
     _key: str = Depends(get_api_key),
     store: Any = Depends(get_store),

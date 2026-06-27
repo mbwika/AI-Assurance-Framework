@@ -1,28 +1,22 @@
 """Tests for registry/mcp_scanner.py (Phase 6 — MCP tool supply-chain scanner)."""
 
-import hashlib
-import json
 
-import pytest
 
 from aiaf.registry.mcp_scanner import (
     SCAN_VERSION,
+    STATUS_CHANGED,
     STATUS_CLEAN,
+    STATUS_NO_TOOLS,
     STATUS_SUSPICIOUS,
     STATUS_UNSAFE,
-    STATUS_CHANGED,
-    STATUS_NO_TOOLS,
-    STATUS_ERROR,
-    scan_tool_descriptor,
-    scan_server_tools,
-    _tool_hash,
-    _snapshot_hash,
     _diff_snapshots,
-    _scan_text_fields,
     _scan_ssrf,
-    _scan_capability,
+    _scan_text_fields,
+    _snapshot_hash,
+    _tool_hash,
+    scan_server_tools,
+    scan_tool_descriptor,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures

@@ -2,7 +2,6 @@
 import html as _html
 import os
 import re
-from typing import Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import HTMLResponse
@@ -37,9 +36,9 @@ _HTML_SECURITY_HEADERS = {
 
 class ReportSnapshotCreate(BaseModel):
     created_by: str = Field(min_length=1, max_length=255)
-    artifact_id: Optional[str] = Field(default=None, max_length=255)
-    model_id: Optional[str] = Field(default=None, max_length=255)
-    registered_by: Optional[str] = Field(default=None, max_length=255)
+    artifact_id: str | None = Field(default=None, max_length=255)
+    model_id: str | None = Field(default=None, max_length=255)
+    registered_by: str | None = Field(default=None, max_length=255)
     sign: bool = False
 
 
@@ -106,10 +105,10 @@ def reporting_compliance(
 
 @router.get("/metrics")
 def reporting_metrics(
-    artifact_id: Optional[str] = None,
-    model_id: Optional[str] = None,
-    registered_by: Optional[str] = None,
-    metric_name: Optional[str] = None,
+    artifact_id: str | None = None,
+    model_id: str | None = None,
+    registered_by: str | None = None,
+    metric_name: str | None = None,
     limit: int = 500,
     api_key: str = Depends(get_api_key),
 ):
@@ -177,9 +176,9 @@ def create_report_snapshot(
 @router.get("/snapshots")
 def list_report_snapshots(
     limit: int = 100,
-    artifact_id: Optional[str] = None,
-    model_id: Optional[str] = None,
-    registered_by: Optional[str] = None,
+    artifact_id: str | None = None,
+    model_id: str | None = None,
+    registered_by: str | None = None,
     api_key: str = Depends(get_api_key),
 ):
     snapshots = _snapshot_engine().list(
@@ -231,10 +230,10 @@ def _snapshot_metadata(snapshot):
 
 
 def _scope_filters(
-    artifact_id: Optional[str],
-    model_id: Optional[str],
-    registered_by: Optional[str],
-) -> Dict[str, Optional[str]]:
+    artifact_id: str | None,
+    model_id: str | None,
+    registered_by: str | None,
+) -> dict[str, str | None]:
     values = {
         "artifact_id": _validate_scope_id(artifact_id, "artifact_id"),
         "model_id": _validate_scope_id(model_id, "model_id"),
@@ -249,7 +248,7 @@ def _scope_filters(
     return values
 
 
-def _escape_scope(scope: Dict[str, Optional[str]]) -> Dict[str, Optional[str]]:
+def _escape_scope(scope: dict[str, str | None]) -> dict[str, str | None]:
     """Apply html.escape() to all scope values before they enter a markup renderer.
 
     Our denylist (_validate_scope_id) already blocks the five HTML/XML-special
@@ -262,7 +261,7 @@ def _escape_scope(scope: Dict[str, Optional[str]]) -> Dict[str, Optional[str]]:
 
 
 def _html_report_response(
-    engine: ReportingEngine, scope: Dict[str, Optional[str]]
+    engine: ReportingEngine, scope: dict[str, str | None]
 ) -> HTMLResponse:
     """Render the assurance report HTML only after explicit scope sanitization."""
     safe_scope = _escape_scope(scope)
@@ -286,7 +285,7 @@ def _validate_report_format(fmt: str) -> str:
     return normalized
 
 
-def _validate_scope_id(value: Optional[str], field: str) -> Optional[str]:
+def _validate_scope_id(value: str | None, field: str) -> str | None:
     """Reject scope ID values that contain HTML-special characters.
 
     A denylist (block <, >, &, ", ') is used rather than an allowlist so that

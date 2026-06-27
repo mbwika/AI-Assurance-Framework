@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 CYCLONEDX_SPEC_VERSION = "1.7"
 AIAF_TOOL_VERSION = "0.2.0"
@@ -46,7 +46,7 @@ BOM_SCHEMA_VERSION = "1.0"
 # ---------------------------------------------------------------------------
 
 
-def export_bom(model_record: Dict[str, Any]) -> Dict[str, Any]:
+def export_bom(model_record: dict[str, Any]) -> dict[str, Any]:
     """Produce a CycloneDX 1.7 ML-BOM JSON for a registered model.
 
     The BOM contains:
@@ -78,7 +78,7 @@ def export_bom(model_record: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _build_metadata(model_record: Dict[str, Any]) -> Dict[str, Any]:
+def _build_metadata(model_record: dict[str, Any]) -> dict[str, Any]:
     return {
         "timestamp": _utc_now(),
         "tools": [
@@ -103,11 +103,11 @@ def _build_metadata(model_record: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _build_component(
-    model_record: Dict[str, Any],
-    metadata: Dict[str, Any],
+    model_record: dict[str, Any],
+    metadata: dict[str, Any],
     bom_ref: str,
-) -> Dict[str, Any]:
-    component: Dict[str, Any] = {
+) -> dict[str, Any]:
+    component: dict[str, Any] = {
         "type": "machine-learning-model",
         "bom-ref": bom_ref,
         "name": model_record.get("model_name") or "unknown",
@@ -139,7 +139,7 @@ def _build_component(
     return component
 
 
-def _build_licenses(license_id: str) -> List[Dict[str, Any]]:
+def _build_licenses(license_id: str) -> list[dict[str, Any]]:
     """Build CycloneDX license structure.  Attempt SPDX ID; fall back to name."""
     # Well-known SPDX identifiers used in HF model cards.
     _HF_TO_SPDX = {
@@ -163,13 +163,13 @@ def _build_licenses(license_id: str) -> List[Dict[str, Any]]:
     return [{"license": {"name": license_id}}]
 
 
-def _build_model_card(metadata: Dict[str, Any]) -> Dict[str, Any]:
+def _build_model_card(metadata: dict[str, Any]) -> dict[str, Any]:
     """Build the ``modelCard`` block from AIAF metadata."""
-    mc: Dict[str, Any] = {}
+    mc: dict[str, Any] = {}
 
     # Model parameters from HF enrichment data (stored in metadata.hf_model_card).
     hf = metadata.get("hf_model_card") or {}
-    params: Dict[str, Any] = {}
+    params: dict[str, Any] = {}
     if hf.get("pipeline_tag"):
         params["task"] = hf["pipeline_tag"]
     if hf.get("model_type"):
@@ -202,11 +202,11 @@ def _build_model_card(metadata: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _build_properties(
-    model_record: Dict[str, Any],
-    metadata: Dict[str, Any],
-) -> List[Dict[str, str]]:
+    model_record: dict[str, Any],
+    metadata: dict[str, Any],
+) -> list[dict[str, str]]:
     """Encode AIAF-specific fields as CycloneDX properties (name/value pairs)."""
-    props: List[Dict[str, str]] = []
+    props: list[dict[str, str]] = []
 
     def _add(name: str, value: Any) -> None:
         if value is not None:
@@ -232,9 +232,9 @@ def _build_properties(
 
 
 def _build_dependencies(
-    model_record: Dict[str, Any],
+    model_record: dict[str, Any],
     bom_ref: str,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Build the dependencies block from the model's dependency inventory."""
     raw_deps = model_record.get("dependencies") or []
     dep_refs = []
@@ -255,7 +255,7 @@ def _build_dependencies(
             "purl": f"pkg:{eco}/{name}@{version}" if version else f"pkg:{eco}/{name}",
         })
 
-    bom_deps: List[Dict[str, Any]] = [{"ref": bom_ref, "dependsOn": dep_refs}]
+    bom_deps: list[dict[str, Any]] = [{"ref": bom_ref, "dependsOn": dep_refs}]
     return bom_deps, dep_components
 
 
@@ -264,7 +264,7 @@ def _build_dependencies(
 # ---------------------------------------------------------------------------
 
 
-def import_bom(bom_dict: Dict[str, Any]) -> Dict[str, Any]:
+def import_bom(bom_dict: dict[str, Any]) -> dict[str, Any]:
     """Extract AIAF model registration parameters from a CycloneDX BOM.
 
     Returns a dict with keys suitable for passing to ``POST /models/register``
@@ -280,7 +280,7 @@ def import_bom(bom_dict: Dict[str, Any]) -> Dict[str, Any]:
         components[0] if components else {},
     )
 
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "bom_format": bom_dict.get("bomFormat"),
         "spec_version": bom_dict.get("specVersion"),
         "model_name": component.get("name"),

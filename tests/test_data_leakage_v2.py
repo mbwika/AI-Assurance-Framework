@@ -9,7 +9,6 @@ from aiaf.analysis.data_leakage import (
     detect_data_leakage,
 )
 
-
 _TOKEN_ALPHABET = "aB3dE5fG7hI9jK1mN3pQ5rS7tU9vW1xY2zA4bC6D8eF0"
 
 

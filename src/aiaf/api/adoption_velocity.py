@@ -10,27 +10,27 @@ REST endpoints:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from .models import get_api_key, get_store
 from ..analysis.adoption_velocity import (
-    EVENT_TYPES,
     ADOPTION_VELOCITY_VERSION,
-    AdoptionVelocityError,
-    record_adoption_event,
-    set_velocity_baseline,
-    get_velocity_profile,
-    detect_velocity_anomaly,
-    list_at_risk_artifacts,
-    VELOCITY_RISK_ELEVATED,
-    DEFAULT_SPIKE_MULTIPLIER,
     DEFAULT_COLD_START_HOURS,
     DEFAULT_COLD_START_THRESHOLD,
+    DEFAULT_SPIKE_MULTIPLIER,
     DEFAULT_VELOCITY_WINDOW_HOURS,
+    EVENT_TYPES,
+    VELOCITY_RISK_ELEVATED,
+    AdoptionVelocityError,
+    detect_velocity_anomaly,
+    get_velocity_profile,
+    list_at_risk_artifacts,
+    record_adoption_event,
+    set_velocity_baseline,
 )
+from .models import get_api_key, get_store
 
 router = APIRouter(prefix="/v1/adoption-velocity", tags=["adoption-velocity"])
 
@@ -40,10 +40,10 @@ router = APIRouter(prefix="/v1/adoption-velocity", tags=["adoption-velocity"])
 class RecordEventRequest(BaseModel):
     event_type: str
     count: int = Field(1, ge=1)
-    source: Optional[str] = None
-    region: Optional[str] = None
-    occurred_at: Optional[str] = None
-    attributes: Optional[Dict[str, Any]] = None
+    source: str | None = None
+    region: str | None = None
+    occurred_at: str | None = None
+    attributes: dict[str, Any] | None = None
 
 
 class SetBaselineRequest(BaseModel):

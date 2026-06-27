@@ -22,7 +22,7 @@ import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 NHI_DISCOVERY_VERSION = "1.0"
 
@@ -43,7 +43,7 @@ CONFIDENCE_HIGH = "HIGH"       # Private key, SA token, named cloud credential
 CONFIDENCE_MEDIUM = "MEDIUM"   # Generic API key pattern, kubeconfig
 CONFIDENCE_LOW = "LOW"         # Generic SECRET/PASSWORD/CREDENTIAL variable
 
-_CONFIDENCE_RANK: Dict[str, int] = {
+_CONFIDENCE_RANK: dict[str, int] = {
     CONFIDENCE_LOW: 0, CONFIDENCE_MEDIUM: 1, CONFIDENCE_HIGH: 2,
 }
 
@@ -55,7 +55,7 @@ _NHI_GATEWAY = "GATEWAY"
 
 # ── Environment variable credential patterns ───────────────────────────────────
 # Each tuple: (compiled_regex, inferred_nhi_type, confidence)
-_ENV_PATTERNS: List[tuple] = [
+_ENV_PATTERNS: list[tuple] = [
     # Named AI-provider tokens (highest specificity first)
     (re.compile(r"\bANTHROPIC_API_KEY\b", re.I), _NHI_AGENT_WORKER, CONFIDENCE_HIGH),
     (re.compile(r"\bOPENAI_API_KEY\b", re.I), _NHI_AGENT_WORKER, CONFIDENCE_HIGH),
@@ -86,7 +86,7 @@ _ENV_PATTERNS: List[tuple] = [
 
 # ── Well-known filesystem paths (relative to home or root) ────────────────────
 # Each tuple: (path_pattern, nhi_type, confidence, description, is_root_relative)
-_FS_PATHS: List[tuple] = [
+_FS_PATHS: list[tuple] = [
     # SSH private keys
     (".ssh/id_rsa", _NHI_DATA_CONNECTOR, CONFIDENCE_HIGH, "SSH RSA private key", False),
     (".ssh/id_ed25519", _NHI_DATA_CONNECTOR, CONFIDENCE_HIGH, "SSH Ed25519 private key", False),
@@ -119,7 +119,7 @@ _K8S_SA_NAMESPACE = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 _K8S_SA_CACERT = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 
 # ── Cloud credential absolute paths ──────────────────────────────────────────
-_CLOUD_ABSOLUTE_PATHS: List[Dict[str, str]] = [
+_CLOUD_ABSOLUTE_PATHS: list[dict[str, str]] = [
     {
         "path": "/run/secrets/kubernetes.io/serviceaccount/token",
         "provider": "kubernetes",
@@ -166,9 +166,9 @@ def _make_candidate(
     confidence: str,
     *,
     description: str = "",
-    environment: Optional[str] = None,
-    attributes: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    environment: str | None = None,
+    attributes: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     return {
         "nhi_id": nhi_id,
         "nhi_type": nhi_type,
@@ -186,10 +186,10 @@ def _make_candidate(
 # ── Public scanners ────────────────────────────────────────────────────────────
 
 def scan_environment_variables(
-    env: Optional[Dict[str, str]] = None,
+    env: dict[str, str] | None = None,
     *,
     min_confidence: str = CONFIDENCE_LOW,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Scan environment variables for credential patterns.
 
     Parameters
@@ -205,7 +205,7 @@ def scan_environment_variables(
     min_rank = _CONFIDENCE_RANK.get(min_confidence, 0)
 
     seen: set = set()
-    candidates: List[Dict[str, Any]] = []
+    candidates: list[dict[str, Any]] = []
 
     for var_name, value in env.items():
         if not value:
@@ -232,13 +232,13 @@ def scan_environment_variables(
 
 
 def scan_filesystem_paths(
-    home: Optional[str] = None,
+    home: str | None = None,
     *,
     root: str = "/",
     min_confidence: str = CONFIDENCE_LOW,
     path_exists_fn=None,
     glob_fn=None,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Scan well-known filesystem paths for credential files.
 
     Parameters
@@ -260,7 +260,7 @@ def scan_filesystem_paths(
     exists = path_exists_fn or os.path.isfile
     do_glob = glob_fn or glob.glob
 
-    candidates: List[Dict[str, Any]] = []
+    candidates: list[dict[str, Any]] = []
     seen: set = set()
 
     for path_pat, nhi_type, confidence, description, is_root_relative in _FS_PATHS:
@@ -270,7 +270,7 @@ def scan_filesystem_paths(
         base = root if is_root_relative else home
         full_pattern = os.path.join(base, path_pat)
 
-        matched_paths: List[str]
+        matched_paths: list[str]
         if "*" in path_pat:
             matched_paths = do_glob(full_pattern)
         else:
@@ -300,7 +300,7 @@ def scan_kubernetes_service_accounts(
     sa_token_path: str = _K8S_SA_TOKEN,
     path_exists_fn=None,
     read_text_fn=None,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Detect Kubernetes service account tokens at well-known mount paths.
 
     Returns empty list when not running inside a Kubernetes pod.
@@ -316,7 +316,7 @@ def scan_kubernetes_service_accounts(
     if not exists(sa_token_path):
         return []
 
-    namespace: Optional[str] = None
+    namespace: str | None = None
     ns_path = os.path.join(os.path.dirname(sa_token_path), "namespace")
     if exists(ns_path):
         if read_text_fn:
@@ -348,7 +348,7 @@ def scan_kubernetes_service_accounts(
 def scan_cloud_credentials(
     *,
     path_exists_fn=None,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Detect cloud provider credential files at well-known absolute paths.
 
     Parameters
@@ -360,7 +360,7 @@ def scan_cloud_credentials(
     List of NHICandidate dicts for each detected cloud credential file.
     """
     exists = path_exists_fn or os.path.isfile
-    candidates: List[Dict[str, Any]] = []
+    candidates: list[dict[str, Any]] = []
 
     for spec in _CLOUD_ABSOLUTE_PATHS:
         if exists(spec["path"]):
@@ -382,7 +382,7 @@ def scan_proc_environments(
     proc_root: str = "/proc",
     skip_self: bool = True,
     min_confidence: str = CONFIDENCE_MEDIUM,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Scan other processes' environments via /proc/*/environ (Linux, root-only).
 
     Returns empty list on non-Linux systems or when /proc is not accessible.
@@ -399,7 +399,7 @@ def scan_proc_environments(
 
     min_rank = _CONFIDENCE_RANK.get(min_confidence, 0)
     self_pid = str(os.getpid())
-    candidates: List[Dict[str, Any]] = []
+    candidates: list[dict[str, Any]] = []
     seen: set = set()
 
     for pid_dir in sorted(proc_path.iterdir()):
@@ -415,7 +415,7 @@ def scan_proc_environments(
             continue
 
         # /proc/<pid>/environ: NUL-separated key=value pairs
-        env_pairs: Dict[str, str] = {}
+        env_pairs: dict[str, str] = {}
         for part in raw.split(b"\x00"):
             if b"=" in part:
                 k, _, v = part.partition(b"=")
@@ -450,15 +450,15 @@ def scan_proc_environments(
 
 def discover_nhis(
     *,
-    env: Optional[Dict[str, str]] = None,
-    home: Optional[str] = None,
+    env: dict[str, str] | None = None,
+    home: str | None = None,
     filesystem_root: str = "/",
     scan_proc: bool = False,
     min_confidence: str = CONFIDENCE_LOW,
-    sources: Optional[List[str]] = None,
+    sources: list[str] | None = None,
     path_exists_fn=None,
     glob_fn=None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run all NHI discovery scanners and return a consolidated report.
 
     Parameters
@@ -484,7 +484,7 @@ def discover_nhis(
     if scan_proc:
         active.add(SOURCE_PROC_ENV)
 
-    all_candidates: List[Dict[str, Any]] = []
+    all_candidates: list[dict[str, Any]] = []
 
     if SOURCE_ENV_VAR in active:
         all_candidates.extend(scan_environment_variables(env, min_confidence=min_confidence))
@@ -506,16 +506,16 @@ def discover_nhis(
 
     # Deduplicate by nhi_id
     seen_ids: set = set()
-    unique: List[Dict[str, Any]] = []
+    unique: list[dict[str, Any]] = []
     for c in all_candidates:
         nhi_id = c["nhi_id"]
         if nhi_id not in seen_ids:
             seen_ids.add(nhi_id)
             unique.append(c)
 
-    by_source: Dict[str, int] = {}
-    by_confidence: Dict[str, int] = {}
-    by_nhi_type: Dict[str, int] = {}
+    by_source: dict[str, int] = {}
+    by_confidence: dict[str, int] = {}
+    by_nhi_type: dict[str, int] = {}
     for c in unique:
         by_source[c["source"]] = by_source.get(c["source"], 0) + 1
         by_confidence[c["confidence"]] = by_confidence.get(c["confidence"], 0) + 1

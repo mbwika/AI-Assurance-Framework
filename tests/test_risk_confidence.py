@@ -1,19 +1,24 @@
 """Tests for core.risk_confidence (Phase E)."""
 
-import math
 import pytest
-from aiaf.core.risk_confidence import (
-    CONFIDENCE_VERSION,
-    ORIGIN_WEIGHTS,
-    CONFIDENCE_HIGH, CONFIDENCE_MODERATE, CONFIDENCE_LOW, CONFIDENCE_INSUFFICIENT,
-    ORIGIN_INDEPENDENTLY_VERIFIED, ORIGIN_ARTIFACT_DERIVED,
-    ORIGIN_LOCALLY_OBSERVED, ORIGIN_PROVIDER_DECLARED, ORIGIN_USER_ENTERED,
-    RiskConfidenceError,
-    compute_risk_confidence,
-    _origin_weight,
-    _classify_confidence,
-)
 
+from aiaf.core.risk_confidence import (
+    CONFIDENCE_HIGH,
+    CONFIDENCE_INSUFFICIENT,
+    CONFIDENCE_LOW,
+    CONFIDENCE_MODERATE,
+    CONFIDENCE_VERSION,
+    ORIGIN_ARTIFACT_DERIVED,
+    ORIGIN_INDEPENDENTLY_VERIFIED,
+    ORIGIN_LOCALLY_OBSERVED,
+    ORIGIN_PROVIDER_DECLARED,
+    ORIGIN_USER_ENTERED,
+    ORIGIN_WEIGHTS,
+    RiskConfidenceError,
+    _classify_confidence,
+    _origin_weight,
+    compute_risk_confidence,
+)
 
 # ── Origin weights ─────────────────────────────────────────────────────────────
 

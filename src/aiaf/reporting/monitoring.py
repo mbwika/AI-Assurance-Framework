@@ -1,10 +1,10 @@
 """Continuous monitoring alert evaluation."""
-from typing import Any, Dict, List
+from typing import Any
 
 
-def evaluate_monitoring_alerts(report: Dict[str, Any]) -> Dict[str, Any]:
+def evaluate_monitoring_alerts(report: dict[str, Any]) -> dict[str, Any]:
     """Evaluate assurance report evidence and return prioritized monitoring alerts."""
-    alerts: List[Dict[str, Any]] = []
+    alerts: list[dict[str, Any]] = []
     register = report.get("risk_register", {})
     if not register.get("total_risks"):
         alerts.extend(_risk_alerts(report.get("risk_posture", {})))
@@ -27,7 +27,7 @@ def evaluate_monitoring_alerts(report: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _risk_alerts(posture: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _risk_alerts(posture: dict[str, Any]) -> list[dict[str, Any]]:
     by_severity = posture.get("by_severity", {})
     alerts = []
     critical = int(by_severity.get("CRITICAL", 0) or 0)
@@ -53,7 +53,7 @@ def _risk_alerts(posture: Dict[str, Any]) -> List[Dict[str, Any]]:
     return alerts
 
 
-def _risk_register_alerts(register: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _risk_register_alerts(register: dict[str, Any]) -> list[dict[str, Any]]:
     alerts = []
     actionable = register.get("actionable_by_severity", {})
     critical = int(actionable.get("CRITICAL", 0) or 0)
@@ -99,8 +99,8 @@ def _risk_register_alerts(register: Dict[str, Any]) -> List[Dict[str, Any]]:
     return alerts
 
 
-def _trend_alerts(monitoring: Dict[str, Any]) -> List[Dict[str, Any]]:
-    alerts: List[Dict[str, Any]] = []
+def _trend_alerts(monitoring: dict[str, Any]) -> list[dict[str, Any]]:
+    alerts: list[dict[str, Any]] = []
     if monitoring.get("trend") == "WORSENING":
         alerts.append(
             _alert(
@@ -136,7 +136,7 @@ def _trend_alerts(monitoring: Dict[str, Any]) -> List[Dict[str, Any]]:
     return alerts
 
 
-def _schedule_alerts(monitoring: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _schedule_alerts(monitoring: dict[str, Any]) -> list[dict[str, Any]]:
     alerts = []
     failed_runs = int(monitoring.get("failed_runs", 0) or 0)
     overdue = int(monitoring.get("overdue_schedules", 0) or 0)
@@ -161,7 +161,7 @@ def _schedule_alerts(monitoring: Dict[str, Any]) -> List[Dict[str, Any]]:
     return alerts
 
 
-def _trust_alerts(trust: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _trust_alerts(trust: dict[str, Any]) -> list[dict[str, Any]]:
     alerts = []
     latest_score = float(trust.get("latest_score", 0.0) or 0.0)
     if trust.get("latest_level") == "NO_DATA":
@@ -204,8 +204,8 @@ def _trust_alerts(trust: Dict[str, Any]) -> List[Dict[str, Any]]:
     return alerts
 
 
-def _governance_alerts(governance: Dict[str, Any]) -> List[Dict[str, Any]]:
-    alerts: List[Dict[str, Any]] = []
+def _governance_alerts(governance: dict[str, Any]) -> list[dict[str, Any]]:
+    alerts: list[dict[str, Any]] = []
     gaps = governance.get("open_gaps", [])
     if gaps:
         alerts.append(
@@ -236,7 +236,7 @@ def _governance_alerts(governance: Dict[str, Any]) -> List[Dict[str, Any]]:
     return alerts
 
 
-def _governance_evidence_alerts(evidence: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _governance_evidence_alerts(evidence: dict[str, Any]) -> list[dict[str, Any]]:
     alerts = []
     pending = int(evidence.get("pending_evidence", 0) or 0)
     expired = int(evidence.get("expired_approved_evidence", 0) or 0)
@@ -261,7 +261,7 @@ def _governance_evidence_alerts(evidence: Dict[str, Any]) -> List[Dict[str, Any]
     return alerts
 
 
-def _agentic_runtime_alerts(runtime: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _agentic_runtime_alerts(runtime: dict[str, Any]) -> list[dict[str, Any]]:
     alerts = []
     denied = int(runtime.get("denied_decisions", 0) or 0)
     approval_required = int(runtime.get("approval_required_decisions", 0) or 0)
@@ -286,7 +286,7 @@ def _agentic_runtime_alerts(runtime: Dict[str, Any]) -> List[Dict[str, Any]]:
     return alerts
 
 
-def _supply_chain_alerts(supply_chain: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _supply_chain_alerts(supply_chain: dict[str, Any]) -> list[dict[str, Any]]:
     alerts = []
     supply_chain_findings = int(supply_chain.get("supply_chain_findings", 0) or 0)
     if supply_chain_findings:
@@ -432,7 +432,7 @@ def _supply_chain_alerts(supply_chain: Dict[str, Any]) -> List[Dict[str, Any]]:
     return alerts
 
 
-def _standards_alerts(coverage: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _standards_alerts(coverage: dict[str, Any]) -> list[dict[str, Any]]:
     uncovered = coverage.get("uncovered_frameworks", [])
     if not uncovered:
         return []
@@ -446,7 +446,7 @@ def _standards_alerts(coverage: Dict[str, Any]) -> List[Dict[str, Any]]:
     ]
 
 
-def _alert(alert_id: str, severity: str, message: str, evidence: Dict[str, Any]) -> Dict[str, Any]:
+def _alert(alert_id: str, severity: str, message: str, evidence: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": alert_id,
         "severity": severity,
@@ -455,8 +455,8 @@ def _alert(alert_id: str, severity: str, message: str, evidence: Dict[str, Any])
     }
 
 
-def _count_by(items: List[Dict[str, Any]], field: str) -> Dict[str, int]:
-    counts: Dict[str, int] = {}
+def _count_by(items: list[dict[str, Any]], field: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
     for item in items:
         value = item.get(field) or "UNKNOWN"
         counts[value] = counts.get(value, 0) + 1

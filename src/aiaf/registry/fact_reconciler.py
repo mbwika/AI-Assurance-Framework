@@ -40,14 +40,14 @@ Design notes
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .evidence_origin import EvidenceOrigin, ledger_from_list
 
 RECONCILER_VERSION = "1.0"
 
 # Severity of a contradiction keyed by fact_name
-_CONTRADICTION_SEVERITY: Dict[str, str] = {
+_CONTRADICTION_SEVERITY: dict[str, str] = {
     "architecture_family": "CRITICAL",
     "architecture_name": "HIGH",
     "model_type": "HIGH",
@@ -79,7 +79,7 @@ _DECISION_DRIVING_FACTS = frozenset({
 
 # Things that are permanently outside the decidability boundary.
 # Enumerated here so they appear in every adoption verdict as a first-class output.
-DECIDABILITY_BOUNDS: List[Dict[str, str]] = [
+DECIDABILITY_BOUNDS: list[dict[str, str]] = [
     {
         "category": "training_data",
         "description": "Training corpus composition, size, and quality",
@@ -166,10 +166,10 @@ DECIDABILITY_BOUNDS: List[Dict[str, str]] = [
 
 
 def reconcile(
-    model_record: Dict[str, Any],
-    weight_inspection: Optional[Dict[str, Any]] = None,
-    lineage: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    model_record: dict[str, Any],
+    weight_inspection: dict[str, Any] | None = None,
+    lineage: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Cross-check declared facts against locally-derived facts.
 
     Parameters
@@ -187,7 +187,7 @@ def reconcile(
     ledger = ledger_from_list(metadata.get("evidence_ledger"))
 
     # ── Build comparison pairs ───────────────────────────────────────────────
-    comparisons: List[Dict[str, Any]] = []
+    comparisons: list[dict[str, Any]] = []
     wi_inspected = (
         weight_inspection is not None
         and weight_inspection.get("status") == "INSPECTED"
@@ -197,8 +197,8 @@ def reconcile(
         comparisons.extend(_build_comparisons(metadata, hf_card, wi_facts))
 
     # ── Classify ─────────────────────────────────────────────────────────────
-    contradictions: List[Dict[str, Any]] = []
-    confirmations: List[Dict[str, Any]] = []
+    contradictions: list[dict[str, Any]] = []
+    confirmations: list[dict[str, Any]] = []
     for comp in comparisons:
         declared_val = comp.get("declared_value")
         derived_val = comp.get("derived_value")
@@ -251,12 +251,12 @@ def reconcile(
 
 
 def _build_comparisons(
-    metadata: Dict[str, Any],
-    hf_card: Dict[str, Any],
-    wi_facts: Dict[str, Any],
-) -> List[Dict[str, Any]]:
+    metadata: dict[str, Any],
+    hf_card: dict[str, Any],
+    wi_facts: dict[str, Any],
+) -> list[dict[str, Any]]:
     """Build (declared, derived) comparison pairs from weight-inspector output."""
-    comps: List[Dict[str, Any]] = []
+    comps: list[dict[str, Any]] = []
 
     # Parameter count
     decl_params = metadata.get("parameter_count") or hf_card.get("parameter_count")
@@ -374,7 +374,7 @@ def _contradicts(declared: Any, derived: Any, fact_name: str) -> bool:
 
 def _provenance_independence_ratio(
     ledger: Any,
-    weight_inspection: Optional[Dict[str, Any]],
+    weight_inspection: dict[str, Any] | None,
 ) -> float:
     """Fraction of decision-driving facts at LOCALLY_OBSERVED or INDEPENDENTLY_VERIFIED."""
     _lo = EvidenceOrigin.LOCALLY_OBSERVED.value
@@ -411,12 +411,12 @@ def _provenance_independence_ratio(
 
 
 def _collect_unverifiable(
-    metadata: Dict[str, Any],
-    hf_card: Dict[str, Any],
+    metadata: dict[str, Any],
+    hf_card: dict[str, Any],
     wi_available: bool,
-) -> List[str]:
+) -> list[str]:
     """List high-value facts that exist only at PROVIDER_DECLARED level."""
-    items: List[str] = []
+    items: list[str] = []
 
     if metadata.get("training_data") or hf_card.get("dataset"):
         items.append(

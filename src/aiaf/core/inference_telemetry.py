@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 TELEMETRY_VERSION = "1.0"
 _SESSION_PREFIX = "session:"
@@ -55,7 +55,7 @@ def _sha256(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
 
-def _coerce_positive_float(v: Any) -> Optional[float]:
+def _coerce_positive_float(v: Any) -> float | None:
     try:
         f = float(v)
         return f if f >= 0 else None
@@ -63,7 +63,7 @@ def _coerce_positive_float(v: Any) -> Optional[float]:
         return None
 
 
-def _coerce_non_negative_int(v: Any) -> Optional[int]:
+def _coerce_non_negative_int(v: Any) -> int | None:
     try:
         i = int(v)
         return i if i >= 0 else None
@@ -84,11 +84,11 @@ def _validate_session_id(session_id: str) -> str:
 
 
 def _normalise_event(
-    raw: Dict[str, Any],
+    raw: dict[str, Any],
     session_id: str,
     sequence: int,
     server_ts: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Validate and normalise a single raw event dict."""
     event_type = str(raw.get("event_type") or "").strip().lower()
     if event_type not in VALID_EVENT_TYPES:
@@ -101,7 +101,7 @@ def _normalise_event(
     if status not in VALID_STATUSES:
         status = "ok"
 
-    event: Dict[str, Any] = {
+    event: dict[str, Any] = {
         "session_id": session_id,
         "event_id": str(raw.get("event_id") or _sha256(f"{session_id}:{sequence}:{server_ts}")),
         "event_type": event_type,
@@ -123,9 +123,9 @@ def _normalise_event(
 
 def ingest_events(
     session_id: str,
-    raw_events: List[Dict[str, Any]],
+    raw_events: list[dict[str, Any]],
     store: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Validate and persist a batch of trace events for ``session_id``.
 
     Returns a summary of the ingest operation.  Idempotent on duplicate
@@ -157,13 +157,13 @@ def ingest_events(
         "metadata": {},
     }
     meta = record.setdefault("metadata", {})
-    existing_events: List[Dict[str, Any]] = meta.get("events") or []
+    existing_events: list[dict[str, Any]] = meta.get("events") or []
     existing_ids = {e["event_id"] for e in existing_events}
     next_seq = max((e.get("sequence", 0) for e in existing_events), default=-1) + 1
 
     server_ts = _utc_now()
-    accepted: List[Dict[str, Any]] = []
-    errors: List[Dict[str, Any]] = []
+    accepted: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
 
     for i, raw in enumerate(raw_events):
         try:
@@ -205,7 +205,7 @@ def ingest_events(
     }
 
 
-def get_session(session_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def get_session(session_id: str, store: Any) -> dict[str, Any] | None:
     """Return the full session record (events list + summary), or ``None``."""
     session_id = _validate_session_id(session_id)
     record = store.get_model(_session_key(session_id))
@@ -227,7 +227,7 @@ def get_session_events(
     store: Any,
     offset: int = 0,
     limit: int = 100,
-) -> Tuple[List[Dict[str, Any]], int]:
+) -> tuple[list[dict[str, Any]], int]:
     """Return a paginated slice of events and the total count."""
     session_id = _validate_session_id(session_id)
     record = store.get_model(_session_key(session_id))
@@ -239,7 +239,7 @@ def get_session_events(
     return page, total
 
 
-def list_sessions(store: Any, limit: int = 50) -> List[Dict[str, Any]]:
+def list_sessions(store: Any, limit: int = 50) -> list[dict[str, Any]]:
     """Return summary metadata for up to ``limit`` recent sessions."""
     all_models = store.list_models() if hasattr(store, "list_models") else []
     sessions = []
@@ -281,7 +281,7 @@ def delete_session(session_id: str, store: Any) -> bool:
 
 # ── Summary computation ───────────────────────────────────────────────────────
 
-def _compute_summary(session_id: str, events: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _compute_summary(session_id: str, events: list[dict[str, Any]]) -> dict[str, Any]:
     """Compute session-level aggregate metrics from an events list."""
     if not events:
         return {
@@ -291,8 +291,8 @@ def _compute_summary(session_id: str, events: List[Dict[str, Any]]) -> Dict[str,
             "telemetry_version": TELEMETRY_VERSION,
         }
 
-    by_type: Dict[str, int] = {}
-    by_status: Dict[str, int] = {}
+    by_type: dict[str, int] = {}
+    by_status: dict[str, int] = {}
     tool_names: set = set()
     models_seen: set = set()
     total_latency = 0.0
@@ -336,7 +336,7 @@ def _compute_summary(session_id: str, events: List[Dict[str, Any]]) -> Dict[str,
     last_ts = max(timestamps) if timestamps else None
 
     # Duration: best-effort ISO-string compare (lexicographic works for UTC ISO strings)
-    duration_ms: Optional[float] = None
+    duration_ms: float | None = None
     if first_ts and last_ts and first_ts != last_ts:
         try:
             t0 = datetime.fromisoformat(first_ts.replace("Z", "+00:00"))

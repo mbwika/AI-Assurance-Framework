@@ -9,7 +9,6 @@ References: Regulation (EU) 2024/1689 of the European Parliament and of the Coun
 """
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional
 
 
 class EUAIActRiskCategory(str, Enum):
@@ -23,19 +22,19 @@ class EUAIActRiskCategory(str, Enum):
 class EUAIActArticleRef:
     article: str
     title: str
-    relevant_clauses: List[str] = field(default_factory=list)
+    relevant_clauses: list[str] = field(default_factory=list)
 
 
 @dataclass
 class EUAIActControlMapping:
     aiaf_control_id: str
     risk_category: EUAIActRiskCategory
-    article_refs: List[EUAIActArticleRef] = field(default_factory=list)
+    article_refs: list[EUAIActArticleRef] = field(default_factory=list)
     obligation: str = ""
     notes: str = ""
 
 
-EU_AI_ACT_CONTROL_MAPPINGS: List[EUAIActControlMapping] = [
+EU_AI_ACT_CONTROL_MAPPINGS: list[EUAIActControlMapping] = [
     EUAIActControlMapping(
         aiaf_control_id="AIAF-GOV-01",
         risk_category=EUAIActRiskCategory.HIGH_RISK,
@@ -135,10 +134,10 @@ def classify_eu_ai_act_risk(use_case: str, domain: str = "") -> EUAIActRiskCateg
     return EUAIActRiskCategory.LIMITED_RISK
 
 
-def get_obligations_for_control(aiaf_control_id: str) -> List[EUAIActControlMapping]:
+def get_obligations_for_control(aiaf_control_id: str) -> list[EUAIActControlMapping]:
     """Return all EU AI Act obligation mappings for a given AIAF control ID."""
     return [m for m in EU_AI_ACT_CONTROL_MAPPINGS if m.aiaf_control_id == aiaf_control_id]
 
 
-def get_high_risk_obligations() -> List[EUAIActControlMapping]:
+def get_high_risk_obligations() -> list[EUAIActControlMapping]:
     return [m for m in EU_AI_ACT_CONTROL_MAPPINGS if m.risk_category == EUAIActRiskCategory.HIGH_RISK]

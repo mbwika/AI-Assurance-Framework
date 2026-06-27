@@ -1,12 +1,12 @@
 """Tests for analysis.extraction_tests (Phase E)."""
 
-import pytest
 from aiaf.analysis.extraction_tests import (
     EXTRACTION_VERSION,
-    RISK_NEGLIGIBLE, RISK_LOW, RISK_MEDIUM, RISK_HIGH, RISK_CRITICAL,
-    ExtractionTestError,
-    assess_extraction_risk,
-    _risk_from_count,
+    RISK_CRITICAL,
+    RISK_HIGH,
+    RISK_LOW,
+    RISK_MEDIUM,
+    RISK_NEGLIGIBLE,
     _h1_no_output_length_limit,
     _h2_verbatim_generation_capability,
     _h3_code_generation_capability,
@@ -15,6 +15,8 @@ from aiaf.analysis.extraction_tests import (
     _h6_verbatim_reproduction,
     _h7_architecture_disclosure,
     _h8_candidate_record_membership,
+    _risk_from_count,
+    assess_extraction_risk,
 )
 
 

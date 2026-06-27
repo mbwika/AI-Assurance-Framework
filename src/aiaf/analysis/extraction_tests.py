@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 EXTRACTION_VERSION = "1.0"
 
@@ -42,7 +42,7 @@ RISK_MEDIUM = "MEDIUM"
 RISK_HIGH = "HIGH"
 RISK_CRITICAL = "CRITICAL"
 
-_RISK_RANK: Dict[str, int] = {
+_RISK_RANK: dict[str, int] = {
     RISK_CRITICAL: 4, RISK_HIGH: 3, RISK_MEDIUM: 2, RISK_LOW: 1, RISK_NEGLIGIBLE: 0,
 }
 
@@ -83,7 +83,7 @@ def _risk_from_count(n: int) -> str:
 
 # ── Static heuristics ──────────────────────────────────────────────────────────
 
-def _h1_no_output_length_limit(model_record: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _h1_no_output_length_limit(model_record: dict[str, Any]) -> dict[str, Any] | None:
     meta = model_record.get("metadata") or {}
     max_tokens = (
         meta.get("max_output_tokens")
@@ -101,7 +101,7 @@ def _h1_no_output_length_limit(model_record: Dict[str, Any]) -> Optional[Dict[st
     return None
 
 
-def _h2_verbatim_generation_capability(model_record: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _h2_verbatim_generation_capability(model_record: dict[str, Any]) -> dict[str, Any] | None:
     meta = model_record.get("metadata") or {}
     caps = str(meta.get("capabilities") or "").lower()
     task_types = [str(t).lower() for t in (meta.get("task_types") or [])]
@@ -119,7 +119,7 @@ def _h2_verbatim_generation_capability(model_record: Dict[str, Any]) -> Optional
     return None
 
 
-def _h3_code_generation_capability(model_record: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _h3_code_generation_capability(model_record: dict[str, Any]) -> dict[str, Any] | None:
     meta = model_record.get("metadata") or {}
     caps = str(meta.get("capabilities") or "").lower()
     task_types = [str(t).lower() for t in (meta.get("task_types") or [])]
@@ -136,7 +136,7 @@ def _h3_code_generation_capability(model_record: Dict[str, Any]) -> Optional[Dic
     return None
 
 
-def _h4_no_rate_limiting(model_record: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _h4_no_rate_limiting(model_record: dict[str, Any]) -> dict[str, Any] | None:
     meta = model_record.get("metadata") or {}
     has_rl = (
         meta.get("rate_limiting")
@@ -154,7 +154,7 @@ def _h4_no_rate_limiting(model_record: Dict[str, Any]) -> Optional[Dict[str, Any
     return None
 
 
-def _h5_no_repetition_penalty(model_record: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _h5_no_repetition_penalty(model_record: dict[str, Any]) -> dict[str, Any] | None:
     meta = model_record.get("metadata") or {}
     config = meta.get("generation_config") or meta.get("config") or {}
     rep_pen = config.get("repetition_penalty") if isinstance(config, dict) else None
@@ -172,7 +172,7 @@ def _h5_no_repetition_penalty(model_record: Dict[str, Any]) -> Optional[Dict[str
 
 # ── Behavioural heuristics ─────────────────────────────────────────────────────
 
-def _h6_verbatim_reproduction(sample_outputs: List[str]) -> Optional[Dict[str, Any]]:
+def _h6_verbatim_reproduction(sample_outputs: list[str]) -> dict[str, Any] | None:
     """H6: output contains long exact-looking blocks (memorisation indicator)."""
     flagged = []
     for out in sample_outputs:
@@ -197,7 +197,7 @@ def _h6_verbatim_reproduction(sample_outputs: List[str]) -> Optional[Dict[str, A
     return None
 
 
-def _h7_architecture_disclosure(sample_outputs: List[str]) -> Optional[Dict[str, Any]]:
+def _h7_architecture_disclosure(sample_outputs: list[str]) -> dict[str, Any] | None:
     """H7: output explicitly mentions internal architecture details."""
     matches = []
     for out in sample_outputs:
@@ -220,9 +220,9 @@ def _h7_architecture_disclosure(sample_outputs: List[str]) -> Optional[Dict[str,
 
 
 def _h8_candidate_record_membership(
-    sample_outputs: List[str],
-    candidate_records: List[str],
-) -> Optional[Dict[str, Any]]:
+    sample_outputs: list[str],
+    candidate_records: list[str],
+) -> dict[str, Any] | None:
     """H8: candidate records are reproduced verbatim in sample outputs."""
     matched = []
     normalized_outputs = [str(item or "") for item in sample_outputs]
@@ -250,13 +250,13 @@ def _h8_candidate_record_membership(
 # ── Public API ─────────────────────────────────────────────────────────────────
 
 def assess_extraction_risk(
-    model_record: Dict[str, Any],
+    model_record: dict[str, Any],
     store: Any,
     *,
-    sample_outputs: Optional[List[str]] = None,
-    candidate_records: Optional[List[str]] = None,
-    model_id: Optional[str] = None,
-) -> Dict[str, Any]:
+    sample_outputs: list[str] | None = None,
+    candidate_records: list[str] | None = None,
+    model_id: str | None = None,
+) -> dict[str, Any]:
     """Assess extraction and membership-inference vulnerability.
 
     Parameters
@@ -272,7 +272,7 @@ def assess_extraction_risk(
         Override model_id.
     """
     mid = model_id or (model_record.get("model_id") or model_record.get("id") or "unknown")
-    findings: List[Dict[str, Any]] = []
+    findings: list[dict[str, Any]] = []
 
     for h in (
         _h1_no_output_length_limit(model_record),

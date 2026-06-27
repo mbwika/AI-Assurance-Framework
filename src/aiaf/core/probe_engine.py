@@ -42,7 +42,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ PROBE_VERSION = "1.0"
 #   fail_patterns — case-insensitive substrings; if any match → FAILED
 #   severity      — severity of a FAILED result
 # ---------------------------------------------------------------------------
-PROBE_SET: List[Dict[str, Any]] = [
+PROBE_SET: list[dict[str, Any]] = [
     # ── Prompt Injection ────────────────────────────────────────────────────
     {
         "id": "pi_ignore_prev",
@@ -187,12 +187,12 @@ RESULT_INDETERMINATE = "INDETERMINATE"
 def run_probes(
     endpoint_url: str,
     *,
-    api_key: Optional[str] = None,
+    api_key: str | None = None,
     model_name: str = "default",
     system_prompt: str = "You are a helpful assistant.",
     timeout: float = 30.0,
     http_client: Any = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run the probe set against an OpenAI-compatible chat-completion endpoint.
 
     Parameters
@@ -227,7 +227,7 @@ def run_probes(
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
 
-    probe_results: List[Dict[str, Any]] = []
+    probe_results: list[dict[str, Any]] = []
     errors = 0
 
     for probe in PROBE_SET:
@@ -252,7 +252,7 @@ def run_probes(
     )
 
 
-def run_probes_no_endpoint() -> Dict[str, Any]:
+def run_probes_no_endpoint() -> dict[str, Any]:
     """Return a canonical no-endpoint result (no network call)."""
     return _result(
         STATUS_NO_ENDPOINT, [], probes_run=0, endpoint="", model_name="",
@@ -265,14 +265,14 @@ def run_probes_no_endpoint() -> Dict[str, Any]:
 
 
 def _run_single_probe(
-    probe: Dict[str, Any],
+    probe: dict[str, Any],
     url: str,
-    headers: Dict[str, str],
+    headers: dict[str, str],
     model_name: str,
     system_prompt: str,
     timeout: float,
     client: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Execute one probe and evaluate the response."""
     try:
         body = {
@@ -302,7 +302,7 @@ def _run_single_probe(
                              error=str(exc)[:200])
 
 
-def _evaluate(probe: Dict[str, Any], text: str) -> str:
+def _evaluate(probe: dict[str, Any], text: str) -> str:
     """Keyword-match evaluation: conservative — any match → FAILED."""
     lower = text.lower()
     for pattern in probe.get("fail_patterns", []):
@@ -312,12 +312,12 @@ def _evaluate(probe: Dict[str, Any], text: str) -> str:
 
 
 def _probe_result(
-    probe: Dict[str, Any],
+    probe: dict[str, Any],
     result: str,
     *,
     response_text: str = "",
-    error: Optional[str] = None,
-) -> Dict[str, Any]:
+    error: str | None = None,
+) -> dict[str, Any]:
     return {
         "id": probe["id"],
         "category": probe["category"],
@@ -342,15 +342,15 @@ def _make_default_client() -> Any:
 
 def _result(
     status: str,
-    probe_results: List[Dict[str, Any]],
+    probe_results: list[dict[str, Any]],
     *,
     probes_run: int,
     endpoint: str,
     model_name: str,
     assessment_complete: bool = True,
-) -> Dict[str, Any]:
-    by_category: Dict[str, Dict[str, int]] = {}
-    by_severity: Dict[str, int] = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
+) -> dict[str, Any]:
+    by_category: dict[str, dict[str, int]] = {}
+    by_severity: dict[str, int] = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
     failures = 0
     for pr in probe_results:
         cat = pr.get("category", "unknown")
@@ -400,9 +400,9 @@ def _result(
 def run_garak_probes(
     endpoint_url: str,
     *,
-    probe_names: Optional[List[str]] = None,
+    probe_names: list[str] | None = None,
     **kwargs: Any,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Run garak probes if the package is installed; else return None.
 
     The garak probe suite is much broader than the built-in set.  This
@@ -416,8 +416,6 @@ def run_garak_probes(
     try:
         # garak's programmatic API varies by version; this is a best-effort
         # wrapper and may need updating as garak evolves.
-        from garak.generators.openai import OpenAIGenerator  # type: ignore
-        from garak.harnesses.pxss import PxssHarness  # type: ignore
 
         logger.info("garak available but programmatic API not yet wired — skipping.")
         return None

@@ -1,8 +1,8 @@
 """Data model for ModelRecord and related helpers."""
-from dataclasses import dataclass, asdict, field
-from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
 import uuid
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
+from typing import Any
 
 
 @dataclass
@@ -12,18 +12,18 @@ class ModelRecord:
     version: str
     source: str
     source_url: str
-    publisher: Optional[str]
+    publisher: str | None
     sha256: str
     uploaded_at: str
-    registered_by: Optional[str]
-    license: Optional[str]
-    training_data: Optional[str]
-    dependencies: List[Any] = field(default_factory=list)
-    training_artifacts: List[Dict[str, Any]] = field(default_factory=list)
-    deployment_pipeline: Dict[str, Any] = field(default_factory=dict)
-    provenance_score: Optional[int] = None
-    risk_level: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    registered_by: str | None
+    license: str | None
+    training_data: str | None
+    dependencies: list[Any] = field(default_factory=list)
+    training_artifacts: list[dict[str, Any]] = field(default_factory=list)
+    deployment_pipeline: dict[str, Any] = field(default_factory=dict)
+    provenance_score: int | None = None
+    risk_level: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def create(
@@ -33,14 +33,14 @@ class ModelRecord:
         source: str,
         source_url: str,
         sha256: str,
-        publisher: Optional[str] = None,
-        registered_by: Optional[str] = None,
-        license: Optional[str] = None,
-        training_data: Optional[str] = None,
-        dependencies: Optional[List[Any]] = None,
-        training_artifacts: Optional[List[Dict[str, Any]]] = None,
-        deployment_pipeline: Optional[Dict[str, Any]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        publisher: str | None = None,
+        registered_by: str | None = None,
+        license: str | None = None,
+        training_data: str | None = None,
+        dependencies: list[Any] | None = None,
+        training_artifacts: list[dict[str, Any]] | None = None,
+        deployment_pipeline: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
     ):
         if metadata is None:
             metadata = {}
@@ -62,7 +62,7 @@ class ModelRecord:
             metadata=metadata,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 

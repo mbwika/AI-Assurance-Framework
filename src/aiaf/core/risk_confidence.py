@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import math
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 CONFIDENCE_VERSION = "1.0"
 
@@ -45,7 +45,7 @@ ORIGIN_LOCALLY_OBSERVED = "LOCALLY_OBSERVED"
 ORIGIN_PROVIDER_DECLARED = "PROVIDER_DECLARED"
 ORIGIN_USER_ENTERED = "USER_ENTERED"
 
-ORIGIN_WEIGHTS: Dict[str, float] = {
+ORIGIN_WEIGHTS: dict[str, float] = {
     ORIGIN_INDEPENDENTLY_VERIFIED: 1.00,
     ORIGIN_ARTIFACT_DERIVED: 0.85,
     ORIGIN_LOCALLY_OBSERVED: 0.70,
@@ -95,10 +95,10 @@ def _classify_confidence(
 # ── Public API ─────────────────────────────────────────────────────────────────
 
 def compute_risk_confidence(
-    evidence_items: List[Dict[str, Any]],
+    evidence_items: list[dict[str, Any]],
     *,
     store: Any = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Compute a calibrated, origin-weighted confidence score.
 
     Parameters
@@ -135,7 +135,7 @@ def compute_risk_confidence(
         valid.append({"name": item.get("name", ""), "value": v, "weight": w, "ew": ew, "origin": o})
 
     n = len(valid)
-    origin_breakdown: Dict[str, int] = {}
+    origin_breakdown: dict[str, int] = {}
     for it in valid:
         origin_breakdown[it["origin"]] = origin_breakdown.get(it["origin"], 0) + 1
 

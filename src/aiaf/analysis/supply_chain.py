@@ -1,12 +1,13 @@
 """Bounded, evidence-aware supply-chain analysis for AI artifacts."""
 
-from collections import Counter, defaultdict
-from datetime import datetime, timezone
 import hashlib
 import hmac
 import json
 import re
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from collections import Counter, defaultdict
+from collections.abc import Iterable, Sequence
+from datetime import datetime, timezone
+from typing import Any
 from urllib.parse import urlsplit
 
 from packaging.requirements import InvalidRequirement, Requirement
@@ -16,7 +17,6 @@ from ..registry.mbom_v2 import (
     generate_attestable_ai_bom_v2,
     verify_ai_bom_v2,
 )
-
 
 SUPPLY_CHAIN_SCORING_VERSION = "2.0"
 _MAX_DEPENDENCIES = 2_000
@@ -193,11 +193,11 @@ _URL_USERINFO = re.compile(
 
 
 def validate_supply_chain(
-    artifact: Dict[str, Any],
-    assessment_context: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    artifact: dict[str, Any],
+    assessment_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Assess provenance, dependencies, lineage, deployment, and advisories."""
-    artifact_risks: List[Dict[str, Any]] = []
+    artifact_risks: list[dict[str, Any]] = []
     if not isinstance(artifact, dict):
         artifact = {}
         artifact_risks.append(
@@ -418,10 +418,10 @@ def validate_supply_chain(
     }
 
 
-def analyze_dependency_risks(dependencies: Any) -> List[Dict[str, Any]]:
+def analyze_dependency_risks(dependencies: Any) -> list[dict[str, Any]]:
     """Identify bounded, ecosystem-aware dependency inventory risks."""
     items, state = _bounded_items(dependencies, _MAX_DEPENDENCIES)
-    risks: List[Dict[str, Any]] = []
+    risks: list[dict[str, Any]] = []
     if state == "malformed":
         return [
             _risk(
@@ -441,8 +441,8 @@ def analyze_dependency_risks(dependencies: Any) -> List[Dict[str, Any]]:
             )
         )
 
-    versions_by_identity: Dict[Tuple[str, str], set] = defaultdict(set)
-    evidence_by_identity: Dict[Tuple[str, str], List[Any]] = defaultdict(list)
+    versions_by_identity: dict[tuple[str, str], set] = defaultdict(set)
+    evidence_by_identity: dict[tuple[str, str], list[Any]] = defaultdict(list)
     for index, raw_dependency in enumerate(items):
         dependency, parse_error = _dependency_record(raw_dependency)
         if parse_error:
@@ -539,10 +539,10 @@ def analyze_dependency_risks(dependencies: Any) -> List[Dict[str, Any]]:
     return _limit_risks(risks, "Dependency analysis produced more findings than the bounded result limit.")
 
 
-def analyze_training_artifact_risks(training_artifacts: Any) -> List[Dict[str, Any]]:
+def analyze_training_artifact_risks(training_artifacts: Any) -> list[dict[str, Any]]:
     """Identify bounded training lineage, integrity, and privacy risks."""
     artifacts, state = _bounded_items(training_artifacts, _MAX_TRAINING_ARTIFACTS)
-    risks: List[Dict[str, Any]] = []
+    risks: list[dict[str, Any]] = []
     if state == "malformed":
         return [
             _risk(
@@ -562,7 +562,7 @@ def analyze_training_artifact_risks(training_artifacts: Any) -> List[Dict[str, A
             )
         )
 
-    hashes_by_name: Dict[str, set] = defaultdict(set)
+    hashes_by_name: dict[str, set] = defaultdict(set)
     for index, artifact in enumerate(artifacts):
         if not isinstance(artifact, dict):
             risks.append(
@@ -624,7 +624,7 @@ def analyze_training_artifact_risks(training_artifacts: Any) -> List[Dict[str, A
 
 def analyze_deployment_pipeline_risks(
     deployment_pipeline: Any, *, expected_sha256: Any = None
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Identify release traceability, approval, and artifact-binding risks."""
     if deployment_pipeline in (None, ""):
         return []
@@ -638,7 +638,7 @@ def analyze_deployment_pipeline_risks(
             )
         ]
 
-    risks: List[Dict[str, Any]] = []
+    risks: list[dict[str, Any]] = []
     if not deployment_pipeline.get("environment"):
         risks.append(
             _risk("deployment_pipeline", "deployment_pipeline_missing_environment", "LOW", "Deployment environment is missing.")
@@ -691,12 +691,12 @@ def analyze_deployment_pipeline_risks(
 def analyze_provenance_attestation_risks(
     attestations: Any,
     *,
-    expected_artifact: Optional[Dict[str, Any]] = None,
-    verification_context: Optional[Dict[str, Any]] = None,
-) -> List[Dict[str, Any]]:
+    expected_artifact: dict[str, Any] | None = None,
+    verification_context: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     """Validate dual-read attestation evidence and trusted verification binding."""
     items, state = _bounded_items(attestations, _MAX_ATTESTATIONS)
-    risks: List[Dict[str, Any]] = []
+    risks: list[dict[str, Any]] = []
     if state == "malformed":
         return [
             _risk(
@@ -771,7 +771,7 @@ def analyze_provenance_attestation_risks(
         expected_artifact, "model_manifest_sha256"
     )
     bindings = set()
-    attestation_ids: Dict[str, int] = {}
+    attestation_ids: dict[str, int] = {}
     for index, attestation in enumerate(items):
         view = _attestation_view(attestation)
         if view is None:
@@ -1022,7 +1022,7 @@ def analyze_provenance_attestation_risks(
 
 def analyze_dependency_vulnerabilities(
     vulnerability_scan: Any, *, expected_dependencies: Any = None
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Validate persisted vulnerability-scan completeness and advisory matches."""
     if vulnerability_scan in (None, ""):
         return []
@@ -1035,7 +1035,7 @@ def analyze_dependency_vulnerabilities(
                 "Vulnerability scan evidence must be an object.",
             )
         ]
-    risks: List[Dict[str, Any]] = []
+    risks: list[dict[str, Any]] = []
     status = str(vulnerability_scan.get("status") or "").upper()
     if status not in _ALLOWED_SCAN_STATUSES:
         risks.append(
@@ -1167,7 +1167,7 @@ def analyze_dependency_vulnerabilities(
     return _limit_risks(risks, "Vulnerability analysis produced more findings than the bounded result limit.")
 
 
-def _dependency_record(raw_dependency: Any) -> Tuple[Dict[str, str], Optional[str]]:
+def _dependency_record(raw_dependency: Any) -> tuple[dict[str, str], str | None]:
     if isinstance(raw_dependency, dict):
         name = _bounded_text(raw_dependency.get("name"))
         version = _bounded_text(raw_dependency.get("version") or raw_dependency.get("specifier"))
@@ -1214,11 +1214,11 @@ def _dependency_record(raw_dependency: Any) -> Tuple[Dict[str, str], Optional[st
     }, None
 
 
-def _empty_coordinate() -> Dict[str, str]:
+def _empty_coordinate() -> dict[str, str]:
     return {"name": "", "spec": "", "source": "", "ecosystem": "unknown"}
 
 
-def _bounded_items(value: Any, limit: int) -> Tuple[List[Any], str]:
+def _bounded_items(value: Any, limit: int) -> tuple[list[Any], str]:
     if value in (None, ""):
         return [], "ok"
     if isinstance(value, dict):
@@ -1243,7 +1243,7 @@ def _item_count(value: Any) -> int:
     return len(items) if state != "malformed" else 0
 
 
-def _source_url_risks(value: Any, evidence: Any) -> List[Dict[str, Any]]:
+def _source_url_risks(value: Any, evidence: Any) -> list[dict[str, Any]]:
     text = _bounded_text(value)
     try:
         parsed = urlsplit(text)
@@ -1262,7 +1262,7 @@ def _source_url_risks(value: Any, evidence: Any) -> List[Dict[str, Any]]:
     return risks
 
 
-def _exact_version(dependency: Dict[str, str]) -> Optional[str]:
+def _exact_version(dependency: dict[str, str]) -> str | None:
     spec = dependency["spec"]
     ecosystem = dependency["ecosystem"]
     if not _is_exactly_pinned(spec, ecosystem):
@@ -1376,7 +1376,7 @@ def _immutable_revision(value: Any) -> bool:
     return bool(re.fullmatch(r"[0-9a-fA-F]{40}|[0-9a-fA-F]{64}", str(value or "").strip()))
 
 
-def _artifact_reference_digest(reference: str) -> Optional[str]:
+def _artifact_reference_digest(reference: str) -> str | None:
     match = re.search(r"@sha256:([0-9a-fA-F]+)(?:$|[?#])", reference, re.IGNORECASE)
     if not match or len(match.group(1)) != 64:
         return None
@@ -1396,7 +1396,7 @@ def _valid_attestation_shape(value: Any) -> bool:
     return _attestation_view(value) is not None
 
 
-def _attestation_view(value: Any) -> Optional[Dict[str, Any]]:
+def _attestation_view(value: Any) -> dict[str, Any] | None:
     if not isinstance(value, dict):
         return None
     if value.get("schema_version") == "2.0":
@@ -1404,7 +1404,7 @@ def _attestation_view(value: Any) -> Optional[Dict[str, Any]]:
     return _v1_attestation_view(value)
 
 
-def _v1_attestation_view(value: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _v1_attestation_view(value: dict[str, Any]) -> dict[str, Any] | None:
     statement = value.get("statement")
     if not isinstance(statement, dict):
         return None
@@ -1441,7 +1441,7 @@ def _v1_attestation_view(value: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     }
 
 
-def _v2_attestation_view(value: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _v2_attestation_view(value: dict[str, Any]) -> dict[str, Any] | None:
     if set(value) != _V2_ENVELOPE_FIELDS:
         return None
     statement = value.get("statement")
@@ -1533,13 +1533,13 @@ def _v2_attestation_view(value: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
 
 def _attestation_verification_passed(
-    attestation: Dict[str, Any],
-    view: Dict[str, Any],
+    attestation: dict[str, Any],
+    view: dict[str, Any],
     trusted_ids: set,
-    trusted_digests: Dict[str, str],
+    trusted_digests: dict[str, str],
     context_valid: bool,
     temporal_valid: bool,
-) -> Tuple[bool, bool]:
+) -> tuple[bool, bool]:
     if view["schema_version"] == "2.0":
         attestation_id = view["attestation_id"]
         if (
@@ -1573,8 +1573,8 @@ def _attestation_verification_passed(
 
 
 def _attestation_verification_context(
-    value: Optional[Dict[str, Any]],
-) -> Tuple[set, Dict[str, str], Optional[datetime], bool]:
+    value: dict[str, Any] | None,
+) -> tuple[set, dict[str, str], datetime | None, bool]:
     if value is None:
         return set(), {}, None, True
     if not isinstance(value, dict) or not set(value).issubset(
@@ -1616,12 +1616,12 @@ def _attestation_verification_context(
 
 
 def _expected_evidence_digest(
-    artifact: Dict[str, Any],
+    artifact: dict[str, Any],
     field: str,
     default: Any,
     *,
     explicit_digest_field: str,
-) -> Optional[str]:
+) -> str | None:
     explicit = _nested_evidence_value(artifact, explicit_digest_field)
     if _valid_sha256(explicit):
         return _digest_value(explicit)
@@ -1637,7 +1637,7 @@ def _expected_evidence_digest(
 
 
 def _nested_evidence_value(
-    artifact: Dict[str, Any], field: str
+    artifact: dict[str, Any], field: str
 ) -> Any:
     value = artifact.get(field)
     if value is not None:
@@ -1647,8 +1647,8 @@ def _nested_evidence_value(
 
 
 def _current_ai_bom_document_digest(
-    artifact: Dict[str, Any],
-) -> Optional[str]:
+    artifact: dict[str, Any],
+) -> str | None:
     try:
         document = generate_attestable_ai_bom_v2(artifact)
         verification = verify_ai_bom_v2(document)
@@ -1660,7 +1660,7 @@ def _current_ai_bom_document_digest(
     return _digest_value(digest) if _valid_sha256(digest) else None
 
 
-def _evidence_quality(**evidence: Any) -> Dict[str, Any]:
+def _evidence_quality(**evidence: Any) -> dict[str, Any]:
     dimensions = {
         "source": bool(evidence["source_url"]),
         "artifact_integrity": _valid_sha256(evidence["artifact_hash"]),
@@ -1721,7 +1721,7 @@ def _digest_value(value: Any) -> str:
     return text.removeprefix("sha256:")
 
 
-def _parse_datetime(value: Any) -> Optional[datetime]:
+def _parse_datetime(value: Any) -> datetime | None:
     if not isinstance(value, str) or not value.strip():
         return None
     try:
@@ -1733,7 +1733,7 @@ def _parse_datetime(value: Any) -> Optional[datetime]:
     return parsed.astimezone(timezone.utc)
 
 
-def _strict_attestation_datetime(value: Any) -> Optional[datetime]:
+def _strict_attestation_datetime(value: Any) -> datetime | None:
     if not isinstance(value, str) or not value.strip():
         return None
     try:
@@ -1761,7 +1761,7 @@ def _canonical_json(value: Any) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
 
 
-def _nonnegative_int(value: Any) -> Optional[int]:
+def _nonnegative_int(value: Any) -> int | None:
     if isinstance(value, bool) or value is None:
         return None
     try:
@@ -1793,7 +1793,7 @@ def _normalized(value: Any) -> str:
     return "_".join(re.findall(r"[a-z0-9]+", str(value or "").lower()))
 
 
-def _risk(dependency: Any, indicator: str, severity: str, detail: str) -> Dict[str, Any]:
+def _risk(dependency: Any, indicator: str, severity: str, detail: str) -> dict[str, Any]:
     return {
         "dependency": _safe_evidence(dependency),
         "indicator": indicator,
@@ -1802,7 +1802,7 @@ def _risk(dependency: Any, indicator: str, severity: str, detail: str) -> Dict[s
     }
 
 
-def _deduplicate_risks(risks: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _deduplicate_risks(risks: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     result = []
     seen = set()
     for risk in risks:
@@ -1817,7 +1817,7 @@ def _deduplicate_risks(risks: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return result
 
 
-def _limit_risks(risks: Iterable[Dict[str, Any]], detail: str) -> List[Dict[str, Any]]:
+def _limit_risks(risks: Iterable[dict[str, Any]], detail: str) -> list[dict[str, Any]]:
     deduplicated = _deduplicate_risks(risks)
     if len(deduplicated) <= _MAX_RISKS:
         return deduplicated
@@ -1841,7 +1841,7 @@ def _severity(score: float) -> str:
     return "LOW"
 
 
-def _highest_severity(base: str, risks: Sequence[Dict[str, Any]]) -> str:
+def _highest_severity(base: str, risks: Sequence[dict[str, Any]]) -> str:
     selected = base
     for risk in risks:
         severity = str(risk.get("severity") or "LOW").upper()

@@ -1,13 +1,12 @@
 """Evidence-driven assurance report generation."""
 from datetime import datetime, timezone
 from html import escape
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ..analysis import RISK_DRIFT_SCORING_VERSION, analyze_risk_drift
 from ..mapping.standards import FRAMEWORKS, STANDARD_PROFILES
 from .compliance import build_compliance_matrix
 from .monitoring import evaluate_monitoring_alerts
-
 
 # Robust drift replaces naive last-two-point/split-half deltas. The metric scale
 # and direction differ per series, and drift is computed per (artifact_id,
@@ -21,16 +20,16 @@ _DRIFT_STATUS_TO_TREND = {
 
 
 def _metric_drift_summary(
-    metrics: List[Dict[str, Any]],
+    metrics: list[dict[str, Any]],
     metric_name: str,
     *,
     direction: str,
     metric_min: float,
     metric_max: float,
-    as_of: Optional[str] = None,
-) -> Dict[str, Any]:
+    as_of: str | None = None,
+) -> dict[str, Any]:
     """Run robust drift per (artifact_id, metric_name) partition over history."""
-    by_artifact: Dict[Any, List[Dict[str, Any]]] = {}
+    by_artifact: dict[Any, list[dict[str, Any]]] = {}
     for metric in metrics:
         if metric.get("metric_name") != metric_name:
             continue
@@ -123,11 +122,11 @@ _AGENT_DECLARATION_FIELDS = [
 
 
 def build_assurance_report(
-    datastore: Optional[object],
-    artifact_id: Optional[str] = None,
-    model_id: Optional[str] = None,
-    registered_by: Optional[str] = None,
-) -> Dict[str, Any]:
+    datastore: object | None,
+    artifact_id: str | None = None,
+    model_id: str | None = None,
+    registered_by: str | None = None,
+) -> dict[str, Any]:
     """Build a compliance-oriented report from stored assurance evidence."""
     generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     scope = _report_scope(
@@ -263,7 +262,7 @@ def build_assurance_report(
     return report
 
 
-def render_assurance_report_markdown(report: Dict[str, Any]) -> str:
+def render_assurance_report_markdown(report: dict[str, Any]) -> str:
     """Render a question-led markdown export for human review."""
     summary = report.get("executive_summary", {})
     scope = report.get("scope", {})
@@ -414,8 +413,8 @@ def render_assurance_report_markdown(report: Dict[str, Any]) -> str:
 
 
 def _empty_report(
-    generated_at: str, scope: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+    generated_at: str, scope: dict[str, Any] | None = None
+) -> dict[str, Any]:
     scope = scope or _report_scope()
     return {
         "report_type": "AI Assurance Compliance Report",
@@ -622,12 +621,12 @@ def _empty_report(
 
 
 def _executive_summary(
-    finding_records: List[Dict[str, Any]],
-    finding_items: List[Dict[str, Any]],
-    latest_governance: Optional[Dict[str, Any]],
-    models: List[Dict[str, Any]],
-    risks: List[Dict[str, Any]],
-) -> Dict[str, Any]:
+    finding_records: list[dict[str, Any]],
+    finding_items: list[dict[str, Any]],
+    latest_governance: dict[str, Any] | None,
+    models: list[dict[str, Any]],
+    risks: list[dict[str, Any]],
+) -> dict[str, Any]:
     avg_score = _average([record.get("score", 0.0) for record in finding_records])
     open_gaps = len(latest_governance.get("gaps", [])) if latest_governance else 0
     high_or_critical = sum(
@@ -668,7 +667,7 @@ def _executive_summary(
     }
 
 
-def _risk_posture(finding_records: List[Dict[str, Any]], finding_items: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _risk_posture(finding_records: list[dict[str, Any]], finding_items: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "finding_records": len(finding_records),
         "finding_items": len(finding_items),
@@ -679,8 +678,8 @@ def _risk_posture(finding_records: List[Dict[str, Any]], finding_items: List[Dic
 
 
 def _model_risk_summary(
-    finding_items: List[Dict[str, Any]], metrics: List[Dict[str, Any]]
-) -> Dict[str, Any]:
+    finding_items: list[dict[str, Any]], metrics: list[dict[str, Any]]
+) -> dict[str, Any]:
     model_metrics = [
         metric for metric in metrics if metric.get("metric_name") == "model_risk_score"
     ]
@@ -764,8 +763,8 @@ def _model_risk_summary(
 
 
 def _risk_register_summary(
-    risks: List[Dict[str, Any]], generated_at: str
-) -> Dict[str, Any]:
+    risks: list[dict[str, Any]], generated_at: str
+) -> dict[str, Any]:
     actionable = [
         risk for risk in risks if risk.get("status") in {"OPEN", "IN_PROGRESS"}
     ]
@@ -807,8 +806,8 @@ def _risk_register_summary(
 
 
 def _trustworthiness_summary(
-    metrics: List[Dict[str, Any]], as_of: Optional[str] = None
-) -> Dict[str, Any]:
+    metrics: list[dict[str, Any]], as_of: str | None = None
+) -> dict[str, Any]:
     trust_metrics = [
         metric for metric in metrics if metric.get("metric_name") == "trustworthiness_score"
     ]
@@ -835,7 +834,7 @@ def _trustworthiness_summary(
         direction="higher_is_better", metric_min=0.0, metric_max=100.0, as_of=as_of,
     )
 
-    by_level: Dict[str, int] = {}
+    by_level: dict[str, int] = {}
     for metric in trust_metrics:
         level = metric.get("dimensions", {}).get("level") or "UNKNOWN"
         by_level[level] = by_level.get(level, 0) + 1
@@ -852,12 +851,12 @@ def _trustworthiness_summary(
 
 
 def _continuous_monitoring(
-    finding_records: List[Dict[str, Any]],
-    metrics: List[Dict[str, Any]],
-    schedules: List[Dict[str, Any]],
-    monitoring_runs: List[Dict[str, Any]],
+    finding_records: list[dict[str, Any]],
+    metrics: list[dict[str, Any]],
+    schedules: list[dict[str, Any]],
+    monitoring_runs: list[dict[str, Any]],
     generated_at: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     ordered = sorted(finding_records, key=lambda record: record.get("timestamp") or "")
     midpoint = len(ordered) // 2
     previous = ordered[:midpoint]
@@ -898,9 +897,9 @@ def _continuous_monitoring(
 
 
 def _governance_summary(
-    latest_governance: Optional[Dict[str, Any]],
-    governance_evaluations: List[Dict[str, Any]],
-) -> Dict[str, Any]:
+    latest_governance: dict[str, Any] | None,
+    governance_evaluations: list[dict[str, Any]],
+) -> dict[str, Any]:
     if latest_governance is None:
         return {
             "status": "NO_EVIDENCE",
@@ -918,10 +917,10 @@ def _governance_summary(
 
 
 def _standards_coverage(
-    finding_items: List[Dict[str, Any]],
-    latest_governance: Optional[Dict[str, Any]],
-) -> Dict[str, Any]:
-    by_framework: Dict[str, int] = {framework: 0 for framework in FRAMEWORKS}
+    finding_items: list[dict[str, Any]],
+    latest_governance: dict[str, Any] | None,
+) -> dict[str, Any]:
+    by_framework: dict[str, int] = {framework: 0 for framework in FRAMEWORKS}
     controls_by_framework = {framework: set() for framework in FRAMEWORKS}
 
     for finding in finding_items:
@@ -958,12 +957,12 @@ def _standards_coverage(
 
 
 def _supply_chain_summary(
-    models: List[Dict[str, Any]],
-    finding_items: List[Dict[str, Any]],
-    advisories: List[Dict[str, Any]],
-    advisory_feed_snapshots: List[Dict[str, Any]],
+    models: list[dict[str, Any]],
+    finding_items: list[dict[str, Any]],
+    advisories: list[dict[str, Any]],
+    advisory_feed_snapshots: list[dict[str, Any]],
     evaluated_at: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     scans = [model.get("vulnerability_scan") or {} for model in models]
     feed_summary = _advisory_feed_summary(
         advisory_feed_snapshots, scans, advisories, evaluated_at
@@ -997,11 +996,11 @@ def _supply_chain_summary(
 
 
 def _advisory_feed_summary(
-    snapshots: List[Dict[str, Any]],
-    scans: List[Dict[str, Any]],
-    advisories: List[Dict[str, Any]],
+    snapshots: list[dict[str, Any]],
+    scans: list[dict[str, Any]],
+    advisories: list[dict[str, Any]],
     evaluated_at: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     latest_by_feed = {}
     for snapshot in snapshots:
         current = latest_by_feed.get(snapshot.get("feed_id"))
@@ -1075,7 +1074,7 @@ def _advisory_feed_summary(
     }
 
 
-def _flatten_findings(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _flatten_findings(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     items = []
     for record in records:
         for finding in record.get("findings", []):
@@ -1088,10 +1087,10 @@ def _flatten_findings(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 def _safe_list_models(
     datastore: object,
-    artifact_id: Optional[str] = None,
-    model_id: Optional[str] = None,
-    registered_by: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+    artifact_id: str | None = None,
+    model_id: str | None = None,
+    registered_by: str | None = None,
+) -> list[dict[str, Any]]:
     if registered_by:
         list_models = getattr(datastore, "list_models", None)
         if not list_models:
@@ -1120,8 +1119,8 @@ def _safe_list_models(
 
 
 def _safe_list_monitoring_schedules(
-    datastore: object, artifact_id: Optional[str] = None
-) -> List[Dict[str, Any]]:
+    datastore: object, artifact_id: str | None = None
+) -> list[dict[str, Any]]:
     list_schedules = getattr(datastore, "list_monitoring_schedules", None)
     if not list_schedules:
         return []
@@ -1132,8 +1131,8 @@ def _safe_list_monitoring_schedules(
 
 
 def _safe_list_monitoring_runs(
-    datastore: object, artifact_id: Optional[str] = None
-) -> List[Dict[str, Any]]:
+    datastore: object, artifact_id: str | None = None
+) -> list[dict[str, Any]]:
     list_runs = getattr(datastore, "list_monitoring_runs", None)
     if not list_runs:
         return []
@@ -1144,8 +1143,8 @@ def _safe_list_monitoring_runs(
 
 
 def _safe_list_risks(
-    datastore: object, artifact_id: Optional[str] = None
-) -> List[Dict[str, Any]]:
+    datastore: object, artifact_id: str | None = None
+) -> list[dict[str, Any]]:
     list_risks = getattr(datastore, "list_risks", None)
     if not list_risks:
         return []
@@ -1155,7 +1154,7 @@ def _safe_list_risks(
         return []
 
 
-def _safe_list_advisories(datastore: object) -> List[Dict[str, Any]]:
+def _safe_list_advisories(datastore: object) -> list[dict[str, Any]]:
     list_advisories = getattr(datastore, "list_advisories", None)
     if not list_advisories:
         return []
@@ -1167,7 +1166,7 @@ def _safe_list_advisories(datastore: object) -> List[Dict[str, Any]]:
 
 def _safe_list_advisory_feed_snapshots(
     datastore: object,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     list_snapshots = getattr(datastore, "list_advisory_feed_snapshots", None)
     if not list_snapshots:
         return []
@@ -1178,8 +1177,8 @@ def _safe_list_advisory_feed_snapshots(
 
 
 def _safe_list_control_evidence(
-    datastore: object, artifact_id: Optional[str] = None
-) -> List[Dict[str, Any]]:
+    datastore: object, artifact_id: str | None = None
+) -> list[dict[str, Any]]:
     list_evidence = getattr(datastore, "list_control_evidence", None)
     if not list_evidence:
         return []
@@ -1190,8 +1189,8 @@ def _safe_list_control_evidence(
 
 
 def _safe_list_agent_sessions(
-    datastore: object, artifact_id: Optional[str] = None
-) -> List[Dict[str, Any]]:
+    datastore: object, artifact_id: str | None = None
+) -> list[dict[str, Any]]:
     list_sessions = getattr(datastore, "list_agent_sessions", None)
     if not list_sessions:
         return []
@@ -1202,8 +1201,8 @@ def _safe_list_agent_sessions(
 
 
 def _safe_list_tool_invocations(
-    datastore: object, artifact_id: Optional[str] = None
-) -> List[Dict[str, Any]]:
+    datastore: object, artifact_id: str | None = None
+) -> list[dict[str, Any]]:
     list_invocations = getattr(datastore, "list_tool_invocations", None)
     if not list_invocations:
         return []
@@ -1214,8 +1213,8 @@ def _safe_list_tool_invocations(
 
 
 def _safe_list_report_snapshots(
-    datastore: object, artifact_id: Optional[str] = None
-) -> List[Dict[str, Any]]:
+    datastore: object, artifact_id: str | None = None
+) -> list[dict[str, Any]]:
     list_snapshots = getattr(datastore, "list_assurance_report_snapshots", None)
     if not list_snapshots:
         return []
@@ -1226,8 +1225,8 @@ def _safe_list_report_snapshots(
 
 
 def _governance_evidence_summary(
-    evidence: List[Dict[str, Any]], generated_at: str
-) -> Dict[str, Any]:
+    evidence: list[dict[str, Any]], generated_at: str
+) -> dict[str, Any]:
     expired = [
         item
         for item in evidence
@@ -1255,8 +1254,8 @@ def _governance_evidence_summary(
 
 
 def _agentic_runtime_summary(
-    sessions: List[Dict[str, Any]], invocations: List[Dict[str, Any]]
-) -> Dict[str, Any]:
+    sessions: list[dict[str, Any]], invocations: list[dict[str, Any]]
+) -> dict[str, Any]:
     decisions = _count_by(invocations, "decision")
     return {
         "total_sessions": len(sessions),
@@ -1279,8 +1278,8 @@ def _agentic_runtime_summary(
 
 
 def _report_snapshot_summary(
-    snapshots: List[Dict[str, Any]],
-) -> Dict[str, Any]:
+    snapshots: list[dict[str, Any]],
+) -> dict[str, Any]:
     signed = sum(1 for snapshot in snapshots if snapshot.get("signature"))
     return {
         "total_snapshots": len(snapshots),
@@ -1293,7 +1292,7 @@ def _report_snapshot_summary(
     }
 
 
-def _model_inventory_summary(models: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _model_inventory_summary(models: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "total_models": len(models),
         "by_risk": _count_by(models, "risk_level"),
@@ -1324,7 +1323,7 @@ def _model_inventory_summary(models: List[Dict[str, Any]]) -> Dict[str, Any]:
                 "risk_level": model.get("risk_level"),
                 "created_at": model.get("created_at"),
                 "known_vulnerability_matches": int(
-                    ((model.get("vulnerability_scan") or {}).get("match_count", 0) or 0)
+                    (model.get("vulnerability_scan") or {}).get("match_count", 0) or 0
                 ),
             }
             for model in models[:100]
@@ -1333,12 +1332,12 @@ def _model_inventory_summary(models: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def _technical_explainability(
-    scope: Dict[str, Any],
-    models: List[Dict[str, Any]],
-    finding_items: List[Dict[str, Any]],
-    governance_evaluations: List[Dict[str, Any]],
-    control_evidence: List[Dict[str, Any]],
-) -> Dict[str, Any]:
+    scope: dict[str, Any],
+    models: list[dict[str, Any]],
+    finding_items: list[dict[str, Any]],
+    governance_evaluations: list[dict[str, Any]],
+    control_evidence: list[dict[str, Any]],
+) -> dict[str, Any]:
     governance_by_artifact = _latest_governance_by_artifact(governance_evaluations)
     evidence_by_id = {item.get("id"): item for item in control_evidence if item.get("id")}
     registry_by_artifact = {
@@ -1427,11 +1426,11 @@ def _technical_explainability(
 
 def _artifact_explainability(
     artifact_id: str,
-    model: Optional[Dict[str, Any]],
-    finding_items: List[Dict[str, Any]],
-    governance: Optional[Dict[str, Any]],
-    evidence_by_id: Dict[str, Dict[str, Any]],
-) -> Dict[str, Any]:
+    model: dict[str, Any] | None,
+    finding_items: list[dict[str, Any]],
+    governance: dict[str, Any] | None,
+    evidence_by_id: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
     artifact_findings = sorted(
         [
             item
@@ -1441,7 +1440,7 @@ def _artifact_explainability(
         key=lambda item: item.get("timestamp") or "",
         reverse=True,
     )
-    latest_by_type: Dict[str, Dict[str, Any]] = {}
+    latest_by_type: dict[str, dict[str, Any]] = {}
     for finding in artifact_findings:
         latest_by_type.setdefault(str(finding.get("type") or "unknown"), finding)
 
@@ -1466,7 +1465,7 @@ def _artifact_explainability(
     }
 
 
-def _provenance_explainability(model: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def _provenance_explainability(model: dict[str, Any] | None) -> dict[str, Any]:
     if not model:
         return {
             "available": False,
@@ -1496,7 +1495,7 @@ def _provenance_explainability(model: Optional[Dict[str, Any]]) -> Dict[str, Any
     }
 
 
-def _declaration_summary(model: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def _declaration_summary(model: dict[str, Any] | None) -> dict[str, Any]:
     if not model:
         return {
             "present_count": 0,
@@ -1535,7 +1534,7 @@ def _declaration_summary(model: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
-def _finding_explainability(finding: Dict[str, Any]) -> Dict[str, Any]:
+def _finding_explainability(finding: dict[str, Any]) -> dict[str, Any]:
     detail = finding.get("detail") or {}
     tool_results = list(detail.get("tool_results") or [])
     return {
@@ -1561,9 +1560,9 @@ def _finding_explainability(finding: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _governance_explainability(
-    governance: Optional[Dict[str, Any]],
-    evidence_by_id: Dict[str, Dict[str, Any]],
-) -> Dict[str, Any]:
+    governance: dict[str, Any] | None,
+    evidence_by_id: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
     if governance is None:
         return {
             "status": "NO_EVALUATION",
@@ -1621,8 +1620,8 @@ def _governance_explainability(
 
 
 def _latest_governance_by_artifact(
-    governance_evaluations: List[Dict[str, Any]]
-) -> Dict[str, Dict[str, Any]]:
+    governance_evaluations: list[dict[str, Any]]
+) -> dict[str, dict[str, Any]]:
     latest = {}
     for evaluation in governance_evaluations:
         details = evaluation.get("details") or {}
@@ -1636,7 +1635,7 @@ def _latest_governance_by_artifact(
     return latest
 
 
-def _dimension_rows(dimensions: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _dimension_rows(dimensions: dict[str, Any]) -> list[dict[str, Any]]:
     rows = []
     for name, payload in dimensions.items():
         payload = payload if isinstance(payload, dict) else {"value": payload}
@@ -1656,7 +1655,7 @@ def _dimension_rows(dimensions: Dict[str, Any]) -> List[Dict[str, Any]]:
     return rows
 
 
-def _artifact_field(model: Dict[str, Any], field: str) -> Any:
+def _artifact_field(model: dict[str, Any], field: str) -> Any:
     if field in model:
         return model.get(field)
     metadata = model.get("metadata")
@@ -1692,7 +1691,7 @@ def _has_evidence(value: Any) -> bool:
     return True
 
 
-def _assurance_questions(report: Dict[str, Any]) -> Dict[str, Any]:
+def _assurance_questions(report: dict[str, Any]) -> dict[str, Any]:
     scope = report.get("scope", {})
     summary = report.get("executive_summary", {})
     governance = report.get("governance", {})
@@ -1747,10 +1746,10 @@ def _assurance_questions(report: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _recommended_actions(report: Dict[str, Any]) -> List[Dict[str, Any]]:
-    actions: List[Dict[str, Any]] = []
+def _recommended_actions(report: dict[str, Any]) -> list[dict[str, Any]]:
+    actions: list[dict[str, Any]] = []
     summary = report.get("executive_summary", {})
-    governance = report.get("governance", {})
+    report.get("governance", {})
     compliance = report.get("compliance", {})
     supply = report.get("supply_chain", {})
     trust = report.get("trustworthiness", {})
@@ -1838,7 +1837,7 @@ def _recommended_actions(report: Dict[str, Any]) -> List[Dict[str, Any]]:
     return actions
 
 
-def _risk_score_context(report: Dict[str, Any]) -> Dict[str, Any]:
+def _risk_score_context(report: dict[str, Any]) -> dict[str, Any]:
     score = float((report.get("executive_summary") or {}).get("current_risk_score", 0.0) or 0.0)
     bands = [
         {"label": "LOW", "minimum": 0.0, "maximum": 3.0, "description": "Routine exposure with limited immediate concern."},
@@ -1868,7 +1867,7 @@ def _risk_score_context(report: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _visualizations(report: Dict[str, Any], metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _visualizations(report: dict[str, Any], metrics: list[dict[str, Any]]) -> dict[str, Any]:
     posture = report.get("risk_posture", {})
     compliance = report.get("compliance", {})
     inventory = report.get("model_inventory", {})
@@ -1913,7 +1912,7 @@ def _visualizations(report: Dict[str, Any], metrics: List[Dict[str, Any]]) -> Di
     }
 
 
-def render_assurance_report_html(report: Dict[str, Any]) -> str:
+def render_assurance_report_html(report: dict[str, Any]) -> str:
     summary = report.get("executive_summary", {})
     scope = report.get("scope", {})
     inventory = report.get("model_inventory", {})
@@ -2259,8 +2258,8 @@ def render_assurance_report_html(report: Dict[str, Any]) -> str:
 """
 
 
-def _count_by(items: List[Dict[str, Any]], field: str) -> Dict[str, int]:
-    counts: Dict[str, int] = {}
+def _count_by(items: list[dict[str, Any]], field: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
     for item in items:
         value = item.get(field) or "UNKNOWN"
         counts[value] = counts.get(value, 0) + 1
@@ -2268,10 +2267,10 @@ def _count_by(items: List[Dict[str, Any]], field: str) -> Dict[str, int]:
 
 
 def _report_scope(
-    artifact_id: Optional[str] = None,
-    model_id: Optional[str] = None,
-    registered_by: Optional[str] = None,
-) -> Dict[str, Any]:
+    artifact_id: str | None = None,
+    model_id: str | None = None,
+    registered_by: str | None = None,
+) -> dict[str, Any]:
     filters = {
         "artifact_id": str(artifact_id or "").strip() or None,
         "model_id": str(model_id or "").strip() or None,
@@ -2289,7 +2288,7 @@ def _report_scope(
     return {"type": "PORTFOLIO", "artifact_id": None}
 
 
-def _scope_single_artifact(scope: Dict[str, Any]) -> Optional[str]:
+def _scope_single_artifact(scope: dict[str, Any]) -> str | None:
     if scope.get("type") == "ARTIFACT":
         return scope.get("artifact_id")
     if scope.get("type") == "MODEL":
@@ -2298,8 +2297,8 @@ def _scope_single_artifact(scope: Dict[str, Any]) -> Optional[str]:
 
 
 def _scope_artifact_ids(
-    scope: Dict[str, Any], models: List[Dict[str, Any]]
-) -> Optional[set]:
+    scope: dict[str, Any], models: list[dict[str, Any]]
+) -> set | None:
     if scope.get("type") == "PORTFOLIO":
         return None
     if scope.get("type") == "REGISTRANT":
@@ -2314,16 +2313,16 @@ def _scope_artifact_ids(
 
 
 def _filter_rows_by_artifact_ids(
-    rows: List[Dict[str, Any]], artifact_ids: Optional[set]
-) -> List[Dict[str, Any]]:
+    rows: list[dict[str, Any]], artifact_ids: set | None
+) -> list[dict[str, Any]]:
     if artifact_ids is None:
         return rows
     return [row for row in rows if row.get("artifact_id") in artifact_ids]
 
 
 def _filter_report_snapshots_by_scope(
-    snapshots: List[Dict[str, Any]], scope: Dict[str, Any]
-) -> List[Dict[str, Any]]:
+    snapshots: list[dict[str, Any]], scope: dict[str, Any]
+) -> list[dict[str, Any]]:
     scope_type = scope.get("type")
     if scope_type == "PORTFOLIO":
         return snapshots
@@ -2348,20 +2347,20 @@ def _filter_report_snapshots_by_scope(
     return snapshots
 
 
-def _average(values: List[Any]) -> float:
+def _average(values: list[Any]) -> float:
     numeric = [float(value or 0.0) for value in values]
     if not numeric:
         return 0.0
     return sum(numeric) / len(numeric)
 
 
-def _canonical_framework(framework: Optional[str]) -> Optional[str]:
+def _canonical_framework(framework: str | None) -> str | None:
     if framework is None:
         return None
     return FRAMEWORK_ALIASES.get(framework, framework)
 
 
-def _framework_profiles() -> Dict[str, Dict[str, str]]:
+def _framework_profiles() -> dict[str, dict[str, str]]:
     return {
         profile["name"]: {
             "version": profile["version"],
@@ -2371,7 +2370,7 @@ def _framework_profiles() -> Dict[str, Dict[str, str]]:
     }
 
 
-def _dict_to_series(counts: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _dict_to_series(counts: dict[str, Any]) -> list[dict[str, Any]]:
     return [
         {"label": str(label), "value": float(value or 0.0)}
         for label, value in counts.items()
@@ -2379,7 +2378,7 @@ def _dict_to_series(counts: Dict[str, Any]) -> List[Dict[str, Any]]:
     ]
 
 
-def _metric_series(metrics: List[Dict[str, Any]], metric_name: str) -> List[Dict[str, Any]]:
+def _metric_series(metrics: list[dict[str, Any]], metric_name: str) -> list[dict[str, Any]]:
     points = [
         {
             "t": metric.get("created_at"),
@@ -2392,7 +2391,7 @@ def _metric_series(metrics: List[Dict[str, Any]], metric_name: str) -> List[Dict
     return sorted(points, key=lambda item: item.get("t") or "")
 
 
-def _render_chart_block(chart: Dict[str, Any]) -> str:
+def _render_chart_block(chart: dict[str, Any]) -> str:
     kind = chart.get("kind")
     title = escape(str(chart.get("title", "Chart")))
     if kind == "line":
@@ -2402,7 +2401,7 @@ def _render_chart_block(chart: Dict[str, Any]) -> str:
     return f'<article class="chart-card"><h3>{title}</h3><div style="margin-top:12px;">{svg}</div></article>'
 
 
-def _scope_badge_label(scope: Dict[str, Any]) -> str:
+def _scope_badge_label(scope: dict[str, Any]) -> str:
     scope_type = scope.get("type")
     if scope_type == "MODEL":
         return f"Model {scope.get('model_id')}"
@@ -2413,7 +2412,7 @@ def _scope_badge_label(scope: Dict[str, Any]) -> str:
     return "Portfolio"
 
 
-def _html_stat_panel(title: str, rows: List[tuple]) -> str:
+def _html_stat_panel(title: str, rows: list[tuple]) -> str:
     rendered = []
     for row in rows:
         if len(row) == 3:
@@ -2430,7 +2429,7 @@ def _html_stat_panel(title: str, rows: List[tuple]) -> str:
     )
 
 
-def _render_action_item(item: Dict[str, Any]) -> str:
+def _render_action_item(item: dict[str, Any]) -> str:
     priority = escape(str(item.get("priority", "P3")))
     title = escape(str(item.get("title", "Action")))
     reason = escape(str(item.get("reason", "")))
@@ -2450,7 +2449,7 @@ def _render_action_item(item: Dict[str, Any]) -> str:
     return f"<li><strong>{priority}</strong> {title}: {linked_reason}</li>"
 
 
-def _band_range_label(band: Dict[str, Any]) -> str:
+def _band_range_label(band: dict[str, Any]) -> str:
     minimum = band.get("minimum", 0.0)
     maximum = band.get("maximum", 10.0)
     if band.get("label") == "CRITICAL":
@@ -2458,7 +2457,7 @@ def _band_range_label(band: Dict[str, Any]) -> str:
     return f"{minimum:.1f} - <{maximum:.1f}"
 
 
-def _risk_rows(risks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _risk_rows(risks: list[dict[str, Any]]) -> list[dict[str, Any]]:
     severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
     ordered = sorted(
         risks,
@@ -2498,7 +2497,7 @@ def _framework_link(name: str, url: str) -> str:
 
 
 def _reference_list_html(
-    reference_details: List[Dict[str, Any]], fallback_references: List[str]
+    reference_details: list[dict[str, Any]], fallback_references: list[str]
 ) -> str:
     details = reference_details or [
         {"label": reference, "summary": reference, "url": ""}
@@ -2518,7 +2517,7 @@ def _reference_list_html(
     return ", ".join(items) or "None"
 
 
-def _render_explainability_html(explainability: Dict[str, Any]) -> str:
+def _render_explainability_html(explainability: dict[str, Any]) -> str:
     basis = explainability.get("analysis_basis") or {}
     summary = explainability.get("summary") or {}
     storage_rows = "".join(
@@ -2568,7 +2567,7 @@ def _render_explainability_html(explainability: Dict[str, Any]) -> str:
     """
 
 
-def _render_explainability_artifact_html(artifact: Dict[str, Any]) -> str:
+def _render_explainability_artifact_html(artifact: dict[str, Any]) -> str:
     declarations = (artifact.get("declarations") or {}).get("fields") or []
     registry_fields = (artifact.get("declarations") or {}).get("registry_fields") or []
     provenance = artifact.get("provenance") or {}
@@ -2636,7 +2635,7 @@ def _render_explainability_artifact_html(artifact: Dict[str, Any]) -> str:
     """
 
 
-def _render_finding_explainability_html(finding: Dict[str, Any]) -> str:
+def _render_finding_explainability_html(finding: dict[str, Any]) -> str:
     dimension_rows = "".join(
         f"<tr><td>{escape(str(item.get('name') or ''))}</td><td>{escape(str(item.get('score') if item.get('score') is not None else 'N/A'))}</td><td>{escape(str(item.get('value') if item.get('value') is not None else ''))}</td><td>{escape(str(item.get('risk_count') if item.get('risk_count') is not None else ''))}</td></tr>"
         for item in (finding.get("dimensions") or [])
@@ -2708,7 +2707,7 @@ def _provenance_score_label(value: Any) -> str:
     return f"{rounded}/100 ({band})"
 
 
-def _svg_bar_chart(series: List[Dict[str, Any]]) -> str:
+def _svg_bar_chart(series: list[dict[str, Any]]) -> str:
     if not series:
         return '<p class="muted">No data.</p>'
     width = 520
@@ -2732,7 +2731,7 @@ def _svg_bar_chart(series: List[Dict[str, Any]]) -> str:
     return f'<svg viewBox="0 0 {width} {height}" width="100%" height="{height}" role="img">{"".join(bars)}</svg>'
 
 
-def _svg_line_chart(series: List[Dict[str, Any]]) -> str:
+def _svg_line_chart(series: list[dict[str, Any]]) -> str:
     if len(series) < 2:
         return '<p class="muted">Not enough historical points yet.</p>'
     width = 520

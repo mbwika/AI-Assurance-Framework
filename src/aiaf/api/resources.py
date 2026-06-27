@@ -11,19 +11,22 @@ REST endpoints:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from .models import get_api_key, get_store
 from ..analysis.resource_monitor import (
     RESOURCE_TYPES,
     ResourceMonitorError,
-    create_budget, get_budget,
-    record_usage, get_session_state,
-    check_budget_violations, list_at_risk_sessions,
+    check_budget_violations,
+    create_budget,
+    get_budget,
+    get_session_state,
+    list_at_risk_sessions,
+    record_usage,
 )
+from .models import get_api_key, get_store
 
 router = APIRouter(prefix="/v1/resources", tags=["resource-monitoring"])
 
@@ -33,13 +36,13 @@ router = APIRouter(prefix="/v1/resources", tags=["resource-monitoring"])
 class CreateBudgetRequest(BaseModel):
     budget_id: str
     model_id: str
-    budget: Optional[Dict[str, float]] = None
+    budget: dict[str, float] | None = None
 
 
 class RecordUsageRequest(BaseModel):
     resource_type: str = Field(..., description=f"One of: {', '.join(sorted(RESOURCE_TYPES))}")
     value: float
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
@@ -105,7 +108,7 @@ def get_budget_violations(
 
 @router.get("/sessions/at-risk")
 def list_at_risk_resource_sessions(
-    risk_type: Optional[str] = None,
+    risk_type: str | None = None,
     limit: int = 50,
     _: str = Depends(get_api_key),
     store: Any = Depends(get_store),

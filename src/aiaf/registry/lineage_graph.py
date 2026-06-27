@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Strips HF architecture class suffixes: "LlamaForCausalLM" → "llama"
 _HF_ARCH_SUFFIX_RE = re.compile(
@@ -35,7 +35,7 @@ _HF_ARCH_SUFFIX_RE = re.compile(
 LINEAGE_VERSION = "1.0"
 
 # model_type (config.json / HF card) → architecture family label
-_MODEL_TYPE_TO_FAMILY: Dict[str, str] = {
+_MODEL_TYPE_TO_FAMILY: dict[str, str] = {
     "llama": "transformer",
     "llama2": "transformer",
     "llama3": "transformer",
@@ -86,9 +86,9 @@ _MERGE_INDICATORS = frozenset({
 
 
 def derive_lineage(
-    model_record: Dict[str, Any],
-    weight_inspection: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    model_record: dict[str, Any],
+    weight_inspection: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Derive the lineage graph for a registered model.
 
     Parameters
@@ -108,7 +108,7 @@ def derive_lineage(
     )
 
     # ── Collect base_model candidates ────────────────────────────────────────
-    candidates: List[Dict[str, str]] = []
+    candidates: list[dict[str, str]] = []
 
     # config.json / model metadata fields (ARTIFACT_DERIVED → PROVIDER_DECLARED)
     for field in ("base_model", "_name_or_path", "parent_model"):
@@ -142,7 +142,7 @@ def derive_lineage(
                                 "origin": "user_entered"})
 
     # ── Pick strongest candidate ─────────────────────────────────────────────
-    base_model: Optional[str] = None
+    base_model: str | None = None
     lineage_source = "unverifiable"
     for c in candidates:
         if c["source"] in ("config_json", "hf_model_card"):
@@ -170,7 +170,7 @@ def derive_lineage(
     arch_consistency = _check_arch_consistency(metadata, hf_card, weight_inspection)
 
     # ── Decidability bounds for lineage ──────────────────────────────────────
-    cannot_verify: List[str] = [
+    cannot_verify: list[str] = [
         "Whether the claimed base model identifier resolves to the exact "
         "artifact weights used during fine-tuning (requires bit-for-bit "
         "access to the original base artifact)",
@@ -213,11 +213,11 @@ def derive_lineage(
 
 def _detect_merge_flags(
     model_id: str,
-    metadata: Dict[str, Any],
-    hf_card: Dict[str, Any],
-    candidates: List[Dict[str, str]],
-) -> List[str]:
-    flags: List[str] = []
+    metadata: dict[str, Any],
+    hf_card: dict[str, Any],
+    candidates: list[dict[str, str]],
+) -> list[str]:
+    flags: list[str] = []
 
     lower_id = model_id.lower()
     for indicator in _MERGE_INDICATORS:
@@ -243,9 +243,9 @@ def _detect_merge_flags(
 
 
 def _check_arch_consistency(
-    metadata: Dict[str, Any],
-    hf_card: Dict[str, Any],
-    weight_inspection: Optional[Dict[str, Any]],
+    metadata: dict[str, Any],
+    hf_card: dict[str, Any],
+    weight_inspection: dict[str, Any] | None,
 ) -> str:
     """CONSISTENT | INCONSISTENT | UNVERIFIABLE."""
     if weight_inspection is None:

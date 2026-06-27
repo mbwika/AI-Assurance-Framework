@@ -1,20 +1,38 @@
 """Tests for src/aiaf/registry/identity_registry.py"""
 
-import pytest
 from datetime import datetime, timedelta, timezone
+
+import pytest
+
 from aiaf.registry.identity_registry import (
+    DELEGATION_ACTIVE,
+    DELEGATION_EXPIRED,
+    DELEGATION_REVOKED,
     IDENTITY_VERSION,
-    PRINCIPAL_MODEL, PRINCIPAL_AGENT, PRINCIPAL_TOOL,
-    PRINCIPAL_DATASET, PRINCIPAL_HUMAN, PRINCIPAL_SERVICE,
+    PRINCIPAL_AGENT,
+    PRINCIPAL_DATASET,
+    PRINCIPAL_HUMAN,
+    PRINCIPAL_MODEL,
+    PRINCIPAL_SERVICE,
+    PRINCIPAL_TOOL,
     PRINCIPAL_TYPES,
-    TRUST_UNTRUSTED, TRUST_EXTERNAL, TRUST_INTERNAL, TRUST_PRIVILEGED,
+    TRUST_EXTERNAL,
+    TRUST_INTERNAL,
     TRUST_LEVELS,
-    DELEGATION_ACTIVE, DELEGATION_REVOKED, DELEGATION_EXPIRED,
+    TRUST_PRIVILEGED,
+    TRUST_UNTRUSTED,
     IdentityError,
-    register_principal, get_principal, list_principals, update_principal,
-    grant_delegation, get_delegation, revoke_delegation, list_delegations,
-    verify_authority, get_authority_chain,
     _scope_matches,
+    get_authority_chain,
+    get_delegation,
+    get_principal,
+    grant_delegation,
+    list_delegations,
+    list_principals,
+    register_principal,
+    revoke_delegation,
+    update_principal,
+    verify_authority,
 )
 
 

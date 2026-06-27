@@ -1,12 +1,12 @@
 """SQLite development datastore for assurance records and metrics."""
-from typing import Optional, List, Dict, Any
-import sqlite3
 import json
+import sqlite3
 import threading
 import uuid
 from contextlib import contextmanager
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
 
 
 class DataStore:
@@ -17,7 +17,7 @@ class DataStore:
     the datastore factory.
     """
 
-    def __init__(self, db_path: Optional[str] = None, pg_dsn: Optional[str] = None, vector_url: Optional[str] = None):
+    def __init__(self, db_path: str | None = None, pg_dsn: str | None = None, vector_url: str | None = None):
         # db_path defaults to data/aiaf.db in repo root
         if db_path is None:
             base = Path.cwd()
@@ -402,7 +402,7 @@ class DataStore:
         )
         self._conn.commit()
 
-    def save_finding(self, finding: Dict[str, Any]) -> int:
+    def save_finding(self, finding: dict[str, Any]) -> int:
         with self._conn_lock:
             cur = self._conn.cursor()
             cur.execute(
@@ -420,8 +420,8 @@ class DataStore:
             return row_id
 
     def list_findings(
-        self, limit: int = 100, artifact_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, limit: int = 100, artifact_id: str | None = None
+    ) -> list[dict[str, Any]]:
         with self._conn_lock:
             cur = self._conn.cursor()
             if artifact_id:
@@ -448,7 +448,7 @@ class DataStore:
                 )
             return out
 
-    def save_model(self, model_record: Dict[str, Any]) -> str:
+    def save_model(self, model_record: dict[str, Any]) -> str:
         with self._conn_lock:
             cur = self._conn.cursor()
             model_id = str(model_record.get("model_id") or uuid.uuid4())
@@ -493,7 +493,7 @@ class DataStore:
             self._conn.commit()
             return model_id
 
-    def get_model(self, model_id: str) -> Optional[Dict[str, Any]]:
+    def get_model(self, model_id: str) -> dict[str, Any] | None:
         with self._conn_lock:
             cur = self._conn.cursor()
             cur.execute(
@@ -534,8 +534,8 @@ class DataStore:
             }
 
     def list_models(
-        self, limit: int = 100, registered_by: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, limit: int = 100, registered_by: str | None = None
+    ) -> list[dict[str, Any]]:
         with self._conn_lock:
             cur = self._conn.cursor()
             if registered_by:
@@ -591,7 +591,7 @@ class DataStore:
         self._conn.commit()
         return job_id
 
-    def update_job(self, job_id: str, status: str, result: Dict[str, Any]) -> None:
+    def update_job(self, job_id: str, status: str, result: dict[str, Any]) -> None:
         now = _utc_now()
         cur = self._conn.cursor()
         cur.execute(
@@ -600,7 +600,7 @@ class DataStore:
         )
         self._conn.commit()
 
-    def get_job(self, job_id: str) -> Optional[Dict[str, Any]]:
+    def get_job(self, job_id: str) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         cur.execute("SELECT id, status, result_json, created_at, updated_at FROM jobs WHERE id = ?", (job_id,))
         row = cur.fetchone()
@@ -632,7 +632,7 @@ class DataStore:
                 for row in cur.fetchall()
             ]
 
-    def save_audit_log(self, event: Dict[str, Any]) -> int:
+    def save_audit_log(self, event: dict[str, Any]) -> int:
         with self._conn_lock:
             now = _utc_now()
             cur = self._conn.cursor()
@@ -651,8 +651,8 @@ class DataStore:
             return row_id
 
     def list_audit_logs(
-        self, limit: int = 100, artifact_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, limit: int = 100, artifact_id: str | None = None
+    ) -> list[dict[str, Any]]:
         with self._conn_lock:
             cur = self._conn.cursor()
             if artifact_id:
@@ -677,7 +677,7 @@ class DataStore:
                 for row in rows
             ]
 
-    def save_metric(self, metric_name: str, metric_value: float, dimensions: Optional[Dict[str, Any]] = None) -> int:
+    def save_metric(self, metric_name: str, metric_value: float, dimensions: dict[str, Any] | None = None) -> int:
         with self._conn_lock:
             now = _utc_now()
             dimensions = dimensions or {}
@@ -698,8 +698,8 @@ class DataStore:
             return row_id
 
     def list_metrics(
-        self, limit: int = 100, artifact_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, limit: int = 100, artifact_id: str | None = None
+    ) -> list[dict[str, Any]]:
         with self._conn_lock:
             cur = self._conn.cursor()
             if artifact_id:
@@ -725,7 +725,7 @@ class DataStore:
                 for row in rows
             ]
 
-    def save_monitoring_schedule(self, schedule: Dict[str, Any]) -> str:
+    def save_monitoring_schedule(self, schedule: dict[str, Any]) -> str:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -757,7 +757,7 @@ class DataStore:
         self._conn.commit()
         return schedule["id"]
 
-    def get_monitoring_schedule(self, schedule_id: str) -> Optional[Dict[str, Any]]:
+    def get_monitoring_schedule(self, schedule_id: str) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -773,11 +773,11 @@ class DataStore:
     def list_monitoring_schedules(
         self,
         limit: int = 100,
-        enabled: Optional[bool] = None,
-        artifact_id: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        enabled: bool | None = None,
+        artifact_id: str | None = None,
+    ) -> list[dict[str, Any]]:
         conditions = []
-        params: List[Any] = []
+        params: list[Any] = []
         if enabled is not None:
             conditions.append("enabled = ?")
             params.append(int(enabled))
@@ -799,7 +799,7 @@ class DataStore:
 
     def list_due_monitoring_schedules(
         self, as_of: str, limit: int = 100
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -813,7 +813,7 @@ class DataStore:
         )
         return [_monitoring_schedule_from_row(row) for row in cur.fetchall()]
 
-    def save_monitoring_run(self, run: Dict[str, Any]) -> str:
+    def save_monitoring_run(self, run: dict[str, Any]) -> str:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -844,11 +844,11 @@ class DataStore:
     def list_monitoring_runs(
         self,
         limit: int = 100,
-        schedule_id: Optional[str] = None,
-        artifact_id: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        schedule_id: str | None = None,
+        artifact_id: str | None = None,
+    ) -> list[dict[str, Any]]:
         conditions = []
-        params: List[Any] = []
+        params: list[Any] = []
         if schedule_id:
             conditions.append("schedule_id = ?")
             params.append(schedule_id)
@@ -868,7 +868,7 @@ class DataStore:
         )
         return [_monitoring_run_from_row(row) for row in cur.fetchall()]
 
-    def upsert_risk_observation(self, risk: Dict[str, Any]) -> Dict[str, Any]:
+    def upsert_risk_observation(self, risk: dict[str, Any]) -> dict[str, Any]:
         cur = self._conn.cursor()
         cur.execute(
             "SELECT id, status, due_at, resolution FROM risk_register WHERE fingerprint = ?",
@@ -932,7 +932,7 @@ class DataStore:
         assert stored_risk is not None, "Risk upsert did not persist a retrievable record"
         return stored_risk
 
-    def get_risk(self, risk_id: str) -> Optional[Dict[str, Any]]:
+    def get_risk(self, risk_id: str) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -950,12 +950,12 @@ class DataStore:
     def list_risks(
         self,
         limit: int = 100,
-        status: Optional[str] = None,
-        artifact_id: Optional[str] = None,
-        severity: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        status: str | None = None,
+        artifact_id: str | None = None,
+        severity: str | None = None,
+    ) -> list[dict[str, Any]]:
         conditions = []
-        params: List[Any] = []
+        params: list[Any] = []
         if status:
             conditions.append("status = ?")
             params.append(status)
@@ -980,7 +980,7 @@ class DataStore:
         )
         return [_risk_from_row(row) for row in cur.fetchall()]
 
-    def update_risk(self, risk_id: str, changes: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def update_risk(self, risk_id: str, changes: dict[str, Any]) -> dict[str, Any] | None:
         columns = {
             "status": "status",
             "owner": "owner",
@@ -998,7 +998,7 @@ class DataStore:
         self._conn.commit()
         return self.get_risk(risk_id)
 
-    def save_advisory(self, advisory: Dict[str, Any]) -> str:
+    def save_advisory(self, advisory: dict[str, Any]) -> str:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -1047,11 +1047,11 @@ class DataStore:
     def list_advisories(
         self,
         limit: int = 1000,
-        ecosystem: Optional[str] = None,
-        package_name: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        ecosystem: str | None = None,
+        package_name: str | None = None,
+    ) -> list[dict[str, Any]]:
         conditions = []
-        params: List[Any] = []
+        params: list[Any] = []
         if ecosystem:
             conditions.append("ecosystem = ?")
             params.append(ecosystem)
@@ -1073,7 +1073,7 @@ class DataStore:
         )
         return [_advisory_from_row(row) for row in cur.fetchall()]
 
-    def save_advisory_feed_snapshot(self, snapshot: Dict[str, Any]) -> str:
+    def save_advisory_feed_snapshot(self, snapshot: dict[str, Any]) -> str:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -1108,7 +1108,7 @@ class DataStore:
 
     def get_advisory_feed_snapshot(
         self, snapshot_id: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -1124,8 +1124,8 @@ class DataStore:
         return _advisory_feed_snapshot_from_row(row) if row else None
 
     def get_latest_advisory_feed_snapshot(
-        self, feed_id: Optional[str] = None
-    ) -> Optional[Dict[str, Any]]:
+        self, feed_id: str | None = None
+    ) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         if feed_id:
             cur.execute(
@@ -1154,8 +1154,8 @@ class DataStore:
         return _advisory_feed_snapshot_from_row(row) if row else None
 
     def list_advisory_feed_snapshots(
-        self, limit: int = 100, feed_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, limit: int = 100, feed_id: str | None = None
+    ) -> list[dict[str, Any]]:
         cur = self._conn.cursor()
         if feed_id:
             cur.execute(
@@ -1183,7 +1183,7 @@ class DataStore:
             )
         return [_advisory_feed_snapshot_from_row(row) for row in cur.fetchall()]
 
-    def save_control_evidence(self, evidence: Dict[str, Any]) -> str:
+    def save_control_evidence(self, evidence: dict[str, Any]) -> str:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -1216,7 +1216,7 @@ class DataStore:
         self._conn.commit()
         return evidence["id"]
 
-    def save_assurance_report_snapshot(self, snapshot: Dict[str, Any]) -> str:
+    def save_assurance_report_snapshot(self, snapshot: dict[str, Any]) -> str:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -1246,7 +1246,7 @@ class DataStore:
 
     def get_assurance_report_snapshot(
         self, snapshot_id: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -1261,8 +1261,8 @@ class DataStore:
         return _assurance_report_snapshot_from_row(row) if row else None
 
     def list_assurance_report_snapshots(
-        self, limit: int = 100, artifact_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, limit: int = 100, artifact_id: str | None = None
+    ) -> list[dict[str, Any]]:
         cur = self._conn.cursor()
         if artifact_id:
             cur.execute(
@@ -1290,7 +1290,7 @@ class DataStore:
             _assurance_report_snapshot_from_row(row) for row in cur.fetchall()
         ]
 
-    def get_control_evidence(self, evidence_id: str) -> Optional[Dict[str, Any]]:
+    def get_control_evidence(self, evidence_id: str) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -1308,12 +1308,12 @@ class DataStore:
     def list_control_evidence(
         self,
         limit: int = 1000,
-        artifact_id: Optional[str] = None,
-        control_id: Optional[str] = None,
-        status: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        artifact_id: str | None = None,
+        control_id: str | None = None,
+        status: str | None = None,
+    ) -> list[dict[str, Any]]:
         conditions = []
-        params: List[Any] = []
+        params: list[Any] = []
         for column, value in (
             ("artifact_id", artifact_id),
             ("control_id", control_id),
@@ -1338,8 +1338,8 @@ class DataStore:
         return [_control_evidence_from_row(row) for row in cur.fetchall()]
 
     def review_control_evidence(
-        self, evidence_id: str, review: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+        self, evidence_id: str, review: dict[str, Any]
+    ) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -1362,7 +1362,7 @@ class DataStore:
         self._conn.commit()
         return self.get_control_evidence(evidence_id)
 
-    def save_agent_session(self, session: Dict[str, Any]) -> str:
+    def save_agent_session(self, session: dict[str, Any]) -> str:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -1387,7 +1387,7 @@ class DataStore:
         self._conn.commit()
         return session["id"]
 
-    def get_agent_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+    def get_agent_session(self, session_id: str) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -1404,11 +1404,11 @@ class DataStore:
     def list_agent_sessions(
         self,
         limit: int = 100,
-        artifact_id: Optional[str] = None,
-        status: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        artifact_id: str | None = None,
+        status: str | None = None,
+    ) -> list[dict[str, Any]]:
         conditions = []
-        params: List[Any] = []
+        params: list[Any] = []
         if artifact_id:
             conditions.append("artifact_id = ?")
             params.append(artifact_id)
@@ -1431,7 +1431,7 @@ class DataStore:
 
     def update_agent_session_status(
         self, session_id: str, status: str, updated_at: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         cur.execute(
             "UPDATE agent_sessions SET status = ?, updated_at = ? WHERE id = ?",
@@ -1441,8 +1441,8 @@ class DataStore:
         return self.get_agent_session(session_id)
 
     def record_tool_invocation(
-        self, invocation: Dict[str, Any], max_external_calls: Optional[int]
-    ) -> Dict[str, Any]:
+        self, invocation: dict[str, Any], max_external_calls: int | None
+    ) -> dict[str, Any]:
         cur = self._conn.cursor()
         try:
             cur.execute("BEGIN IMMEDIATE")
@@ -1550,12 +1550,12 @@ class DataStore:
     def list_tool_invocations(
         self,
         limit: int = 100,
-        session_id: Optional[str] = None,
-        decision: Optional[str] = None,
-        artifact_id: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        session_id: str | None = None,
+        decision: str | None = None,
+        artifact_id: str | None = None,
+    ) -> list[dict[str, Any]]:
         conditions = []
-        params: List[Any] = []
+        params: list[Any] = []
         if session_id:
             conditions.append("d.session_id = ?")
             params.append(session_id)
@@ -1594,7 +1594,7 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _monitoring_schedule_from_row(row: sqlite3.Row) -> Dict[str, Any]:
+def _monitoring_schedule_from_row(row: sqlite3.Row) -> dict[str, Any]:
     return {
         "id": row["id"],
         "artifact_id": row["artifact_id"],
@@ -1608,7 +1608,7 @@ def _monitoring_schedule_from_row(row: sqlite3.Row) -> Dict[str, Any]:
     }
 
 
-def _monitoring_run_from_row(row: sqlite3.Row) -> Dict[str, Any]:
+def _monitoring_run_from_row(row: sqlite3.Row) -> dict[str, Any]:
     return {
         "id": row["id"],
         "schedule_id": row["schedule_id"],
@@ -1621,7 +1621,7 @@ def _monitoring_run_from_row(row: sqlite3.Row) -> Dict[str, Any]:
     }
 
 
-def _risk_from_row(row: sqlite3.Row) -> Dict[str, Any]:
+def _risk_from_row(row: sqlite3.Row) -> dict[str, Any]:
     return {
         "id": row["id"],
         "fingerprint": row["fingerprint"],
@@ -1642,7 +1642,7 @@ def _risk_from_row(row: sqlite3.Row) -> Dict[str, Any]:
     }
 
 
-def _advisory_from_row(row: sqlite3.Row) -> Dict[str, Any]:
+def _advisory_from_row(row: sqlite3.Row) -> dict[str, Any]:
     return {
         "record_key": row["record_key"],
         "advisory_id": row["advisory_id"],
@@ -1663,7 +1663,7 @@ def _advisory_from_row(row: sqlite3.Row) -> Dict[str, Any]:
     }
 
 
-def _advisory_feed_snapshot_from_row(row: sqlite3.Row) -> Dict[str, Any]:
+def _advisory_feed_snapshot_from_row(row: sqlite3.Row) -> dict[str, Any]:
     return {
         "id": row["id"],
         "feed_id": row["feed_id"],
@@ -1684,7 +1684,7 @@ def _advisory_feed_snapshot_from_row(row: sqlite3.Row) -> Dict[str, Any]:
     }
 
 
-def _control_evidence_from_row(row: sqlite3.Row) -> Dict[str, Any]:
+def _control_evidence_from_row(row: sqlite3.Row) -> dict[str, Any]:
     return {
         "id": row["id"],
         "artifact_id": row["artifact_id"],
@@ -1705,7 +1705,7 @@ def _control_evidence_from_row(row: sqlite3.Row) -> Dict[str, Any]:
     }
 
 
-def _assurance_report_snapshot_from_row(row: sqlite3.Row) -> Dict[str, Any]:
+def _assurance_report_snapshot_from_row(row: sqlite3.Row) -> dict[str, Any]:
     return {
         "id": row["id"],
         "artifact_id": row["artifact_id"],
@@ -1722,7 +1722,7 @@ def _assurance_report_snapshot_from_row(row: sqlite3.Row) -> Dict[str, Any]:
     }
 
 
-def _agent_session_from_row(row: sqlite3.Row) -> Dict[str, Any]:
+def _agent_session_from_row(row: sqlite3.Row) -> dict[str, Any]:
     return {
         "id": row["id"],
         "artifact_id": row["artifact_id"],
@@ -1736,7 +1736,7 @@ def _agent_session_from_row(row: sqlite3.Row) -> Dict[str, Any]:
     }
 
 
-def _tool_invocation_from_row(row: sqlite3.Row) -> Dict[str, Any]:
+def _tool_invocation_from_row(row: sqlite3.Row) -> dict[str, Any]:
     artifact_id = row["artifact_id"] if "artifact_id" in row.keys() else None
     return {
         "id": row["id"],
@@ -1760,7 +1760,7 @@ def _tool_invocation_from_row(row: sqlite3.Row) -> Dict[str, Any]:
 
 
 def _same_invocation_request(
-    existing: Dict[str, Any], requested: Dict[str, Any]
+    existing: dict[str, Any], requested: dict[str, Any]
 ) -> bool:
     scalar_fields = (
         "workflow_step_id",

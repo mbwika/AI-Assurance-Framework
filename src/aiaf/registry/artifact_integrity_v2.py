@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
 import hmac
 import json
 import os
-from pathlib import Path, PurePosixPath
 import stat
-from typing import Any, Dict, List, Optional, Tuple
 import unicodedata
-
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
+from typing import Any
 
 ARTIFACT_INTEGRITY_SCORING_VERSION = "2.0"
 FILE_DIGEST_ALGORITHM = "SHA-256"
@@ -79,21 +78,21 @@ class _Scan:
     target_valid: bool
     complete: bool
     stable: bool
-    artifact_kind: Optional[str]
-    algorithm: Optional[str]
-    digest: Optional[str]
+    artifact_kind: str | None
+    algorithm: str | None
+    digest: str | None
     byte_size: int
-    records: List[Dict[str, Any]]
+    records: list[dict[str, Any]]
     directories_examined: int
-    diagnostics: List[Dict[str, Any]]
+    diagnostics: list[dict[str, Any]]
 
 
 def measure_artifact_integrity_v2(
     path: Any,
-    scan_context: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    scan_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Measure one regular file or directory snapshot without following links."""
-    diagnostics: List[Dict[str, Any]] = []
+    diagnostics: list[dict[str, Any]] = []
     policy = _policy(scan_context, diagnostics)
     scan = _scan_artifact(path, policy, diagnostics)
     evidence = _evidence(scan, include_manifest=policy.include_manifest)
@@ -117,10 +116,10 @@ def measure_artifact_integrity_v2(
 def verify_artifact_integrity_v2(
     path: Any,
     expected_evidence: Any,
-    verification_context: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    verification_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Verify artifact bytes, structure, and optional per-file manifest evidence."""
-    diagnostics: List[Dict[str, Any]] = []
+    diagnostics: list[dict[str, Any]] = []
     policy = _policy(verification_context, diagnostics)
     expected, expected_valid = _expected_evidence(
         expected_evidence, policy, diagnostics
@@ -306,15 +305,15 @@ def _scan_file(path, policy, diagnostics):
 
 def _scan_directory(root, policy, diagnostics):
     root_before = _snapshot(os.lstat(root))
-    records: List[Dict[str, Any]] = []
-    snapshots: List[Tuple[Path, _Snapshot]] = [(root, root_before)]
+    records: list[dict[str, Any]] = []
+    snapshots: list[tuple[Path, _Snapshot]] = [(root, root_before)]
     directories_examined = 0
     entries_examined = 0
     complete = True
     stable = True
     total_bytes = 0
-    collision_keys: Dict[str, Tuple[str, str]] = {}
-    stack: List[Tuple[Path, str, int, _Snapshot]] = [
+    collision_keys: dict[str, tuple[str, str]] = {}
+    stack: list[tuple[Path, str, int, _Snapshot]] = [
         (root, "", 0, root_before)
     ]
 

@@ -3,15 +3,28 @@
 import pytest
 
 from aiaf.core.incident_manager import (
+    _ALLOWED_TRANSITIONS,
+    _TERMINAL_STATES,
     INCIDENT_VERSION,
-    SEVERITY_CRITICAL, SEVERITY_HIGH, SEVERITY_MEDIUM, SEVERITY_LOW, SEVERITY_INFO,
+    SEVERITY_CRITICAL,
+    SEVERITY_HIGH,
+    SEVERITY_INFO,
+    SEVERITY_LOW,
+    SEVERITY_MEDIUM,
     SEVERITY_VALUES,
-    STATE_OPEN, STATE_INVESTIGATING, STATE_CONTAINED, STATE_RESOLVED, STATE_ACCEPTED,
+    STATE_ACCEPTED,
+    STATE_CONTAINED,
+    STATE_INVESTIGATING,
+    STATE_OPEN,
+    STATE_RESOLVED,
     STATE_VALUES,
-    _ALLOWED_TRANSITIONS, _TERMINAL_STATES,
     IncidentError,
-    create_incident, get_incident, list_incidents,
-    update_incident_state, add_incident_note, snapshot_incident,
+    add_incident_note,
+    create_incident,
+    get_incident,
+    list_incidents,
+    snapshot_incident,
+    update_incident_state,
 )
 
 

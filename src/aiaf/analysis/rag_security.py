@@ -34,7 +34,7 @@ from __future__ import annotations
 import hashlib
 import re
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 SCAN_VERSION = "1.0"
 
@@ -46,7 +46,7 @@ STATUS_INJECTION_DETECTED = "INJECTION_DETECTED"  # HIGH/CRITICAL injection
 STATUS_LEAKAGE_DETECTED = "LEAKAGE_DETECTED"      # PII/credentials in chunks
 STATUS_TRUST_VIOLATION = "TRUST_VIOLATION"         # mixed/low trust labels
 
-_STATUS_RANK: Dict[str, int] = {
+_STATUS_RANK: dict[str, int] = {
     STATUS_CLEAN: 0,
     STATUS_SUSPICIOUS: 1,
     STATUS_TRUST_VIOLATION: 2,
@@ -56,7 +56,7 @@ _STATUS_RANK: Dict[str, int] = {
 
 # ── Trust label rank (imported pattern mirrors rag_inventory constants) ────────
 
-_TRUST_RANK: Dict[str, int] = {
+_TRUST_RANK: dict[str, int] = {
     "VERIFIED": 5,
     "INTERNAL": 4,
     "EXTERNAL": 3,
@@ -67,7 +67,7 @@ _TRUST_RANK: Dict[str, int] = {
 # ── Pattern tables ────────────────────────────────────────────────────────────
 # Each entry: (compiled_regex, severity, finding_type, refs)
 
-_RAG_INJECTION_PATTERNS: List[Tuple[re.Pattern, str, str, List[str]]] = [
+_RAG_INJECTION_PATTERNS: list[tuple[re.Pattern, str, str, list[str]]] = [
     # ── Direct AI addressing embedded in a document ───────────────────────
     (re.compile(
         r"(?:note\s+to|attention|for)\s+(?:the\s+)?(?:ai|llm|assistant|chatbot|gpt|claude|gemini)\b",
@@ -140,7 +140,7 @@ _RAG_INJECTION_PATTERNS: List[Tuple[re.Pattern, str, str, List[str]]] = [
 ]
 
 # PII / leakage patterns — reused structure, tagged as leakage findings
-_LEAKAGE_PATTERNS: List[Tuple[re.Pattern, str, str, List[str]]] = [
+_LEAKAGE_PATTERNS: list[tuple[re.Pattern, str, str, list[str]]] = [
     (re.compile(r"\b[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}\b"),
      "LOW", "leakage_pii_email", ["OWASP-LLM02"]),
     (re.compile(r"\b(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b"),
@@ -171,7 +171,7 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _parse_iso8601(value: Optional[str]) -> Optional[datetime]:
+def _parse_iso8601(value: str | None) -> datetime | None:
     raw = str(value or "").strip()
     if not raw:
         return None
@@ -185,23 +185,23 @@ def _worst_status(a: str, b: str) -> str:
     return a if _STATUS_RANK.get(a, 0) >= _STATUS_RANK.get(b, 0) else b
 
 
-def _by_severity(findings: List[Dict[str, Any]]) -> Dict[str, int]:
-    result: Dict[str, int] = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
+def _by_severity(findings: list[dict[str, Any]]) -> dict[str, int]:
+    result: dict[str, int] = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
     for f in findings:
         sev = f.get("severity", "LOW")
         result[sev] = result.get(sev, 0) + 1
     return result
 
 
-def _by_type(findings: List[Dict[str, Any]]) -> Dict[str, int]:
-    result: Dict[str, int] = {}
+def _by_type(findings: list[dict[str, Any]]) -> dict[str, int]:
+    result: dict[str, int] = {}
     for f in findings:
         ft = f.get("type", "unknown")
         result[ft] = result.get(ft, 0) + 1
     return result
 
 
-def _scan_content(content: str, patterns: List[Tuple], dedup: Optional[set] = None) -> List[Dict[str, Any]]:
+def _scan_content(content: str, patterns: list[tuple], dedup: set | None = None) -> list[dict[str, Any]]:
     """Scan ``content`` against ``patterns`` (regex, severity, type, refs).
 
     ``dedup`` set prevents duplicate finding types within a single chunk.
@@ -224,7 +224,7 @@ def _scan_content(content: str, patterns: List[Tuple], dedup: Optional[set] = No
     return findings
 
 
-def _injection_status_from_findings(findings: List[Dict[str, Any]]) -> str:
+def _injection_status_from_findings(findings: list[dict[str, Any]]) -> str:
     if not findings:
         return STATUS_CLEAN
     severities = {f["severity"] for f in findings}
@@ -233,21 +233,20 @@ def _injection_status_from_findings(findings: List[Dict[str, Any]]) -> str:
     return STATUS_SUSPICIOUS
 
 
-def _leakage_status_from_findings(findings: List[Dict[str, Any]]) -> str:
+def _leakage_status_from_findings(findings: list[dict[str, Any]]) -> str:
     if not findings:
         return STATUS_CLEAN
     return STATUS_LEAKAGE_DETECTED
 
 
 def _check_trust_violations(
-    chunks: List[Dict[str, Any]],
-    minimum_trust_label: Optional[str] = None,
-) -> Tuple[bool, List[Dict[str, Any]]]:
+    chunks: list[dict[str, Any]],
+    minimum_trust_label: str | None = None,
+) -> tuple[bool, list[dict[str, Any]]]:
     """Return ``(violation_found, trust_findings)``."""
     findings = []
     min_rank = _TRUST_RANK.get(str(minimum_trust_label or "").upper(), 0)
     lowest_rank = 5
-    lowest_label = "VERIFIED"
     labels_seen = set()
 
     for i, chunk in enumerate(chunks):
@@ -257,7 +256,6 @@ def _check_trust_violations(
             labels_seen.add(tl)
             if rank < lowest_rank:
                 lowest_rank = rank
-                lowest_label = tl
 
         # UNTRUSTED is always flagged — adversarial content is plausible
         if tl == "UNTRUSTED":
@@ -302,11 +300,11 @@ def _check_trust_violations(
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def scan_chunks(
-    chunks: List[Dict[str, Any]],
+    chunks: list[dict[str, Any]],
     *,
-    minimum_trust_label: Optional[str] = None,
+    minimum_trust_label: str | None = None,
     scan_for_leakage: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Scan a list of retrieved RAG chunks for security findings.
 
     Parameters
@@ -331,9 +329,9 @@ def scan_chunks(
         ``trust_summary``, ``trust_violation``,
         ``evidence_origin``, ``scanned_at``.
     """
-    all_findings: List[Dict[str, Any]] = []
-    affected_chunks: List[int] = []
-    trust_summary: Dict[str, int] = {}
+    all_findings: list[dict[str, Any]] = []
+    affected_chunks: list[int] = []
+    trust_summary: dict[str, int] = {}
     status = STATUS_CLEAN
 
     for idx, chunk in enumerate(chunks):
@@ -343,7 +341,7 @@ def scan_chunks(
             trust_summary[tl] = trust_summary.get(tl, 0) + 1
 
         chunk_dedup: set = set()
-        chunk_findings: List[Dict[str, Any]] = []
+        chunk_findings: list[dict[str, Any]] = []
 
         # 1. Indirect prompt injection
         inj = _scan_content(content, _RAG_INJECTION_PATTERNS, chunk_dedup)
@@ -400,9 +398,9 @@ def scan_document_for_ingestion(
     content: str,
     trust_label: str,
     *,
-    doc_id: Optional[str] = None,
+    doc_id: str | None = None,
     scan_for_leakage: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Scan a document before it is ingested into a vector store.
 
     This is a pre-ingestion gate: if the document contains injection patterns
@@ -428,7 +426,7 @@ def scan_document_for_ingestion(
         ``evidence_origin``, ``scanned_at``.
     """
     content_hash = _sha256(content)
-    findings: List[Dict[str, Any]] = []
+    findings: list[dict[str, Any]] = []
     dedup: set = set()
     status = STATUS_CLEAN
 
@@ -465,7 +463,7 @@ def scan_document_for_ingestion(
 def assess_store_security(
     store_id: str,
     inventory_store: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Compute a security posture summary for a registered vector store.
 
     Parameters
@@ -504,8 +502,8 @@ def assess_store_security(
     vulnerable = 0
     high_risk = 0
     low_trust = 0
-    trust_dist: Dict[str, int] = {}
-    backend_findings: List[Dict[str, Any]] = []
+    trust_dist: dict[str, int] = {}
+    backend_findings: list[dict[str, Any]] = []
 
     for doc in docs:
         tl = doc.get("trust_label", "")
@@ -515,7 +513,7 @@ def assess_store_security(
             low_trust += 1
 
         scan_status = doc.get("scan_status")
-        finding_count = doc.get("scan_finding_count", 0)
+        doc.get("scan_finding_count", 0)
         if scan_status is None:
             unscanned += 1
         elif scan_status == STATUS_INJECTION_DETECTED:

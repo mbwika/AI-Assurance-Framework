@@ -25,7 +25,7 @@ managed by AIAF locally.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 IDENTITY_VERSION = "1.0"
 
@@ -52,7 +52,7 @@ TRUST_LEVELS: frozenset = frozenset(
     {TRUST_UNTRUSTED, TRUST_EXTERNAL, TRUST_INTERNAL, TRUST_PRIVILEGED}
 )
 
-_TRUST_RANK: Dict[str, int] = {
+_TRUST_RANK: dict[str, int] = {
     TRUST_PRIVILEGED: 3, TRUST_INTERNAL: 2, TRUST_EXTERNAL: 1, TRUST_UNTRUSTED: 0,
 }
 
@@ -86,11 +86,11 @@ def _delegation_key(delegation_id: str) -> str:
     return f"{_DELEGATION_PREFIX}{delegation_id}"
 
 
-def _meta(record: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def _meta(record: dict[str, Any] | None) -> dict[str, Any]:
     return (record or {}).get("metadata") or {}
 
 
-def _is_expired(delegation: Dict[str, Any]) -> bool:
+def _is_expired(delegation: dict[str, Any]) -> bool:
     exp = delegation.get("expires_at")
     if not exp:
         return False
@@ -111,7 +111,7 @@ def _scope_matches(scope_item: str, action: str, resource: str) -> bool:
     return (a_pat in ("*", action)) and (r_pat in ("*", resource))
 
 
-def _delegation_is_active(delegation: Dict[str, Any]) -> bool:
+def _delegation_is_active(delegation: dict[str, Any]) -> bool:
     if delegation.get("status") != DELEGATION_ACTIVE:
         return False
     if _is_expired(delegation):
@@ -128,9 +128,9 @@ def register_principal(
     store: Any,
     *,
     trust_level: str = TRUST_INTERNAL,
-    capabilities: Optional[List[str]] = None,
-    attributes: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    capabilities: list[str] | None = None,
+    attributes: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Register a new principal or update an existing one."""
     principal_id = str(principal_id).strip()
     if not principal_id:
@@ -146,7 +146,7 @@ def register_principal(
 
     existing = _meta(store.get_model(_principal_key(principal_id)))
     now = _utc_now()
-    record_meta: Dict[str, Any] = {
+    record_meta: dict[str, Any] = {
         "principal_id": principal_id,
         "principal_type": principal_type,
         "name": name,
@@ -165,7 +165,7 @@ def register_principal(
     return record_meta
 
 
-def get_principal(principal_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def get_principal(principal_id: str, store: Any) -> dict[str, Any] | None:
     """Return a principal record, or None if not found."""
     rec = store.get_model(_principal_key(str(principal_id).strip()))
     return _meta(rec) if rec else None
@@ -174,10 +174,10 @@ def get_principal(principal_id: str, store: Any) -> Optional[Dict[str, Any]]:
 def list_principals(
     store: Any,
     *,
-    principal_type: Optional[str] = None,
-    trust_level: Optional[str] = None,
+    principal_type: str | None = None,
+    trust_level: str | None = None,
     limit: int = 100,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """List principals with optional type and trust level filters."""
     all_records = store.list_models() if hasattr(store, "list_models") else []
     results = []
@@ -200,10 +200,10 @@ def update_principal(
     principal_id: str,
     store: Any,
     *,
-    trust_level: Optional[str] = None,
-    capabilities: Optional[List[str]] = None,
-    attributes: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    trust_level: str | None = None,
+    capabilities: list[str] | None = None,
+    attributes: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Partially update an existing principal."""
     existing = get_principal(principal_id, store)
     if not existing:
@@ -232,12 +232,12 @@ def grant_delegation(
     delegation_id: str,
     delegator_id: str,
     delegate_id: str,
-    scope: List[str],
+    scope: list[str],
     store: Any,
     *,
-    granted_by: Optional[str] = None,
-    expires_at: Optional[str] = None,
-) -> Dict[str, Any]:
+    granted_by: str | None = None,
+    expires_at: str | None = None,
+) -> dict[str, Any]:
     """Grant delegate_id permission to act within scope on behalf of delegator_id."""
     delegation_id = str(delegation_id).strip()
     if not delegation_id:
@@ -248,7 +248,7 @@ def grant_delegation(
         raise IdentityError("scope must be a list of permission strings")
 
     now = _utc_now()
-    record_meta: Dict[str, Any] = {
+    record_meta: dict[str, Any] = {
         "delegation_id": delegation_id,
         "delegator_id": delegator_id,
         "delegate_id": delegate_id,
@@ -267,7 +267,7 @@ def grant_delegation(
     return record_meta
 
 
-def get_delegation(delegation_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def get_delegation(delegation_id: str, store: Any) -> dict[str, Any] | None:
     """Return a delegation record, or None if not found."""
     rec = store.get_model(_delegation_key(str(delegation_id).strip()))
     if not rec:
@@ -285,8 +285,8 @@ def revoke_delegation(
     delegation_id: str,
     store: Any,
     *,
-    reason: Optional[str] = None,
-) -> Dict[str, Any]:
+    reason: str | None = None,
+) -> dict[str, Any]:
     """Revoke an active delegation immediately."""
     d = get_delegation(delegation_id, store)
     if not d:
@@ -310,11 +310,11 @@ def revoke_delegation(
 def list_delegations(
     store: Any,
     *,
-    delegator_id: Optional[str] = None,
-    delegate_id: Optional[str] = None,
+    delegator_id: str | None = None,
+    delegate_id: str | None = None,
     active_only: bool = True,
     limit: int = 100,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """List delegations with optional filters."""
     all_records = store.list_models() if hasattr(store, "list_models") else []
     results = []
@@ -342,7 +342,7 @@ def verify_authority(
     action: str,
     resource: str,
     store: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Verify whether principal_id is authorised to perform action on resource.
 
     Checks direct capabilities on the principal record and then walks the
@@ -405,8 +405,8 @@ def get_authority_chain(
     principal_id: str,
     store: Any,
     *,
-    _visited: Optional[Set[str]] = None,
-) -> List[Dict[str, Any]]:
+    _visited: set[str] | None = None,
+) -> list[dict[str, Any]]:
     """Return all active delegations where this principal is the delegate.
 
     Recursively follows delegation chains (cycle-safe via ``_visited``).

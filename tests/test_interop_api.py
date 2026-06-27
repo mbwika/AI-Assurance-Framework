@@ -63,8 +63,9 @@ def test_bom_export_returns_200_for_known_model(tmp_path, monkeypatch):
 
 def test_bom_export_returns_404_for_unknown_model(tmp_path, monkeypatch):
     ensure_src()
-    from aiaf.api import interop as interop_api
     from fastapi import HTTPException
+
+    from aiaf.api import interop as interop_api
 
     store = _make_store(tmp_path)
     monkeypatch.setattr(interop_api, "get_store", lambda: store)
@@ -93,9 +94,10 @@ def test_bom_export_has_correct_content_type(tmp_path, monkeypatch):
 
 def test_enrich_hf_returns_404_for_unknown_model(tmp_path, monkeypatch):
     ensure_src()
+    from fastapi import HTTPException
+
     from aiaf.api import interop as interop_api
     from aiaf.api.interop import HfEnrichRequest
-    from fastapi import HTTPException
 
     store = _make_store(tmp_path)
     monkeypatch.setattr(interop_api, "get_store", lambda: store)
@@ -111,9 +113,10 @@ def test_enrich_hf_returns_404_for_unknown_model(tmp_path, monkeypatch):
 
 def test_enrich_hf_raises_422_when_no_repo_id(tmp_path, monkeypatch):
     ensure_src()
+    from fastapi import HTTPException
+
     from aiaf.api import interop as interop_api
     from aiaf.api.interop import HfEnrichRequest
-    from fastapi import HTTPException
 
     store = _make_store(tmp_path)
     monkeypatch.setattr(interop_api, "get_store", lambda: store)
@@ -140,9 +143,10 @@ def test_enrich_hf_raises_422_when_no_repo_id(tmp_path, monkeypatch):
 
 def test_sigstore_verify_returns_404_for_unknown_model(tmp_path, monkeypatch):
     ensure_src()
+    from fastapi import HTTPException
+
     from aiaf.api import interop as interop_api
     from aiaf.api.interop import SigstoreVerifyRequest
-    from fastapi import HTTPException
 
     store = _make_store(tmp_path)
     monkeypatch.setattr(interop_api, "get_store", lambda: store)
@@ -158,9 +162,10 @@ def test_sigstore_verify_returns_404_for_unknown_model(tmp_path, monkeypatch):
 
 def test_sigstore_verify_raises_422_when_no_stored_artifact_path(tmp_path, monkeypatch):
     ensure_src()
+    from fastapi import HTTPException
+
     from aiaf.api import interop as interop_api
     from aiaf.api.interop import SigstoreVerifyRequest
-    from fastapi import HTTPException
 
     store = _make_store(tmp_path)
     monkeypatch.setattr(interop_api, "get_store", lambda: store)
@@ -204,9 +209,10 @@ def test_sigstore_verify_not_signed_when_no_bundle(tmp_path, monkeypatch):
 
 def test_sigstore_verify_rejects_artifact_path_outside_approved_roots(tmp_path, monkeypatch):
     ensure_src()
+    from fastapi import HTTPException
+
     from aiaf.api import interop as interop_api
     from aiaf.api.interop import SigstoreVerifyRequest
-    from fastapi import HTTPException
 
     store = _make_store(tmp_path)
     monkeypatch.setattr(interop_api, "get_store", lambda: store)

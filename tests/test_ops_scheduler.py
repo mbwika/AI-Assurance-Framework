@@ -1,24 +1,43 @@
 """Tests for aiaf.core.ops_scheduler."""
 
+from datetime import datetime, timezone
+
 import pytest
-from datetime import datetime, timedelta, timezone
 
 from aiaf.core.ops_scheduler import (
-    SCHEDULER_VERSION,
-    SCHEDULE_INTERVAL, SCHEDULE_DAILY, SCHEDULE_WEEKLY, SCHEDULE_ONE_SHOT,
-    SCHEDULE_TYPES,
-    JOB_RED_TEAM, JOB_TELEMETRY_INGEST, JOB_ANOMALY_SCAN, JOB_SNAPSHOT, JOB_VULN_SCAN,
+    JOB_ANOMALY_SCAN,
+    JOB_RED_TEAM,
+    JOB_SNAPSHOT,
+    JOB_TELEMETRY_INGEST,
     JOB_TYPES,
-    STATUS_ACTIVE, STATUS_PAUSED, STATUS_DELETED,
-    OUTCOME_SUCCESS, OUTCOME_FAILURE, OUTCOME_SKIPPED, OUTCOME_TIMEOUT,
+    JOB_VULN_SCAN,
+    OUTCOME_FAILURE,
+    OUTCOME_SKIPPED,
+    OUTCOME_SUCCESS,
+    OUTCOME_TIMEOUT,
     OUTCOME_VALUES,
+    SCHEDULE_DAILY,
+    SCHEDULE_INTERVAL,
+    SCHEDULE_ONE_SHOT,
+    SCHEDULE_TYPES,
+    SCHEDULE_WEEKLY,
+    SCHEDULER_VERSION,
+    STATUS_ACTIVE,
+    STATUS_DELETED,
+    STATUS_PAUSED,
     OpsSchedulerError,
-    _next_daily, _next_weekly, _compute_next_run,
-    create_schedule, get_schedule, list_schedules,
-    pause_schedule, resume_schedule, delete_schedule,
-    mark_job_run, due_schedules,
+    _compute_next_run,
+    _next_daily,
+    _next_weekly,
+    create_schedule,
+    delete_schedule,
+    due_schedules,
+    get_schedule,
+    list_schedules,
+    mark_job_run,
+    pause_schedule,
+    resume_schedule,
 )
-
 
 # ── Fake store ─────────────────────────────────────────────────────────────────
 

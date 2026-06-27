@@ -1,6 +1,6 @@
 """Continuous assurance schedule and run APIs."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -8,26 +8,25 @@ from pydantic import BaseModel, Field
 from ..core import MonitoringEngine
 from .models import get_api_key, get_store
 
-
 router = APIRouter(prefix="/v1/monitoring", tags=["monitoring"])
 
 
 class ScheduleCreate(BaseModel):
-    artifact: Dict[str, Any]
+    artifact: dict[str, Any]
     interval_seconds: int = Field(default=3600, ge=1)
     enabled: bool = True
-    start_at: Optional[str] = None
+    start_at: str | None = None
 
 
 class ScheduleUpdate(BaseModel):
-    artifact: Optional[Dict[str, Any]] = None
-    interval_seconds: Optional[int] = Field(default=None, ge=1)
-    enabled: Optional[bool] = None
-    next_run_at: Optional[str] = None
+    artifact: dict[str, Any] | None = None
+    interval_seconds: int | None = Field(default=None, ge=1)
+    enabled: bool | None = None
+    next_run_at: str | None = None
 
 
 class DueRunRequest(BaseModel):
-    as_of: Optional[str] = None
+    as_of: str | None = None
     limit: int = Field(default=100, ge=1, le=1000)
 
 
@@ -49,7 +48,7 @@ def create_monitoring_schedule(
 @router.get("/schedules")
 def list_monitoring_schedules(
     limit: int = 100,
-    enabled: Optional[bool] = None,
+    enabled: bool | None = None,
     api_key: str = Depends(get_api_key),
 ):
     return {
@@ -105,7 +104,7 @@ def run_monitoring_schedule(
 @router.get("/runs")
 def list_monitoring_runs(
     limit: int = 100,
-    schedule_id: Optional[str] = None,
+    schedule_id: str | None = None,
     api_key: str = Depends(get_api_key),
 ):
     return {

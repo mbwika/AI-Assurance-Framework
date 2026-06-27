@@ -27,9 +27,8 @@ from the caller-provided statistics.
 
 from __future__ import annotations
 
-import math
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 CONTAMINATION_VERSION = "1.0"
 
@@ -39,7 +38,7 @@ STATUS_SUSPICIOUS = "SUSPICIOUS"
 STATUS_CONTAMINATION_LIKELY = "CONTAMINATION_LIKELY"
 STATUS_CONTAMINATION_CONFIRMED = "CONTAMINATION_CONFIRMED"
 
-_STATUS_RANK: Dict[str, int] = {
+_STATUS_RANK: dict[str, int] = {
     STATUS_CONTAMINATION_CONFIRMED: 3,
     STATUS_CONTAMINATION_LIKELY: 2,
     STATUS_SUSPICIOUS: 1,
@@ -66,7 +65,7 @@ def _worst_status(a: str, b: str) -> str:
     return a if _STATUS_RANK.get(a, 0) >= _STATUS_RANK.get(b, 0) else b
 
 
-def _parse_date(s: Optional[str]) -> Optional[datetime]:
+def _parse_date(s: str | None) -> datetime | None:
     if not s:
         return None
     s = s.strip()
@@ -86,7 +85,7 @@ def _z_score(score: float, mean: float, std: float) -> float:
 
 # ── Heuristics ─────────────────────────────────────────────────────────────────
 
-def _h1_score_outlier(entry: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _h1_score_outlier(entry: dict[str, Any]) -> dict[str, Any] | None:
     """H1: z-score above suspicious/likely threshold."""
     score = entry.get("score")
     mean = entry.get("population_mean")
@@ -116,8 +115,8 @@ def _h1_score_outlier(entry: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
 
 def _h2_temporal_contamination(
-    entry: Dict[str, Any], training_cutoff: Optional[datetime]
-) -> Optional[Dict[str, Any]]:
+    entry: dict[str, Any], training_cutoff: datetime | None
+) -> dict[str, Any] | None:
     """H2: training cutoff after benchmark publication + high z-score."""
     if training_cutoff is None:
         return None
@@ -148,7 +147,7 @@ def _h2_temporal_contamination(
     return None
 
 
-def _h3_score_inconsistency(entries: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+def _h3_score_inconsistency(entries: list[dict[str, Any]]) -> dict[str, Any] | None:
     """H3: anomalous spread — very high on some benchmarks, very low on others."""
     scores = [float(e["score"]) for e in entries if e.get("score") is not None]
     if len(scores) < 3:
@@ -169,7 +168,7 @@ def _h3_score_inconsistency(entries: List[Dict[str, Any]]) -> Optional[Dict[str,
     return None
 
 
-def _h4_claimed_vs_verified_gap(entry: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _h4_claimed_vs_verified_gap(entry: dict[str, Any]) -> dict[str, Any] | None:
     """H4: large gap between self-reported score and independently reproduced score."""
     claimed = entry.get("score")
     verified = entry.get("verified_score")
@@ -196,12 +195,12 @@ def _h4_claimed_vs_verified_gap(entry: Dict[str, Any]) -> Optional[Dict[str, Any
 # ── Public API ─────────────────────────────────────────────────────────────────
 
 def check_contamination(
-    model_record: Dict[str, Any],
-    benchmark_scores: List[Dict[str, Any]],
+    model_record: dict[str, Any],
+    benchmark_scores: list[dict[str, Any]],
     store: Any,
     *,
-    model_id: Optional[str] = None,
-) -> Dict[str, Any]:
+    model_id: str | None = None,
+) -> dict[str, Any]:
     """Check benchmark scores for contamination indicators.
 
     Parameters
@@ -223,7 +222,7 @@ def check_contamination(
     cutoff_str = meta.get("training_cutoff") or meta.get("training_data_cutoff")
     training_cutoff = _parse_date(cutoff_str)
 
-    findings: List[Dict[str, Any]] = []
+    findings: list[dict[str, Any]] = []
     overall = STATUS_CLEAN
 
     for entry in benchmark_scores:

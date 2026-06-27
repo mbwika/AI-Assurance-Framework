@@ -1,7 +1,7 @@
 """Orchestration for focused agentic AI assurance evaluations."""
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ..analysis import assess_agent_risk_v2
 from ..mapping.standards import map_finding_to_controls
@@ -9,10 +9,10 @@ from .risk_register_engine import RiskRegisterEngine
 
 
 class AgenticAssuranceEngine:
-    def __init__(self, datastore: Optional[object] = None):
+    def __init__(self, datastore: object | None = None):
         self.datastore = datastore
 
-    def evaluate(self, artifact: Dict[str, Any]) -> Dict[str, Any]:
+    def evaluate(self, artifact: dict[str, Any]) -> dict[str, Any]:
         assessment = assess_agent_risk_v2(artifact)
         # The v2 scorer is uncertainty-aware: a finding is reportable only when
         # the agent is applicable and reaches MEDIUM severity or higher.

@@ -8,18 +8,16 @@ REST endpoints:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from .models import get_api_key
 from ..registry.skill_scanner import (
     RISK_CATEGORIES,
     SKILL_SCANNER_VERSION,
     scan_skill_manifest,
     scan_skill_registry,
 )
+from .models import get_api_key
 
 router = APIRouter(prefix="/v1/skill-scanner", tags=["skill-scanner"])
 
@@ -28,27 +26,27 @@ router = APIRouter(prefix="/v1/skill-scanner", tags=["skill-scanner"])
 
 class DependencyItem(BaseModel):
     name: str
-    version: Optional[str] = None
+    version: str | None = None
 
 
 class SkillManifestRequest(BaseModel):
-    skill_id: Optional[str] = None
-    name: Optional[str] = None
-    description: Optional[str] = None
-    version: Optional[str] = None
-    publisher: Optional[str] = None
+    skill_id: str | None = None
+    name: str | None = None
+    description: str | None = None
+    version: str | None = None
+    publisher: str | None = None
     publisher_signed: bool = False
-    permissions: Optional[List[str]] = None
-    dependencies: Optional[List[DependencyItem]] = None
-    entry_point: Optional[str] = None
+    permissions: list[str] | None = None
+    dependencies: list[DependencyItem] | None = None
+    entry_point: str | None = None
     code_execution: bool = False
     network_access: bool = False
-    data_access: Optional[List[str]] = None
-    tags: Optional[List[str]] = None
+    data_access: list[str] | None = None
+    tags: list[str] | None = None
 
 
 class RegistryScanRequest(BaseModel):
-    manifests: List[SkillManifestRequest] = Field(..., min_length=1)
+    manifests: list[SkillManifestRequest] = Field(..., min_length=1)
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────

@@ -36,7 +36,7 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +71,7 @@ STATUS_PARTIAL = "PARTIAL"
 # ---------------------------------------------------------------------------
 
 
-def parse_snapshot_dir(snapshot_dir: str) -> Dict[str, Any]:
+def parse_snapshot_dir(snapshot_dir: str) -> dict[str, Any]:
     """Extract PROVIDER_DECLARED metadata from a downloaded HF snapshot.
 
     Reads ``README.md`` (model card frontmatter) and ``config.json`` from
@@ -80,7 +80,7 @@ def parse_snapshot_dir(snapshot_dir: str) -> Dict[str, Any]:
     """
     path = Path(snapshot_dir)
     result = _empty_result()
-    errors: List[str] = []
+    errors: list[str] = []
 
     # ── Model card ──────────────────────────────────────────────────────────
     readme = path / "README.md"
@@ -125,9 +125,9 @@ def parse_snapshot_dir(snapshot_dir: str) -> Dict[str, Any]:
 def fetch_from_hub(
     repo_id: str,
     *,
-    token: Optional[str] = None,
+    token: str | None = None,
     timeout: float = 30.0,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Fetch model card metadata from HuggingFace Hub.
 
     Requires ``huggingface_hub`` (already a project dependency).  Returns a
@@ -170,7 +170,7 @@ def fetch_from_hub(
 # ---------------------------------------------------------------------------
 
 
-def enrich_ledger(card_data: Dict[str, Any], ledger) -> None:
+def enrich_ledger(card_data: dict[str, Any], ledger) -> None:
     """Add model card facts into *ledger* as PROVIDER_DECLARED entries.
 
     Idempotent: existing facts with the same name are not de-duplicated here
@@ -185,7 +185,7 @@ def enrich_ledger(card_data: Dict[str, Any], ledger) -> None:
                   "model_type", "architectures", "publisher", "tokenizer_class"):
         val = card_data.get(field)
         if val is not None:
-            detail = f"from HuggingFace model card / config.json"
+            detail = "from HuggingFace model card / config.json"
             ledger.add(field, val, EvidenceOrigin.PROVIDER_DECLARED, detail=detail)
 
     tags = card_data.get("tags") or []
@@ -203,7 +203,7 @@ def enrich_ledger(card_data: Dict[str, Any], ledger) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _parse_model_card_text(text: str, result: Dict[str, Any]) -> None:
+def _parse_model_card_text(text: str, result: dict[str, Any]) -> None:
     """Parse YAML frontmatter from raw model card text via ModelCard."""
     try:
         from huggingface_hub import ModelCard
@@ -217,7 +217,7 @@ def _parse_model_card_text(text: str, result: Dict[str, Any]) -> None:
 
     lang = getattr(data, "language", None)
     if lang:
-        result["language"] = [str(l) for l in lang] if isinstance(lang, list) else str(lang)
+        result["language"] = [str(lg) for lg in lang] if isinstance(lang, list) else str(lang)
 
     tags = getattr(data, "tags", None)
     if tags:
@@ -237,7 +237,7 @@ def _parse_model_card_text(text: str, result: Dict[str, Any]) -> None:
     result["status"] = STATUS_SUCCESS
 
 
-def _parse_config_json(config: Dict[str, Any], result: Dict[str, Any]) -> None:
+def _parse_config_json(config: dict[str, Any], result: dict[str, Any]) -> None:
     """Extract model architecture info from config.json."""
     result["model_type"] = config.get("model_type") or result.get("model_type")
     archs = config.get("architectures")
@@ -265,7 +265,7 @@ def _parse_config_json(config: Dict[str, Any], result: Dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _empty_result() -> Dict[str, Any]:
+def _empty_result() -> dict[str, Any]:
     return {
         "schema_version": HF_MODEL_CARD_VERSION,
         "status": STATUS_SUCCESS,
@@ -294,14 +294,14 @@ def _empty_result() -> Dict[str, Any]:
     }
 
 
-def _str_or_none(value: Any) -> Optional[str]:
+def _str_or_none(value: Any) -> str | None:
     if value is None:
         return None
     s = str(value).strip()
     return s if s else None
 
 
-def _model_card_signals(text: str) -> Dict[str, Any]:
+def _model_card_signals(text: str) -> dict[str, Any]:
     lowered = text.lower()
     headings = []
     for line in text.splitlines():

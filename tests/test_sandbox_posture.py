@@ -1,32 +1,31 @@
 """Tests for src/aiaf/analysis/sandbox_posture.py."""
 
 import pytest
+
 from aiaf.analysis.sandbox_posture import (
-    assess_sandbox_posture,
-    get_isolation_levels,
-    SANDBOX_POSTURE_VERSION,
-    ISOLATION_NONE,
-    ISOLATION_PROCESS,
+    EGRESS_BLOCKED,
+    EGRESS_FILTERED,
+    EGRESS_MONITORED,
+    EGRESS_NONE,
     ISOLATION_CONTAINER,
     ISOLATION_GVISOR,
-    ISOLATION_VM,
     ISOLATION_HARDWARE,
-    EGRESS_NONE,
-    EGRESS_MONITORED,
-    EGRESS_FILTERED,
-    EGRESS_BLOCKED,
-    PRIVILEGE_ROOT,
-    PRIVILEGE_USER,
-    PRIVILEGE_RESTRICTED,
-    PRIVILEGE_SANDBOXED,
-    POSTURE_CRITICAL,
-    POSTURE_HIGH,
-    POSTURE_MEDIUM,
-    POSTURE_LOW,
+    ISOLATION_NONE,
+    ISOLATION_PROCESS,
+    ISOLATION_VM,
     POSTURE_ACCEPTABLE,
+    POSTURE_CRITICAL,
+    POSTURE_LOW,
+    POSTURE_MEDIUM,
+    PRIVILEGE_RESTRICTED,
+    PRIVILEGE_ROOT,
+    PRIVILEGE_SANDBOXED,
+    PRIVILEGE_USER,
+    SANDBOX_POSTURE_VERSION,
     SandboxPostureError,
+    assess_sandbox_posture,
+    get_isolation_levels,
 )
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

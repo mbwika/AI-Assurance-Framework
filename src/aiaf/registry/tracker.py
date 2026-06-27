@@ -1,10 +1,10 @@
 """Model source tracking utilities."""
 from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import Any
 
 
 class SourceTracker:
-    def capture_source(self, model_url: str) -> Dict[str, Any]:
+    def capture_source(self, model_url: str) -> dict[str, Any]:
         # naive provider detection
         provider = "unknown"
         if "huggingface" in model_url:

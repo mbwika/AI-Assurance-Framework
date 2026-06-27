@@ -5,16 +5,15 @@ import pytest
 from aiaf.core.tool_authorization import (
     AUTH_VERSION,
     VERDICT_ALLOW,
-    VERDICT_DENY,
     VERDICT_CONDITIONAL,
+    VERDICT_DENY,
     AuthorizationError,
-    create_policy,
-    get_policy,
-    delete_policy,
     authorize,
+    create_policy,
+    delete_policy,
+    get_policy,
 )
 from aiaf.registry.agent_registry import register_agent
-
 
 # ── Fake store ────────────────────────────────────────────────────────────────
 

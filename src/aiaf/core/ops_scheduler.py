@@ -10,7 +10,7 @@ external cron that polls :func:`due_schedules`).
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 SCHEDULER_VERSION = "1.0"
 
@@ -110,11 +110,11 @@ def _next_weekly(cron_day: str, cron_time: str, after: datetime) -> str:
 
 def _compute_next_run(
     schedule_type: str,
-    interval_seconds: Optional[int],
-    cron_time: Optional[str],
-    cron_day: Optional[str],
+    interval_seconds: int | None,
+    cron_time: str | None,
+    cron_day: str | None,
     from_dt: datetime,
-) -> Optional[str]:
+) -> str | None:
     if schedule_type == SCHEDULE_ONE_SHOT:
         return None
     if schedule_type == SCHEDULE_INTERVAL:
@@ -127,7 +127,7 @@ def _compute_next_run(
     return None
 
 
-def _summary(record: Dict[str, Any]) -> Dict[str, Any]:
+def _summary(record: dict[str, Any]) -> dict[str, Any]:
     m = record.get("metadata") or {}
     return {
         "schedule_id": m.get("schedule_id"),
@@ -159,11 +159,11 @@ def create_schedule(
     schedule_type: str,
     store: Any,
     *,
-    interval_seconds: Optional[int] = None,
-    cron_time: Optional[str] = None,
-    cron_day: Optional[str] = None,
-    config: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    interval_seconds: int | None = None,
+    cron_time: str | None = None,
+    cron_day: str | None = None,
+    config: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     schedule_id = str(schedule_id).strip()
     if not schedule_id:
         raise OpsSchedulerError("schedule_id must be non-empty")
@@ -191,13 +191,13 @@ def create_schedule(
     run_history = (existing or {}).get("metadata", {}).get("run_history") or []
 
     if schedule_type == SCHEDULE_ONE_SHOT:
-        next_run_at: Optional[str] = _to_iso(now)
+        next_run_at: str | None = _to_iso(now)
     else:
         next_run_at = _compute_next_run(
             schedule_type, interval_seconds, cron_time, cron_day, now
         )
 
-    record: Dict[str, Any] = {
+    record: dict[str, Any] = {
         "model_id": key,
         "id": key,
         "metadata": {
@@ -224,7 +224,7 @@ def create_schedule(
     return _summary(record)
 
 
-def get_schedule(schedule_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def get_schedule(schedule_id: str, store: Any) -> dict[str, Any] | None:
     record = store.get_model(_schedule_key(schedule_id))
     return _summary(record) if record else None
 
@@ -232,10 +232,10 @@ def get_schedule(schedule_id: str, store: Any) -> Optional[Dict[str, Any]]:
 def list_schedules(
     store: Any,
     *,
-    job_type: Optional[str] = None,
-    status: Optional[str] = None,
+    job_type: str | None = None,
+    status: str | None = None,
     limit: int = 50,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     all_models = store.list_models() if hasattr(store, "list_models") else []
     result = []
     for m in all_models:
@@ -252,7 +252,7 @@ def list_schedules(
     return result[:limit]
 
 
-def pause_schedule(schedule_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def pause_schedule(schedule_id: str, store: Any) -> dict[str, Any] | None:
     key = _schedule_key(schedule_id)
     record = store.get_model(key)
     if not record:
@@ -263,7 +263,7 @@ def pause_schedule(schedule_id: str, store: Any) -> Optional[Dict[str, Any]]:
     return _summary(record)
 
 
-def resume_schedule(schedule_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def resume_schedule(schedule_id: str, store: Any) -> dict[str, Any] | None:
     key = _schedule_key(schedule_id)
     record = store.get_model(key)
     if not record:
@@ -290,8 +290,8 @@ def mark_job_run(
     store: Any,
     *,
     outcome: str = OUTCOME_SUCCESS,
-    details: Optional[Dict[str, Any]] = None,
-) -> Optional[Dict[str, Any]]:
+    details: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
     """Record a job execution and advance next_run_at."""
     outcome = str(outcome).upper()
     if outcome not in OUTCOME_VALUES:
@@ -331,9 +331,9 @@ def mark_job_run(
 def due_schedules(
     store: Any,
     *,
-    as_of: Optional[datetime] = None,
-    job_type: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+    as_of: datetime | None = None,
+    job_type: str | None = None,
+) -> list[dict[str, Any]]:
     """Return active schedules whose next_run_at is at or before as_of."""
     threshold = as_of or _utc_now()
     all_models = store.list_models() if hasattr(store, "list_models") else []

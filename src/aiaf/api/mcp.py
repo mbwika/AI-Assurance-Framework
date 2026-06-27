@@ -11,7 +11,7 @@ Rug-pull diffs are LOCALLY_OBSERVED meta-evidence (AIAF observed the change).
 """
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -26,12 +26,12 @@ _MCP_SERVER_PREFIX = "mcp_server:"
 
 class MCPScanRequest(BaseModel):
     server_id: str
-    tools: List[Dict[str, Any]]
+    tools: list[dict[str, Any]]
     persist: bool = True
 
 
 class MCPRescanRequest(BaseModel):
-    tools: List[Dict[str, Any]]
+    tools: list[dict[str, Any]]
     persist: bool = True
 
 
@@ -43,17 +43,17 @@ def _store_key(server_id: str) -> str:
     return f"{_MCP_SERVER_PREFIX}{server_id}"
 
 
-def _get_server_record(store, server_id: str) -> Optional[Dict[str, Any]]:
+def _get_server_record(store, server_id: str) -> dict[str, Any] | None:
     return store.get_model(_store_key(server_id))
 
 
-def _save_server_record(store, server_id: str, record: Dict[str, Any]) -> None:
+def _save_server_record(store, server_id: str, record: dict[str, Any]) -> None:
     record.setdefault("model_id", _store_key(server_id))
     record.setdefault("id", _store_key(server_id))
     store.save_model(record)
 
 
-def _append_scan_history(record: Dict[str, Any], scan_result: Dict[str, Any]) -> None:
+def _append_scan_history(record: dict[str, Any], scan_result: dict[str, Any]) -> None:
     meta = record.setdefault("metadata", {})
     history = meta.setdefault("scan_history", [])
     history.append({
@@ -83,7 +83,7 @@ def register_and_scan(req: MCPScanRequest, api_key: str = Depends(get_api_key)):
     scan_result = scan_server_tools(req.tools, req.server_id, previous_snapshot=None)
 
     if req.persist:
-        record: Dict[str, Any] = existing or {
+        record: dict[str, Any] = existing or {
             "model_id": _store_key(req.server_id),
             "id": _store_key(req.server_id),
             "metadata": {},
@@ -194,7 +194,7 @@ def scan_history(server_id: str, api_key: str = Depends(get_api_key)):
     }
 
 
-def _save_audit(store, server_id: str, scan_result: Dict[str, Any], event_type: str) -> None:
+def _save_audit(store, server_id: str, scan_result: dict[str, Any], event_type: str) -> None:
     try:
         store.save_audit_log({
             "event_type": event_type,

@@ -3,10 +3,9 @@
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ..mapping.control_catalog import get_control_catalog
-
 
 EVIDENCE_TYPES = {
     "ATTESTATION",
@@ -27,14 +26,14 @@ class GovernanceEvidenceEngine:
         *,
         artifact_id: str,
         control_id: str,
-        evidence_fields: List[str],
+        evidence_fields: list[str],
         evidence_type: str,
         reference: str,
         sha256: str,
         submitted_by: str,
-        expires_at: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        expires_at: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         artifact_id = str(artifact_id or "").strip()
         submitted_by = str(submitted_by or "").strip()
         reference = str(reference or "").strip()
@@ -113,7 +112,7 @@ class GovernanceEvidenceEngine:
         decision: str,
         reviewer: str,
         rationale: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         evidence = self.datastore.get_control_evidence(evidence_id)
         if not evidence:
             return None
@@ -165,10 +164,10 @@ class GovernanceEvidenceEngine:
     def list(
         self,
         limit: int = 1000,
-        artifact_id: Optional[str] = None,
-        control_id: Optional[str] = None,
-        status: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        artifact_id: str | None = None,
+        control_id: str | None = None,
+        status: str | None = None,
+    ) -> list[dict[str, Any]]:
         normalized_status = None
         if status:
             normalized_status = str(status).upper()
@@ -181,10 +180,10 @@ class GovernanceEvidenceEngine:
             status=normalized_status,
         )
 
-    def get(self, evidence_id: str) -> Optional[Dict[str, Any]]:
+    def get(self, evidence_id: str) -> dict[str, Any] | None:
         return self.datastore.get_control_evidence(evidence_id)
 
-    def summary(self, as_of: Optional[str] = None) -> Dict[str, Any]:
+    def summary(self, as_of: str | None = None) -> dict[str, Any]:
         evaluated_at = _normalize_datetime(as_of) if as_of else _utc_now()
         evidence = self.datastore.list_control_evidence(limit=100000)
         return evidence_summary(evidence, evaluated_at)
@@ -195,8 +194,8 @@ class GovernanceEvidenceEngine:
 
 
 def evidence_summary(
-    evidence: List[Dict[str, Any]], as_of: Optional[str] = None
-) -> Dict[str, Any]:
+    evidence: list[dict[str, Any]], as_of: str | None = None
+) -> dict[str, Any]:
     evaluated_at = _normalize_datetime(as_of) if as_of else _utc_now()
     expired = [item for item in evidence if _is_expired(item, evaluated_at)]
     return {
@@ -215,8 +214,8 @@ def evidence_summary(
 
 
 def approved_evidence(
-    evidence: List[Dict[str, Any]], as_of: Optional[str] = None
-) -> List[Dict[str, Any]]:
+    evidence: list[dict[str, Any]], as_of: str | None = None
+) -> list[dict[str, Any]]:
     evaluated_at = _normalize_datetime(as_of) if as_of else _utc_now()
     return [
         item
@@ -225,14 +224,14 @@ def approved_evidence(
     ]
 
 
-def _control(control_id: str) -> Dict[str, Any]:
+def _control(control_id: str) -> dict[str, Any]:
     for control in get_control_catalog():
         if control["id"] == control_id:
             return control
     raise ValueError(f"Unknown control_id: {control_id}")
 
 
-def _is_expired(evidence: Dict[str, Any], as_of: str) -> bool:
+def _is_expired(evidence: dict[str, Any], as_of: str) -> bool:
     return bool(evidence.get("expires_at") and evidence["expires_at"] <= as_of)
 
 
@@ -250,8 +249,8 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _count_by(items: List[Dict[str, Any]], field: str) -> Dict[str, int]:
-    counts: Dict[str, int] = {}
+def _count_by(items: list[dict[str, Any]], field: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
     for item in items:
         value = str(item.get(field) or "UNKNOWN")
         counts[value] = counts.get(value, 0) + 1

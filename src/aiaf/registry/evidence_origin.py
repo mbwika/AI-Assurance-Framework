@@ -36,9 +36,9 @@ weights below.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from enum import Enum
-from typing import Any, Dict, Iterable, List, Optional
-
+from typing import Any
 
 EVIDENCE_ORIGIN_VERSION = "1.0"
 
@@ -55,7 +55,7 @@ class EvidenceOrigin(str, Enum):
 
 # Ordinal rank (higher = more trustworthy). Used to compare origins and to find
 # the weakest origin backing a group of related facts.
-ORIGIN_RANK: Dict[EvidenceOrigin, int] = {
+ORIGIN_RANK: dict[EvidenceOrigin, int] = {
     EvidenceOrigin.USER_ENTERED: 0,
     EvidenceOrigin.PROVIDER_DECLARED: 1,
     EvidenceOrigin.ARTIFACT_DERIVED: 2,
@@ -66,7 +66,7 @@ ORIGIN_RANK: Dict[EvidenceOrigin, int] = {
 # Multiplicative trust weight in [0, 1]. A claim's contribution to provenance or
 # adoption confidence is scaled by the weight of its origin so that, e.g., a
 # user-entered publisher cannot carry the same weight as a verified one.
-ORIGIN_TRUST_WEIGHT: Dict[EvidenceOrigin, float] = {
+ORIGIN_TRUST_WEIGHT: dict[EvidenceOrigin, float] = {
     EvidenceOrigin.USER_ENTERED: 0.20,
     EvidenceOrigin.PROVIDER_DECLARED: 0.45,
     EvidenceOrigin.ARTIFACT_DERIVED: 0.70,
@@ -111,8 +111,8 @@ def tag_fact(
     value: Any,
     origin: EvidenceOrigin,
     *,
-    detail: Optional[str] = None,
-) -> Dict[str, Any]:
+    detail: str | None = None,
+) -> dict[str, Any]:
     """Build a single origin-tagged fact record.
 
     ``value`` is summarized to a short string so the ledger stays compact and
@@ -139,7 +139,7 @@ class FactLedger:
     """
 
     def __init__(self) -> None:
-        self._facts: List[Dict[str, Any]] = []
+        self._facts: list[dict[str, Any]] = []
 
     def add(
         self,
@@ -147,16 +147,16 @@ class FactLedger:
         value: Any,
         origin: EvidenceOrigin,
         *,
-        detail: Optional[str] = None,
+        detail: str | None = None,
         skip_empty: bool = True,
-    ) -> "FactLedger":
+    ) -> FactLedger:
         """Record one fact. Empty/None values are skipped by default."""
         if skip_empty and _is_empty(value):
             return self
         self._facts.append(tag_fact(name, value, origin, detail=detail))
         return self
 
-    def extend(self, facts: Iterable[Dict[str, Any]]) -> "FactLedger":
+    def extend(self, facts: Iterable[dict[str, Any]]) -> FactLedger:
         """Merge already-serialized fact records (e.g. a persisted ledger)."""
         for fact in facts:
             if isinstance(fact, dict) and fact.get("name"):
@@ -173,18 +173,18 @@ class FactLedger:
                 )
         return self
 
-    def to_list(self) -> List[Dict[str, Any]]:
+    def to_list(self) -> list[dict[str, Any]]:
         """Return the serialized facts (a copy)."""
         return list(self._facts)
 
-    def by_origin(self) -> Dict[str, List[str]]:
+    def by_origin(self) -> dict[str, list[str]]:
         """Group fact names by their origin value, for summaries."""
-        grouped: Dict[str, List[str]] = {}
+        grouped: dict[str, list[str]] = {}
         for fact in self._facts:
             grouped.setdefault(fact["origin"], []).append(fact["name"])
         return grouped
 
-    def weakest_origin(self, names: Iterable[str]) -> Optional[EvidenceOrigin]:
+    def weakest_origin(self, names: Iterable[str]) -> EvidenceOrigin | None:
         """Return the weakest origin among the named facts, or None if absent.
 
         Identity trust is bounded by its weakest supporting fact: if a model's

@@ -32,7 +32,7 @@ silent default. The function is pure — persistence is the API layer's job.
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ..registry.evidence_origin import (
     EvidenceOrigin,
@@ -41,7 +41,6 @@ from ..registry.evidence_origin import (
     ledger_from_list,
 )
 from .org_policy_engine import evaluate_org_policy
-
 
 ADOPTION_SCORING_VERSION = "3.0"
 
@@ -56,7 +55,7 @@ class AdoptionVerdict(str, Enum):
     APPROVE_FOR_SCOPED_USE = "APPROVE_FOR_SCOPED_USE"
 
 
-_VERDICT_RANK: Dict[AdoptionVerdict, int] = {
+_VERDICT_RANK: dict[AdoptionVerdict, int] = {
     AdoptionVerdict.DO_NOT_APPROVE: 0,
     AdoptionVerdict.INSUFFICIENT_EVIDENCE: 1,
     AdoptionVerdict.PILOT_ONLY: 2,
@@ -92,21 +91,21 @@ _LOW_CONFIDENCE_FLOOR = 0.45
 
 
 def recommend_adoption(
-    model_record: Dict[str, Any],
-    risk_record: Optional[Dict[str, Any]] = None,
-    provenance_assessment: Optional[Dict[str, Any]] = None,
-    governance_summary: Optional[Dict[str, Any]] = None,
-    vulnerability_scan: Optional[Dict[str, Any]] = None,
-    serialization_scan: Optional[Dict[str, Any]] = None,
-    behavioral_probes: Optional[Dict[str, Any]] = None,
-    redteam_results: Optional[Dict[str, Any]] = None,
-    policy_context: Optional[Dict[str, Any]] = None,
-    weight_inspection: Optional[Dict[str, Any]] = None,
-    lineage: Optional[Dict[str, Any]] = None,
-    fact_reconciliation: Optional[Dict[str, Any]] = None,
-    mcp_scan: Optional[Dict[str, Any]] = None,
-    backdoor_heuristics: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    model_record: dict[str, Any],
+    risk_record: dict[str, Any] | None = None,
+    provenance_assessment: dict[str, Any] | None = None,
+    governance_summary: dict[str, Any] | None = None,
+    vulnerability_scan: dict[str, Any] | None = None,
+    serialization_scan: dict[str, Any] | None = None,
+    behavioral_probes: dict[str, Any] | None = None,
+    redteam_results: dict[str, Any] | None = None,
+    policy_context: dict[str, Any] | None = None,
+    weight_inspection: dict[str, Any] | None = None,
+    lineage: dict[str, Any] | None = None,
+    fact_reconciliation: dict[str, Any] | None = None,
+    mcp_scan: dict[str, Any] | None = None,
+    backdoor_heuristics: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Produce an explainable adoption verdict from assembled assurance evidence.
 
     Only ``model_record`` is required; every other input degrades gracefully to
@@ -135,9 +134,9 @@ def recommend_adoption(
     metadata = metadata if isinstance(metadata, dict) else {}
     ledger = ledger_from_list(metadata.get("evidence_ledger"))
 
-    caps: List[Dict[str, Any]] = []
-    conditions: List[str] = []
-    evidence_gaps: List[str] = []
+    caps: list[dict[str, Any]] = []
+    conditions: list[str] = []
+    evidence_gaps: list[str] = []
 
     _evaluate_risk(risk_record, caps, conditions)
     _evaluate_vulnerabilities(vulnerability_scan, caps, conditions, evidence_gaps)
@@ -219,13 +218,13 @@ _VERDICT_SUMMARY = {
 
 
 def _cap(
-    caps: List[Dict[str, Any]],
+    caps: list[dict[str, Any]],
     verdict: AdoptionVerdict,
     category: str,
     reason: str,
     *,
-    origin: Optional[EvidenceOrigin] = None,
-    refs: Optional[List[str]] = None,
+    origin: EvidenceOrigin | None = None,
+    refs: list[str] | None = None,
 ) -> None:
     caps.append(
         {
@@ -240,9 +239,9 @@ def _cap(
 
 
 def _evaluate_risk(
-    risk_record: Dict[str, Any],
-    caps: List[Dict[str, Any]],
-    conditions: List[str],
+    risk_record: dict[str, Any],
+    caps: list[dict[str, Any]],
+    conditions: list[str],
 ) -> None:
     if not risk_record:
         return
@@ -301,10 +300,10 @@ def _evaluate_risk(
 
 
 def _evaluate_vulnerabilities(
-    vuln: Dict[str, Any],
-    caps: List[Dict[str, Any]],
-    conditions: List[str],
-    evidence_gaps: List[str],
+    vuln: dict[str, Any],
+    caps: list[dict[str, Any]],
+    conditions: list[str],
+    evidence_gaps: list[str],
 ) -> None:
     if not vuln:
         return
@@ -344,10 +343,10 @@ def _evaluate_vulnerabilities(
 
 
 def _evaluate_serialization_scan(
-    scan: Optional[Dict[str, Any]],
-    caps: List[Dict[str, Any]],
-    conditions: List[str],
-    evidence_gaps: List[str],
+    scan: dict[str, Any] | None,
+    caps: list[dict[str, Any]],
+    conditions: list[str],
+    evidence_gaps: list[str],
 ) -> None:
     """Phase 2: evaluate artifact-level serialization scan results.
 
@@ -425,10 +424,10 @@ def _evaluate_serialization_scan(
 
 
 def _evaluate_weight_inspection(
-    inspection: Optional[Dict[str, Any]],
-    caps: List[Dict[str, Any]],
-    conditions: List[str],
-    evidence_gaps: List[str],
+    inspection: dict[str, Any] | None,
+    caps: list[dict[str, Any]],
+    conditions: list[str],
+    evidence_gaps: list[str],
 ) -> None:
     """Phase 5: weight/tensor header inspection (LOCALLY_OBSERVED artifact evidence).
 
@@ -486,10 +485,10 @@ def _evaluate_weight_inspection(
 
 
 def _evaluate_lineage(
-    lineage: Optional[Dict[str, Any]],
-    caps: List[Dict[str, Any]],
-    conditions: List[str],
-    evidence_gaps: List[str],
+    lineage: dict[str, Any] | None,
+    caps: list[dict[str, Any]],
+    conditions: list[str],
+    evidence_gaps: list[str],
 ) -> None:
     """Phase 5: base-model lineage evaluation.
 
@@ -503,7 +502,7 @@ def _evaluate_lineage(
 
     arch_consistency = str(lineage.get("architecture_consistency") or "UNVERIFIABLE")
     if arch_consistency == "INCONSISTENT":
-        decl = lineage.get("architecture_consistency")
+        lineage.get("architecture_consistency")
         _cap(
             caps,
             AdoptionVerdict.DO_NOT_APPROVE,
@@ -535,10 +534,10 @@ def _evaluate_lineage(
 
 
 def _evaluate_fact_reconciliation(
-    reconciliation: Optional[Dict[str, Any]],
-    caps: List[Dict[str, Any]],
-    conditions: List[str],
-    evidence_gaps: List[str],
+    reconciliation: dict[str, Any] | None,
+    caps: list[dict[str, Any]],
+    conditions: list[str],
+    evidence_gaps: list[str],
 ) -> None:
     """Phase 5: declared-vs-derived fact reconciliation.
 
@@ -612,10 +611,10 @@ def _evaluate_fact_reconciliation(
 
 
 def _evaluate_behavioral_probes(
-    probes: Optional[Dict[str, Any]],
-    caps: List[Dict[str, Any]],
-    conditions: List[str],
-    evidence_gaps: List[str],
+    probes: dict[str, Any] | None,
+    caps: list[dict[str, Any]],
+    conditions: list[str],
+    evidence_gaps: list[str],
 ) -> None:
     """Phase 2: evaluate live behavioral probe results.
 
@@ -692,10 +691,10 @@ def _evaluate_behavioral_probes(
 
 
 def _evaluate_redteam(
-    redteam: Optional[Dict[str, Any]],
-    caps: List[Dict[str, Any]],
-    conditions: List[str],
-    evidence_gaps: List[str],
+    redteam: dict[str, Any] | None,
+    caps: list[dict[str, Any]],
+    conditions: list[str],
+    evidence_gaps: list[str],
 ) -> None:
     """Phase 4: evaluate full red-team evaluation results (garak / PyRIT).
 
@@ -742,7 +741,7 @@ def _evaluate_redteam(
         )
         return
 
-    by_sev = {str(k).upper(): v for k, v in (redteam.get("by_severity") or {}).items()}
+    {str(k).upper(): v for k, v in (redteam.get("by_severity") or {}).items()}
     findings = redteam.get("findings") or []
     total_failures = int(redteam.get("total_failures") or 0)
 
@@ -788,10 +787,10 @@ def _evaluate_redteam(
 
 
 def _evaluate_mcp_scan(
-    mcp_scan: Optional[Dict[str, Any]],
-    caps: List[Dict[str, Any]],
-    conditions: List[str],
-    evidence_gaps: List[str],
+    mcp_scan: dict[str, Any] | None,
+    caps: list[dict[str, Any]],
+    conditions: list[str],
+    evidence_gaps: list[str],
 ) -> None:
     """Phase 6: evaluate MCP tool supply-chain scan results.
 
@@ -846,10 +845,10 @@ def _evaluate_mcp_scan(
 
 
 def _evaluate_backdoor_heuristics(
-    backdoor: Optional[Dict[str, Any]],
-    caps: List[Dict[str, Any]],
-    conditions: List[str],
-    evidence_gaps: List[str],
+    backdoor: dict[str, Any] | None,
+    caps: list[dict[str, Any]],
+    conditions: list[str],
+    evidence_gaps: list[str],
 ) -> None:
     """Phase 6: evaluate backdoor/trojan heuristic analysis results.
 
@@ -915,11 +914,11 @@ def _evaluate_backdoor_heuristics(
 
 
 def _evaluate_provenance(
-    provenance: Dict[str, Any],
-    model_record: Dict[str, Any],
-    caps: List[Dict[str, Any]],
-    conditions: List[str],
-    evidence_gaps: List[str],
+    provenance: dict[str, Any],
+    model_record: dict[str, Any],
+    caps: list[dict[str, Any]],
+    conditions: list[str],
+    evidence_gaps: list[str],
 ) -> None:
     if not provenance:
         evidence_gaps.append("No provenance assessment was available.")
@@ -976,9 +975,9 @@ def _evaluate_provenance(
 
 def _evaluate_identity_origin(
     ledger,
-    provenance: Dict[str, Any],
-    caps: List[Dict[str, Any]],
-    evidence_gaps: List[str],
+    provenance: dict[str, Any],
+    caps: list[dict[str, Any]],
+    evidence_gaps: list[str],
 ) -> None:
     """Origin weighting: identity is only as strong as its weakest source.
 
@@ -1014,10 +1013,10 @@ def _evaluate_identity_origin(
 
 
 def _evaluate_governance(
-    governance: Dict[str, Any],
-    caps: List[Dict[str, Any]],
-    conditions: List[str],
-    evidence_gaps: List[str],
+    governance: dict[str, Any],
+    caps: list[dict[str, Any]],
+    conditions: list[str],
+    evidence_gaps: list[str],
 ) -> None:
     if not governance:
         return
@@ -1040,15 +1039,15 @@ def _evaluate_governance(
 
 
 def _evaluate_completeness(
-    risk_record: Dict[str, Any],
-    provenance: Dict[str, Any],
-    vuln: Dict[str, Any],
-    serialization_scan: Optional[Dict[str, Any]],
-    behavioral_probes: Optional[Dict[str, Any]],
-    redteam_results: Optional[Dict[str, Any]],
-    weight_inspection: Optional[Dict[str, Any]],
-    caps: List[Dict[str, Any]],
-    evidence_gaps: List[str],
+    risk_record: dict[str, Any],
+    provenance: dict[str, Any],
+    vuln: dict[str, Any],
+    serialization_scan: dict[str, Any] | None,
+    behavioral_probes: dict[str, Any] | None,
+    redteam_results: dict[str, Any] | None,
+    weight_inspection: dict[str, Any] | None,
+    caps: list[dict[str, Any]],
+    evidence_gaps: list[str],
 ) -> None:
     incomplete = []
     if provenance and provenance.get("assessment_complete") is False:
@@ -1078,10 +1077,10 @@ def _evaluate_completeness(
 
 
 def _evaluate_org_policy(
-    policy: Dict[str, Any],
-    caps: List[Dict[str, Any]],
-    conditions: List[str],
-    evidence_gaps: List[str],
+    policy: dict[str, Any],
+    caps: list[dict[str, Any]],
+    conditions: list[str],
+    evidence_gaps: list[str],
 ) -> None:
     if not policy:
         return
@@ -1105,7 +1104,7 @@ def _evaluate_org_policy(
     )
 
 
-def _worst_verdict(caps: List[Dict[str, Any]]) -> AdoptionVerdict:
+def _worst_verdict(caps: list[dict[str, Any]]) -> AdoptionVerdict:
     if not caps:
         return AdoptionVerdict.APPROVE_FOR_SCOPED_USE
     worst = min(caps, key=lambda cap: cap["_rank"])
@@ -1113,15 +1112,15 @@ def _worst_verdict(caps: List[Dict[str, Any]]) -> AdoptionVerdict:
 
 
 def _decision_confidence(
-    provenance: Dict[str, Any],
-    risk_record: Dict[str, Any],
-    vuln: Dict[str, Any],
-    serialization_scan: Optional[Dict[str, Any]] = None,
-    behavioral_probes: Optional[Dict[str, Any]] = None,
-    redteam_results: Optional[Dict[str, Any]] = None,
+    provenance: dict[str, Any],
+    risk_record: dict[str, Any],
+    vuln: dict[str, Any],
+    serialization_scan: dict[str, Any] | None = None,
+    behavioral_probes: dict[str, Any] | None = None,
+    redteam_results: dict[str, Any] | None = None,
 ) -> float:
     """Lowest confidence across the contributing assessments (conservative)."""
-    candidates: List[float] = []
+    candidates: list[float] = []
     prov_conf = provenance.get("confidence")
     if isinstance(prov_conf, (int, float)):
         candidates.append(float(prov_conf))
@@ -1143,21 +1142,21 @@ def _decision_confidence(
 
 
 def _input_echo(
-    risk_record: Dict[str, Any],
-    provenance: Dict[str, Any],
-    governance: Dict[str, Any],
-    vuln: Dict[str, Any],
-    serialization_scan: Optional[Dict[str, Any]] = None,
-    behavioral_probes: Optional[Dict[str, Any]] = None,
-    redteam_results: Optional[Dict[str, Any]] = None,
-    policy: Optional[Dict[str, Any]] = None,
+    risk_record: dict[str, Any],
+    provenance: dict[str, Any],
+    governance: dict[str, Any],
+    vuln: dict[str, Any],
+    serialization_scan: dict[str, Any] | None = None,
+    behavioral_probes: dict[str, Any] | None = None,
+    redteam_results: dict[str, Any] | None = None,
+    policy: dict[str, Any] | None = None,
     *,
-    weight_inspection: Optional[Dict[str, Any]] = None,
-    lineage: Optional[Dict[str, Any]] = None,
-    fact_reconciliation: Optional[Dict[str, Any]] = None,
-    mcp_scan: Optional[Dict[str, Any]] = None,
-    backdoor_heuristics: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    weight_inspection: dict[str, Any] | None = None,
+    lineage: dict[str, Any] | None = None,
+    fact_reconciliation: dict[str, Any] | None = None,
+    mcp_scan: dict[str, Any] | None = None,
+    backdoor_heuristics: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     aggregation = risk_record.get("risk_aggregation") or {}
     trust = risk_record.get("trustworthiness") or {}
     policy = policy or {}
@@ -1224,7 +1223,7 @@ def _input_echo(
     }
 
 
-def _dedupe(items: List[str]) -> List[str]:
+def _dedupe(items: list[str]) -> list[str]:
     seen = set()
     ordered = []
     for item in items:

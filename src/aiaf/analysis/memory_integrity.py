@@ -31,7 +31,7 @@ LOCALLY_OBSERVED — all memory integrity data is recorded and assessed by AIAF 
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 MEMORY_INTEGRITY_VERSION = "1.0"
 
@@ -54,7 +54,7 @@ ORIGIN_USER = "USER_ENTERED"
 ORIGIN_EXTERNAL_AGENT = "EXTERNAL_AGENT"
 ORIGIN_TOOL = "TOOL_OUTPUT"
 
-_ORIGIN_TRUST: Dict[str, float] = {
+_ORIGIN_TRUST: dict[str, float] = {
     ORIGIN_LOCAL: 1.0,
     ORIGIN_PROVIDER: 0.6,
     ORIGIN_USER: 0.4,
@@ -115,7 +115,7 @@ def _entry_key(store_id: str, entry_key_str: str) -> str:
     return f"{_ENTRY_PREFIX}{store_id}:{entry_key_str}"
 
 
-def _load_meta(record: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def _load_meta(record: dict[str, Any] | None) -> dict[str, Any]:
     return (record or {}).get("metadata") or {}
 
 
@@ -138,11 +138,10 @@ def _anomaly_score(value: str, origin: str) -> float:
     return min(base_score * amplification, 1.0)
 
 
-def _classify_anomaly(score: float, origin: str) -> Optional[str]:
+def _classify_anomaly(score: float, origin: str) -> str | None:
     """Map anomaly score to an attack vector classification."""
     if score == 0.0:
         return None
-    v_low = ""
 
     if origin == ORIGIN_EXTERNAL_AGENT:
         return ATTACK_CROSS_AGENT_CONTAMINATION
@@ -161,9 +160,9 @@ def register_memory_store(
     agent_id: str,
     store: Any,
     *,
-    description: Optional[str] = None,
+    description: str | None = None,
     max_entries: int = 10_000,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Register a memory store for integrity tracking.
 
     Parameters
@@ -177,7 +176,7 @@ def register_memory_store(
     if not agent_id or not agent_id.strip():
         raise MemoryIntegrityError("agent_id must be non-empty.")
 
-    record: Dict[str, Any] = {
+    record: dict[str, Any] = {
         "model_id": _store_key(store_id),
         "id": _store_key(store_id),
         "metadata": {
@@ -197,7 +196,7 @@ def register_memory_store(
     return _load_meta(store.get_model(_store_key(store_id)))
 
 
-def get_memory_store(store_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def get_memory_store(store_id: str, store: Any) -> dict[str, Any] | None:
     """Return memory store metadata, or None if not registered."""
     rec = store.get_model(_store_key(store_id))
     return _load_meta(rec) if rec else None
@@ -210,9 +209,9 @@ def write_memory(
     origin: str,
     store: Any,
     *,
-    writing_agent_id: Optional[str] = None,
-    tags: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    writing_agent_id: str | None = None,
+    tags: list[str] | None = None,
+) -> dict[str, Any]:
     """Write a value to a tracked memory store.
 
     Returns the entry record including any anomaly flags.
@@ -261,7 +260,7 @@ def write_memory(
         score = max(score, 0.5 + time_bomb_hits * 0.15)
         anomalous = True
 
-    entry: Dict[str, Any] = {
+    entry: dict[str, Any] = {
         "model_id": _entry_key(store_id, key),
         "id": _entry_key(store_id, key),
         "metadata": {
@@ -300,7 +299,7 @@ def write_memory(
     return _load_meta(store.get_model(_entry_key(store_id, key)))
 
 
-def get_memory_entry(store_id: str, key: str, store: Any) -> Optional[Dict[str, Any]]:
+def get_memory_entry(store_id: str, key: str, store: Any) -> dict[str, Any] | None:
     """Return a memory entry, or None if not found."""
     rec = store.get_model(_entry_key(store_id, key))
     return _load_meta(rec) if rec else None
@@ -311,9 +310,9 @@ def list_memory_entries(
     store: Any,
     *,
     anomalous_only: bool = False,
-    attack_vector: Optional[str] = None,
+    attack_vector: str | None = None,
     limit: int = 200,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """List entries in a memory store.
 
     Parameters
@@ -340,7 +339,7 @@ def list_memory_entries(
     return results
 
 
-def assess_memory_integrity(store_id: str, store: Any) -> Dict[str, Any]:
+def assess_memory_integrity(store_id: str, store: Any) -> dict[str, Any]:
     """Return a full integrity assessment report for a memory store."""
     store_meta = get_memory_store(store_id, store)
     if not store_meta:
@@ -349,7 +348,7 @@ def assess_memory_integrity(store_id: str, store: Any) -> Dict[str, Any]:
     entries = list_memory_entries(store_id, store, limit=10_000)
     anomalous = [e for e in entries if e.get("anomalous", False)]
 
-    by_vector: Dict[str, int] = {}
+    by_vector: dict[str, int] = {}
     for e in anomalous:
         av = e.get("attack_vector") or "UNKNOWN"
         by_vector[av] = by_vector.get(av, 0) + 1
@@ -389,7 +388,7 @@ def scan_for_poisoning(
     store: Any,
     *,
     min_score: float = 0.35,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Focused scan for poisoning signals — returns only entries above min_score threshold."""
     store_meta = get_memory_store(store_id, store)
     if not store_meta:

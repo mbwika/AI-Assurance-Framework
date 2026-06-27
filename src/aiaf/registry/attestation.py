@@ -4,14 +4,14 @@ import hashlib
 import hmac
 import json
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from .mbom import generate_mbom
 
 
 def create_provenance_attestation(
-    model_record: Dict[str, Any], signing_key: str, key_id: str = "default"
-) -> Dict[str, Any]:
+    model_record: dict[str, Any], signing_key: str, key_id: str = "default"
+) -> dict[str, Any]:
     if not signing_key:
         raise ValueError("A non-empty attestation signing key is required")
     if not model_record.get("model_id") or not model_record.get("sha256"):
@@ -45,11 +45,11 @@ def create_provenance_attestation(
 
 
 def verify_provenance_attestation(
-    attestation: Dict[str, Any],
+    attestation: dict[str, Any],
     signing_key: str,
-    expected_model: Optional[Dict[str, Any]] = None,
-    expected_key_id: Optional[str] = None,
-) -> Dict[str, Any]:
+    expected_model: dict[str, Any] | None = None,
+    expected_key_id: str | None = None,
+) -> dict[str, Any]:
     checks = {
         "signing_key_present": bool(signing_key),
         "supported_algorithm": attestation.get("algorithm") == "HMAC-SHA256",
@@ -85,11 +85,11 @@ def verify_provenance_attestation(
     return {"verified": all(checks.values()), "checks": checks}
 
 
-def _sha256_json(value: Dict[str, Any]) -> str:
+def _sha256_json(value: dict[str, Any]) -> str:
     return hashlib.sha256(_canonical_json(value)).hexdigest()
 
 
-def _canonical_json(value: Dict[str, Any]) -> bytes:
+def _canonical_json(value: dict[str, Any]) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode(
         "utf-8"
     )

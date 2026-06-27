@@ -1,10 +1,8 @@
 """RiskEngine orchestration for AI assurance analyzers."""
-from typing import Dict, Any, Optional
 from datetime import datetime, timezone
+from typing import Any
 
 from ..analysis import (
-    BIAS_FAIRNESS_SCORING_VERSION,
-    HALLUCINATION_RISK_SCORING_VERSION,
     TOOL_RISK_SCORING_VERSION,
     BiasSeverity,
     HallucinationRiskLevel,
@@ -23,7 +21,6 @@ from ..analysis import (
 )
 from ..mapping.standards import map_finding_to_controls
 from .risk_register_engine import RiskRegisterEngine
-
 
 RISK_AGGREGATION_VERSION = "1.0"
 SEVERITY_WEIGHTS = {"LOW": 1.0, "MEDIUM": 1.5, "HIGH": 2.5, "CRITICAL": 4.0}
@@ -90,10 +87,10 @@ _TOOL_INVOCATION_CONTEXT_FLAGS = (
 
 
 class RiskEngine:
-    def __init__(self, datastore: Optional[object] = None):
+    def __init__(self, datastore: object | None = None):
         self.datastore = datastore
 
-    def analyze(self, artifact: Dict[str, Any]) -> Dict[str, Any]:
+    def analyze(self, artifact: dict[str, Any]) -> dict[str, Any]:
         """Run a set of analyses on the provided artifact and return findings.
 
         The engine runs small analysis pipelines and persists findings using
@@ -384,7 +381,7 @@ class RiskEngine:
         return record
 
 
-def aggregate_risk_score(findings) -> Dict[str, Any]:
+def aggregate_risk_score(findings) -> dict[str, Any]:
     """Aggregate heterogeneous findings into a severity-aware 0-10 score."""
     if not findings:
         return {
@@ -443,7 +440,7 @@ def aggregate_risk_score(findings) -> Dict[str, Any]:
     }
 
 
-def _assess_tool_invocations(artifact: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _assess_tool_invocations(artifact: dict[str, Any]) -> dict[str, Any] | None:
     """Run per-invocation tool risk scoring and aggregate it into a finding detail.
 
     Invocations are sourced from an explicit ``tool_invocations`` list and from
@@ -484,7 +481,7 @@ def _assess_tool_invocations(artifact: Dict[str, Any]) -> Optional[Dict[str, Any
     }
 
 
-def _collect_tool_invocations(artifact: Dict[str, Any]) -> list:
+def _collect_tool_invocations(artifact: dict[str, Any]) -> list:
     """Normalize explicit and workflow-derived tool invocations into kwargs."""
     invocations: list = []
 
@@ -504,7 +501,7 @@ def _collect_tool_invocations(artifact: Dict[str, Any]) -> list:
     return invocations
 
 
-def _invocation_kwargs(item: Dict[str, Any], artifact: Dict[str, Any]) -> Dict[str, Any]:
+def _invocation_kwargs(item: dict[str, Any], artifact: dict[str, Any]) -> dict[str, Any]:
     """Map an explicit invocation or a workflow step to analyzer keyword args."""
     context = item.get("input_context")
     if not isinstance(context, dict):
@@ -538,7 +535,7 @@ def _invocation_kwargs(item: Dict[str, Any], artifact: Dict[str, Any]) -> Dict[s
     }
 
 
-def _serialize_tool_result(result: Any) -> Dict[str, Any]:
+def _serialize_tool_result(result: Any) -> dict[str, Any]:
     """Convert a ToolInvocationRiskResult into a JSON-serializable dict."""
     return {
         "tool_name": result.tool_name,
@@ -562,7 +559,7 @@ def _serialize_tool_result(result: Any) -> Dict[str, Any]:
     }
 
 
-def _assess_hallucination(artifact: Dict[str, Any]) -> Dict[str, Any]:
+def _assess_hallucination(artifact: dict[str, Any]) -> dict[str, Any]:
     """Run hallucination risk assessment from artifact-declared context.
 
     All 13 boolean flags and three evidence dicts are sourced directly from the
@@ -595,7 +592,7 @@ def _assess_hallucination(artifact: Dict[str, Any]) -> Dict[str, Any]:
     return serialized
 
 
-def _serialize_hallucination_result(result: Any) -> Dict[str, Any]:
+def _serialize_hallucination_result(result: Any) -> dict[str, Any]:
     """Convert a HallucinationRiskResult into a JSON-serializable dict."""
     return {
         "risk_score": result.risk_score,
@@ -623,7 +620,7 @@ def _serialize_hallucination_result(result: Any) -> Dict[str, Any]:
     }
 
 
-def _assess_bias_fairness(artifact: Dict[str, Any]) -> Dict[str, Any]:
+def _assess_bias_fairness(artifact: dict[str, Any]) -> dict[str, Any]:
     """Run bias and fairness assessment from artifact-declared context.
 
     Like the hallucination assessment, this always runs (domain defaults to "")
@@ -664,7 +661,7 @@ def _assess_bias_fairness(artifact: Dict[str, Any]) -> Dict[str, Any]:
     return serialized
 
 
-def _serialize_bias_result(result: Any) -> Dict[str, Any]:
+def _serialize_bias_result(result: Any) -> dict[str, Any]:
     """Convert a BiasFairnessResult into a JSON-serializable dict."""
     return {
         "risk_score": result.risk_score,
@@ -695,8 +692,8 @@ def _serialize_bias_result(result: Any) -> Dict[str, Any]:
 
 
 def _attestation_verification_context(
-    artifact: Dict[str, Any],
-) -> Optional[Dict[str, Any]]:
+    artifact: dict[str, Any],
+) -> dict[str, Any] | None:
     """Build the detached verified-attestation context for supply-chain analysis.
 
     Schema-2 provenance attestations carry no inline verification (the signed
@@ -716,7 +713,7 @@ def _attestation_verification_context(
     if not isinstance(records, list) or not records:
         return None
     ids: list = []
-    digests: Dict[str, Any] = {}
+    digests: dict[str, Any] = {}
     for record in records:
         if not isinstance(record, dict) or not record.get("verified"):
             continue
@@ -762,19 +759,19 @@ def _flag(value: Any, default: bool = False) -> bool:
     return bool(value)
 
 
-def _source_context(artifact: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _source_context(artifact: dict[str, Any]) -> dict[str, Any] | None:
     """Return optional provenance context for prompt-injection analysis."""
     context = artifact.get("source_context")
     return context if isinstance(context, dict) else None
 
 
-def _jailbreak_context(artifact: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _jailbreak_context(artifact: dict[str, Any]) -> dict[str, Any] | None:
     """Return optional provenance/security-testing context for jailbreak analysis."""
     context = artifact.get("analysis_context") or artifact.get("source_context")
     return context if isinstance(context, dict) else None
 
 
-def _egress_context(artifact: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _egress_context(artifact: dict[str, Any]) -> dict[str, Any] | None:
     """Return optional egress/destination/transport context for leakage analysis."""
     context = (
         artifact.get("egress_context")
@@ -784,7 +781,7 @@ def _egress_context(artifact: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     return context if isinstance(context, dict) else None
 
 
-def _finding(finding_type: str, detail: Dict[str, Any]) -> Dict[str, Any]:
+def _finding(finding_type: str, detail: dict[str, Any]) -> dict[str, Any]:
     return {
         "type": finding_type,
         "risk_score": float(detail.get("risk_score", detail.get("score", 0.0)) or 0.0),
@@ -805,7 +802,7 @@ def _max_severity(findings) -> str:
 
 
 def _persistence_error(
-    record: Dict[str, Any], operation: str, error: Exception
+    record: dict[str, Any], operation: str, error: Exception
 ) -> None:
     record["persistence"]["status"] = "DEGRADED"
     record["persistence"]["errors"].append(

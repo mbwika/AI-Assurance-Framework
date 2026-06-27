@@ -23,10 +23,8 @@ indicators are raised.
 
 from __future__ import annotations
 
-import math
-import re
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 POISONING_VERSION = "1.0"
 
@@ -36,7 +34,7 @@ STATUS_SUSPICIOUS = "SUSPICIOUS"
 STATUS_BACKDOOR_SUSPECTED = "BACKDOOR_SUSPECTED"
 STATUS_POISONING_SUSPECTED = "POISONING_SUSPECTED"
 
-_STATUS_RANK: Dict[str, int] = {
+_STATUS_RANK: dict[str, int] = {
     STATUS_POISONING_SUSPECTED: 3,
     STATUS_BACKDOOR_SUSPECTED: 2,
     STATUS_SUSPICIOUS: 1,
@@ -86,7 +84,7 @@ def _status_from_count(finding_count: int, has_critical: bool) -> str:
 
 # ── Static heuristics ──────────────────────────────────────────────────────────
 
-def _h1_unknown_training_data(model_record: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _h1_unknown_training_data(model_record: dict[str, Any]) -> dict[str, Any] | None:
     """H1: no verifiable source for training corpus."""
     meta = model_record.get("metadata") or {}
     training = meta.get("training_data_sources") or meta.get("training_data") or ""
@@ -101,7 +99,7 @@ def _h1_unknown_training_data(model_record: Dict[str, Any]) -> Optional[Dict[str
     return None
 
 
-def _h2_low_trust_provenance(model_record: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _h2_low_trust_provenance(model_record: dict[str, Any]) -> dict[str, Any] | None:
     """H2: provenance score or trust cap below safe threshold."""
     meta = model_record.get("metadata") or {}
     score = meta.get("provenance_score") or meta.get("provenance_conservative_score")
@@ -125,7 +123,7 @@ def _h2_low_trust_provenance(model_record: Dict[str, Any]) -> Optional[Dict[str,
     return None
 
 
-def _h3_capability_mismatch(model_record: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _h3_capability_mismatch(model_record: dict[str, Any]) -> dict[str, Any] | None:
     """H3: claimed benchmark distribution inconsistent with architecture scale."""
     meta = model_record.get("metadata") or {}
     benchmarks = meta.get("benchmark_scores") or {}
@@ -149,7 +147,7 @@ def _h3_capability_mismatch(model_record: Dict[str, Any]) -> Optional[Dict[str, 
     return None
 
 
-def _h4_opaque_finetuning(model_record: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _h4_opaque_finetuning(model_record: dict[str, Any]) -> dict[str, Any] | None:
     """H4: fine-tuned on undisclosed or untrusted dataset."""
     meta = model_record.get("metadata") or {}
     finetuned = meta.get("fine_tuned_on") or meta.get("finetuning_dataset")
@@ -176,7 +174,7 @@ def _h4_opaque_finetuning(model_record: Dict[str, Any]) -> Optional[Dict[str, An
     return None
 
 
-def _h5_unverified_architecture(model_record: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _h5_unverified_architecture(model_record: dict[str, Any]) -> dict[str, Any] | None:
     """H5: architecture claim not confirmed by artifact inspection."""
     meta = model_record.get("metadata") or {}
     arch_claimed = meta.get("architecture") or meta.get("model_type")
@@ -197,7 +195,7 @@ def _h5_unverified_architecture(model_record: Dict[str, Any]) -> Optional[Dict[s
 
 # ── Behavioral heuristics ──────────────────────────────────────────────────────
 
-def _h6_output_length_anomaly(responses: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+def _h6_output_length_anomaly(responses: list[dict[str, Any]]) -> dict[str, Any] | None:
     """H6: extreme length variance across inputs (potential trigger sensitivity)."""
     if len(responses) < 3:
         return None
@@ -221,8 +219,8 @@ def _h6_output_length_anomaly(responses: List[Dict[str, Any]]) -> Optional[Dict[
 
 
 def _h7_output_consistency_failure(
-    responses: List[Dict[str, Any]],
-) -> Optional[Dict[str, Any]]:
+    responses: list[dict[str, Any]],
+) -> dict[str, Any] | None:
     """H7: high Jaccard divergence between outputs for paired (input, control_input) items."""
     pairs = [r for r in responses if r.get("control_output")]
     if not pairs:
@@ -251,12 +249,12 @@ def _h7_output_consistency_failure(
 # ── Public API ─────────────────────────────────────────────────────────────────
 
 def assess_poisoning_risk(
-    model_record: Dict[str, Any],
+    model_record: dict[str, Any],
     store: Any,
     *,
-    behavioral_responses: Optional[List[Dict[str, Any]]] = None,
-    model_id: Optional[str] = None,
-) -> Dict[str, Any]:
+    behavioral_responses: list[dict[str, Any]] | None = None,
+    model_id: str | None = None,
+) -> dict[str, Any]:
     """Assess poisoning / backdoor risk for a model.
 
     Parameters
@@ -272,7 +270,7 @@ def assess_poisoning_risk(
         Override model_id (defaults to ``model_record.get('model_id')``).
     """
     mid = model_id or (model_record.get("model_id") or model_record.get("id") or "unknown")
-    findings: List[Dict[str, Any]] = []
+    findings: list[dict[str, Any]] = []
 
     for h in (
         _h1_unknown_training_data(model_record),

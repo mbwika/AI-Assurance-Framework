@@ -11,20 +11,25 @@ REST endpoints:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from .models import get_api_key, get_store
 from ..registry.nhi_registry import (
-    NHI_TYPES, NHI_STATES,
-    DEFAULT_STALE_DAYS, DEFAULT_CREDENTIAL_AGE_DAYS,
+    DEFAULT_CREDENTIAL_AGE_DAYS,
+    DEFAULT_STALE_DAYS,
+    NHI_STATES,
+    NHI_TYPES,
     NHIError,
-    register_nhi, get_nhi, list_nhis,
-    update_nhi_state, update_nhi,
     assess_nhi_hygiene,
+    get_nhi,
+    list_nhis,
+    register_nhi,
+    update_nhi,
+    update_nhi_state,
 )
+from .models import get_api_key, get_store
 
 router = APIRouter(prefix="/v1/nhi", tags=["nhi"])
 
@@ -34,30 +39,30 @@ router = APIRouter(prefix="/v1/nhi", tags=["nhi"])
 class RegisterNHIRequest(BaseModel):
     nhi_id: str
     nhi_type: str
-    display_name: Optional[str] = None
-    owner_id: Optional[str] = None
-    environment: Optional[str] = None
-    granted_scopes: Optional[List[str]] = None
-    minimum_required_scopes: Optional[List[str]] = None
-    credential_issued_at: Optional[str] = None
-    last_seen_at: Optional[str] = None
+    display_name: str | None = None
+    owner_id: str | None = None
+    environment: str | None = None
+    granted_scopes: list[str] | None = None
+    minimum_required_scopes: list[str] | None = None
+    credential_issued_at: str | None = None
+    last_seen_at: str | None = None
     is_active_in_environment: bool = False
-    attributes: Optional[Dict[str, Any]] = None
+    attributes: dict[str, Any] | None = None
 
 
 class UpdateNHIRequest(BaseModel):
-    granted_scopes: Optional[List[str]] = None
-    minimum_required_scopes: Optional[List[str]] = None
-    credential_issued_at: Optional[str] = None
-    last_seen_at: Optional[str] = None
-    owner_id: Optional[str] = None
-    is_active_in_environment: Optional[bool] = None
-    attributes: Optional[Dict[str, Any]] = None
+    granted_scopes: list[str] | None = None
+    minimum_required_scopes: list[str] | None = None
+    credential_issued_at: str | None = None
+    last_seen_at: str | None = None
+    owner_id: str | None = None
+    is_active_in_environment: bool | None = None
+    attributes: dict[str, Any] | None = None
 
 
 class TransitionStateRequest(BaseModel):
     new_state: str
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
@@ -87,9 +92,9 @@ def register_nhi_route(
 
 @router.get("")
 def list_nhis_route(
-    nhi_type: Optional[str] = None,
-    state: Optional[str] = None,
-    owner_id: Optional[str] = None,
+    nhi_type: str | None = None,
+    state: str | None = None,
+    owner_id: str | None = None,
     limit: int = 200,
     _: str = Depends(get_api_key),
     store: Any = Depends(get_store),

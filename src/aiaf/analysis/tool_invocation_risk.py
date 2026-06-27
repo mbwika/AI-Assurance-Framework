@@ -7,10 +7,10 @@ through an external channel. It does not authorize or execute tools.
 """
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, FrozenSet, List, Optional, Sequence, Tuple
-
+from typing import Any
 
 TOOL_RISK_SCORING_VERSION = "2.0"
 _MAX_PERMISSIONS = 256
@@ -37,22 +37,22 @@ class ToolInvocationRiskResult:
     tool_name: str
     risk_tier: ToolRiskTier
     score: float
-    risk_factors: List[str] = field(default_factory=list)
-    recommendations: List[str] = field(default_factory=list)
-    mitre_atlas_refs: List[str] = field(default_factory=list)
-    owasp_refs: List[str] = field(default_factory=list)
+    risk_factors: list[str] = field(default_factory=list)
+    recommendations: list[str] = field(default_factory=list)
+    mitre_atlas_refs: list[str] = field(default_factory=list)
+    owasp_refs: list[str] = field(default_factory=list)
     scoring_version: str = TOOL_RISK_SCORING_VERSION
     capability_class: str = "unclassified"
-    matched_capabilities: List[str] = field(default_factory=list)
-    score_breakdown: List[ToolRiskContribution] = field(default_factory=list)
+    matched_capabilities: list[str] = field(default_factory=list)
+    score_breakdown: list[ToolRiskContribution] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
 class _CapabilityRule:
     name: str
     weight: float
-    phrases: Tuple[Tuple[str, ...], ...]
-    traits: FrozenSet[str]
+    phrases: tuple[tuple[str, ...], ...]
+    traits: frozenset[str]
 
 
 _CAPABILITY_RULES = (
@@ -242,8 +242,8 @@ _TOKEN = re.compile(r"[a-z0-9]+|\*")
 
 def assess_tool_invocation_risk(
     tool_name: str,
-    declared_permissions: Optional[List[str]] = None,
-    input_context: Optional[Dict[str, Any]] = None,
+    declared_permissions: list[str] | None = None,
+    input_context: dict[str, Any] | None = None,
     requires_human_approval: bool = False,
     is_idempotent: bool = True,
     has_input_validation: bool = False,
@@ -274,8 +274,8 @@ def assess_tool_invocation_risk(
         has_output_sanitization, default=False
     )
     capability = _classify_capability(tool_name, context)
-    contributions: List[ToolRiskContribution] = []
-    recommendations: List[str] = []
+    contributions: list[ToolRiskContribution] = []
+    recommendations: list[str] = []
 
     def add(indicator: str, weight: float, detail: str, recommendation: str = "") -> None:
         if any(item.indicator == indicator for item in contributions):
@@ -533,7 +533,7 @@ def assess_tool_invocation_risk(
     )
 
 
-def _classify_capability(tool_name: str, context: Dict[str, Any]) -> Dict[str, Any]:
+def _classify_capability(tool_name: str, context: dict[str, Any]) -> dict[str, Any]:
     tool_tokens = _tokenize(tool_name)
     context_values = [context.get("capability"), context.get("action"), context.get("operation")]
     context_tokens = [_tokenize(value) for value in context_values if value not in (None, "")]
@@ -571,7 +571,7 @@ def _classify_capability(tool_name: str, context: Dict[str, Any]) -> Dict[str, A
     }
 
 
-def _normalize_permissions(value: Optional[Sequence[str]]):
+def _normalize_permissions(value: Sequence[str] | None):
     if value in (None, ""):
         return [], True, False
     if isinstance(value, str):
@@ -602,7 +602,7 @@ def _strict_safeguard_bool(value, *, default):
     return False, False
 
 
-def _analyze_permissions(permissions: List[str]) -> Dict[str, List[str]]:
+def _analyze_permissions(permissions: list[str]) -> dict[str, list[str]]:
     broad = []
     privileged = []
     mutating = []
@@ -629,21 +629,21 @@ def _analyze_permissions(permissions: List[str]) -> Dict[str, List[str]]:
     }
 
 
-def _tokenize(value: Any) -> Tuple[str, ...]:
+def _tokenize(value: Any) -> tuple[str, ...]:
     expanded = _CAMEL_BOUNDARY.sub(" ", str(value or ""))
     return tuple(_TOKEN.findall(expanded.lower()))
 
 
-def _contains_phrase(tokens: Tuple[str, ...], phrase: Tuple[str, ...]) -> bool:
+def _contains_phrase(tokens: tuple[str, ...], phrase: tuple[str, ...]) -> bool:
     width = len(phrase)
     return any(tokens[index : index + width] == phrase for index in range(len(tokens) - width + 1))
 
 
-def _context_has_tokens(value: Any, expected: FrozenSet[str]) -> bool:
+def _context_has_tokens(value: Any, expected: frozenset[str]) -> bool:
     return bool(set(_tokenize(value)) & expected)
 
 
-def _context_bool(context: Dict[str, Any], key: str) -> bool:
+def _context_bool(context: dict[str, Any], key: str) -> bool:
     value = context.get(key)
     if isinstance(value, bool):
         return value

@@ -1,5 +1,5 @@
-import sys
 import sqlite3
+import sys
 from pathlib import Path
 
 import pytest
@@ -212,8 +212,8 @@ def test_assurance_report_summarizes_risk_governance_and_standards(tmp_path):
 
 def test_reporting_api_exposes_json_and_markdown_assurance_report(tmp_path, monkeypatch):
     ensure_src()
-    from aiaf.api.app import app
     from aiaf.api import reporting as reporting_api
+    from aiaf.api.app import app
     from aiaf.core import RiskEngine
     from aiaf.data.store import DataStore
 
@@ -474,8 +474,8 @@ def test_sqlite_metric_migration_backfills_artifact_scope(tmp_path):
 
 def test_reporting_metrics_returns_oldest_first_time_series(tmp_path, monkeypatch):
     ensure_src()
-    from aiaf.api.app import app
     from aiaf.api import reporting as reporting_api
+    from aiaf.api.app import app
     from aiaf.data.store import DataStore
 
     store = DataStore(db_path=str(tmp_path / "metrics.db"))

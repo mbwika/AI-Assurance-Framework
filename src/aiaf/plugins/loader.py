@@ -9,16 +9,15 @@ Call ``load_plugins(plugin_dir)`` once at application startup.
 import importlib.util
 import os
 import pkgutil
-from typing import List, Optional
 
 from .base import AnalyzerPlugin, MappingPlugin
 
-_analyzer_plugins: List[AnalyzerPlugin] = []
-_mapping_plugins: List[MappingPlugin] = []
+_analyzer_plugins: list[AnalyzerPlugin] = []
+_mapping_plugins: list[MappingPlugin] = []
 _loaded = False
 
 
-def load_plugins(plugin_dir: Optional[str] = None) -> None:
+def load_plugins(plugin_dir: str | None = None) -> None:
     """Discover and register plugins from *plugin_dir*."""
     global _loaded
     if _loaded:
@@ -50,11 +49,11 @@ def load_plugins(plugin_dir: Optional[str] = None) -> None:
                 pass
 
 
-def get_analyzer_plugins() -> List[AnalyzerPlugin]:
+def get_analyzer_plugins() -> list[AnalyzerPlugin]:
     return list(_analyzer_plugins)
 
 
-def get_mapping_plugins() -> List[MappingPlugin]:
+def get_mapping_plugins() -> list[MappingPlugin]:
     return list(_mapping_plugins)
 
 
