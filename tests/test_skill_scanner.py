@@ -1,24 +1,21 @@
 """Tests for src/aiaf/registry/skill_scanner.py."""
 
 import pytest
+
 from aiaf.registry.skill_scanner import (
-    scan_skill_manifest,
-    scan_skill_registry,
-    SKILL_SCANNER_VERSION,
+    RISK_COVERT_CODE_EXECUTION,
+    RISK_COVERT_NETWORK_ACCESS,
+    RISK_INJECTION_PATTERN,
+    RISK_OBFUSCATED_ENTRY_POINT,
+    RISK_PERMISSION_SCOPE_CREEP,
+    RISK_SUSPICIOUS_DEPENDENCY,
+    RISK_UNSIGNED_PUBLISHER,
     STATUS_CLEAN,
     STATUS_SUSPICIOUS,
     STATUS_UNSAFE,
-    STATUS_ERROR,
-    RISK_PERMISSION_SCOPE_CREEP,
-    RISK_UNSIGNED_PUBLISHER,
-    RISK_SUSPICIOUS_DEPENDENCY,
-    RISK_OBFUSCATED_ENTRY_POINT,
-    RISK_COVERT_NETWORK_ACCESS,
-    RISK_COVERT_CODE_EXECUTION,
-    RISK_CAPABILITY_MISMATCH,
-    RISK_INJECTION_PATTERN,
+    scan_skill_manifest,
+    scan_skill_registry,
 )
-
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
 

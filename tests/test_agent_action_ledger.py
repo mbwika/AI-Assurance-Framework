@@ -1,13 +1,12 @@
 """Tests for aiaf.core.agent_action_ledger."""
 
 import json
-import hashlib
+
 import pytest
 
 from aiaf.core.agent_action_ledger import (
-    LEDGER_VERSION,
     _GENESIS_HASH,
-    _VALID_DECISIONS,
+    LEDGER_VERSION,
     LedgerValidationError,
     _compute_entry_hash,
     _entry_payload,
@@ -21,7 +20,6 @@ from aiaf.core.agent_action_ledger import (
     list_ledgers,
     verify_chain,
 )
-
 
 # ── Fake store ────────────────────────────────────────────────────────────────
 
@@ -355,7 +353,7 @@ class TestGetLedgerEntries:
 
     def test_pagination(self):
         store = _store()
-        for i in range(10):
+        for _i in range(10):
             _append(store)
         entries, total = get_ledger_entries("s1", store, offset=3, limit=4)
         assert total == 10

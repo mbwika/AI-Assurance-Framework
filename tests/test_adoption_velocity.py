@@ -1,30 +1,28 @@
 """Tests for src/aiaf/analysis/adoption_velocity.py."""
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
-from datetime import datetime, timezone, timedelta
+
 from aiaf.analysis.adoption_velocity import (
-    record_adoption_event,
-    set_velocity_baseline,
-    get_velocity_profile,
-    detect_velocity_anomaly,
-    list_at_risk_artifacts,
-    ADOPTION_VELOCITY_VERSION,
-    EVENT_DOWNLOAD,
-    EVENT_INSTALL,
     EVENT_DEPLOY,
+    EVENT_DOWNLOAD,
     EVENT_FORK,
+    EVENT_INSTALL,
     EVENT_STAR,
-    SIGNAL_VELOCITY_SPIKE,
     SIGNAL_COLD_START_SURGE,
     SIGNAL_DORMANCY_REACTIVATION,
-    SIGNAL_VELOCITY_CLIFF,
-    VELOCITY_RISK_NORMAL,
-    VELOCITY_RISK_ELEVATED,
-    VELOCITY_RISK_HIGH,
+    SIGNAL_VELOCITY_SPIKE,
     VELOCITY_RISK_CRITICAL,
+    VELOCITY_RISK_HIGH,
+    VELOCITY_RISK_NORMAL,
     AdoptionVelocityError,
+    detect_velocity_anomaly,
+    get_velocity_profile,
+    list_at_risk_artifacts,
+    record_adoption_event,
+    set_velocity_baseline,
 )
-
 
 # ── Minimal fake store ────────────────────────────────────────────────────────
 

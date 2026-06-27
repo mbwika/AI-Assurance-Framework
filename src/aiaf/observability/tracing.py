@@ -4,8 +4,8 @@ When ``opentelemetry-sdk`` is installed and ``AIAF_TRACING_ENABLED=true`` is
 set, configure the SDK here.  The no-op tracer keeps the rest of the codebase
 instrumentation-ready without a hard dependency on the OTel packages.
 """
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator
 
 
 class _NoopSpan:
@@ -39,9 +39,9 @@ def configure_tracing(service_name: str = "aiaf", otlp_endpoint: str | None = No
     """Wire up the OTel SDK when the package is available."""
     try:
         from opentelemetry import trace
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
-        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 
         provider = TracerProvider()
         if otlp_endpoint:

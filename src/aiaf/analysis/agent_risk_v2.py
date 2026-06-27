@@ -3,11 +3,11 @@
 import json
 import math
 import re
-from typing import Any, Dict, Iterable, List, Optional
+from collections.abc import Iterable
+from typing import Any
 
 from .agent_policy_profiles import AUTONOMY_ORDER, resolve_agent_policy
 from .workflow_graph import analyze_workflow_graph
-
 
 AGENT_RISK_SCORING_VERSION = "2.0"
 _MAX_TOOLS = 100
@@ -117,10 +117,10 @@ _NON_OPERATIONAL_TOKENS = frozenset(
 
 
 def assess_agent_risk_v2(
-    artifact: Dict[str, Any], policy: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+    artifact: dict[str, Any], policy: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Assess static agent authority, reach, workflow, delegation, and controls."""
-    factors: List[Dict[str, Any]] = []
+    factors: list[dict[str, Any]] = []
     assessment_complete = True
     malformed_root = not isinstance(artifact, dict)
     if malformed_root:
@@ -1450,5 +1450,5 @@ def _bounded_text(value):
     return str(value or "").strip()[:_MAX_TEXT_CHARS]
 
 
-def _unique(values: Iterable[str]) -> List[str]:
+def _unique(values: Iterable[str]) -> list[str]:
     return list(dict.fromkeys(values))

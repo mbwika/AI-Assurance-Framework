@@ -40,10 +40,9 @@ import os
 import subprocess
 import sys
 import tempfile
-import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +66,7 @@ BACKEND_PYRIT = "pyrit"
 # Each entry maps a garak probe family (as used in --probes) to an AIAF
 # category and severity level.  Severity reflects the worst-case impact of a
 # finding in that family, not every individual probe within it.
-_PROBE_FAMILY_META: Dict[str, Dict[str, str]] = {
+_PROBE_FAMILY_META: dict[str, dict[str, str]] = {
     "promptinject": {
         "category": "prompt_injection",
         "severity": "HIGH",
@@ -152,13 +151,13 @@ def run_redteam(
     endpoint_url: str,
     *,
     backend: str = BACKEND_GARAK,
-    api_key: Optional[str] = None,
+    api_key: str | None = None,
     model_name: str = "default",
-    probe_families: Optional[List[str]] = None,
+    probe_families: list[str] | None = None,
     depth: str = "quick",
     timeout: int = 600,
-    report_dir: Optional[str] = None,
-) -> Dict[str, Any]:
+    report_dir: str | None = None,
+) -> dict[str, Any]:
     """Run a red-team evaluation against ``endpoint_url``.
 
     Parameters
@@ -222,12 +221,12 @@ def run_redteam(
 def _run_garak(
     endpoint_url: str,
     *,
-    api_key: Optional[str],
+    api_key: str | None,
     model_name: str,
-    probe_families: List[str],
+    probe_families: list[str],
     timeout: int,
-    report_dir: Optional[str],
-) -> Dict[str, Any]:
+    report_dir: str | None,
+) -> dict[str, Any]:
     """Run garak as a subprocess and parse its output."""
     try:
         import importlib.util
@@ -341,9 +340,9 @@ def _run_garak(
 def _parse_garak_output(
     report_dir: str,
     run_prefix: str,
-    probe_families: List[str],
+    probe_families: list[str],
     stdout: str,
-) -> Dict[str, Dict[str, int]]:
+) -> dict[str, dict[str, int]]:
     """Parse garak report/hitlog files and stdout for pass/fail counts.
 
     Tries three sources in order:
@@ -351,7 +350,7 @@ def _parse_garak_output(
     2. ``{run_prefix}.hitlog.jsonl`` — failures only (used when report absent)
     3. stdout — human-readable summary lines as fallback
     """
-    family_stats: Dict[str, Dict[str, int]] = {
+    family_stats: dict[str, dict[str, int]] = {
         fam: {"total": 0, "failures": 0} for fam in probe_families
     }
 
@@ -408,8 +407,8 @@ def _parse_garak_output(
 
 def _parse_stdout_summary(
     stdout: str,
-    probe_families: List[str],
-    family_stats: Dict[str, Dict[str, int]],
+    probe_families: list[str],
+    family_stats: dict[str, dict[str, int]],
 ) -> None:
     """Best-effort stdout parser for garak's tabular summary."""
     for line in stdout.splitlines():
@@ -437,8 +436,8 @@ def _parse_stdout_summary(
 
 
 def _build_findings(
-    family_stats: Dict[str, Dict[str, int]],
-) -> List[Dict[str, Any]]:
+    family_stats: dict[str, dict[str, int]],
+) -> list[dict[str, Any]]:
     """Convert per-family stats into AIAF finding dicts."""
     findings = []
     for fam, stats in family_stats.items():
@@ -478,10 +477,10 @@ def _build_findings(
     ))
 
 
-def _aggregate(findings: List[Dict[str, Any]]) -> Tuple[Dict, Dict]:
+def _aggregate(findings: list[dict[str, Any]]) -> tuple[dict, dict]:
     """Aggregate findings into by-category and by-severity counts."""
-    by_cat: Dict[str, int] = {}
-    by_sev: Dict[str, int] = {}
+    by_cat: dict[str, int] = {}
+    by_sev: dict[str, int] = {}
     for f in findings:
         if f["failures"] > 0:
             by_cat[f["category"]] = by_cat.get(f["category"], 0) + f["failures"]
@@ -497,10 +496,10 @@ def _aggregate(findings: List[Dict[str, Any]]) -> Tuple[Dict, Dict]:
 def _run_pyrit(
     endpoint_url: str,
     *,
-    api_key: Optional[str],
+    api_key: str | None,
     model_name: str,
     timeout: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run a PyRIT red-team campaign against the endpoint."""
     try:
         import importlib.util
@@ -527,19 +526,19 @@ def _run_pyrit(
 def _run_pyrit_campaign(
     endpoint_url: str,
     *,
-    api_key: Optional[str],
+    api_key: str | None,
     model_name: str,
     timeout: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run a default PyRIT jailbreak campaign.
 
     Extend this function to add domain-specific scenarios, custom scorers,
     or converter chains.  See the PyRIT documentation for orchestrator/target
     configuration.
     """
+    from pyrit.common import default_values  # type: ignore[import]
     from pyrit.orchestrator import PromptSendingOrchestrator  # type: ignore[import]
     from pyrit.prompt_target import OpenAIChatTarget  # type: ignore[import]
-    from pyrit.common import default_values  # type: ignore[import]
 
     default_values.load_default_env()
 
@@ -625,11 +624,11 @@ def _looks_like_refusal(text: str) -> bool:
     return any(m in text_lower for m in markers)
 
 
-def _result_no_endpoint() -> Dict[str, Any]:
+def _result_no_endpoint() -> dict[str, Any]:
     return _result(STATUS_NO_ENDPOINT, note="No endpoint URL provided.")
 
 
-def _result_error(note: str, **kwargs) -> Dict[str, Any]:
+def _result_error(note: str, **kwargs) -> dict[str, Any]:
     return _result(STATUS_ERROR, note=note, **kwargs)
 
 
@@ -637,21 +636,21 @@ def _result(
     status: str,
     *,
     backend: str = BACKEND_GARAK,
-    endpoint: Optional[str] = None,
-    model_name: Optional[str] = None,
-    probe_families_requested: Optional[List[str]] = None,
-    family_stats: Optional[Dict[str, Any]] = None,
-    findings: Optional[List[Dict[str, Any]]] = None,
-    by_category: Optional[Dict[str, int]] = None,
-    by_severity: Optional[Dict[str, int]] = None,
+    endpoint: str | None = None,
+    model_name: str | None = None,
+    probe_families_requested: list[str] | None = None,
+    family_stats: dict[str, Any] | None = None,
+    findings: list[dict[str, Any]] | None = None,
+    by_category: dict[str, int] | None = None,
+    by_severity: dict[str, int] | None = None,
     total_probes_run: int = 0,
     total_failures: int = 0,
     assessment_complete: bool = False,
-    note: Optional[str] = None,
-    garak_exit_code: Optional[int] = None,
-    pyrit_results: Optional[List[Dict[str, Any]]] = None,
-    report_dir: Optional[str] = None,
-) -> Dict[str, Any]:
+    note: str | None = None,
+    garak_exit_code: int | None = None,
+    pyrit_results: list[dict[str, Any]] | None = None,
+    report_dir: str | None = None,
+) -> dict[str, Any]:
     return {
         "engine_version": REDTEAM_ENGINE_VERSION,
         "backend": backend,

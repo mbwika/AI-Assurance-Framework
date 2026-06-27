@@ -30,7 +30,7 @@ the threat profile and deployment context provided.  No live probing.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 SIMULATION_VERSION = "1.0"
 
@@ -46,7 +46,7 @@ THREAT_PROFILES: frozenset = frozenset(
 )
 
 # Sophistication: 0–1 technical capability of the threat actor
-_SOPHISTICATION: Dict[str, float] = {
+_SOPHISTICATION: dict[str, float] = {
     THREAT_SCRIPT_KIDDIE: 0.20,
     THREAT_OPPORTUNIST: 0.40,
     THREAT_MOTIVATED: 0.65,
@@ -68,7 +68,7 @@ ATTACK_VECTORS: frozenset = frozenset({
 })
 
 # Base accessibility of each vector (0–1, higher = easier to exploit)
-_ACCESSIBILITY: Dict[str, float] = {
+_ACCESSIBILITY: dict[str, float] = {
     ATTACK_PROMPT_INJECTION: 0.90,
     ATTACK_JAILBREAK: 0.80,
     ATTACK_EXTRACTION: 0.55,
@@ -78,7 +78,7 @@ _ACCESSIBILITY: Dict[str, float] = {
 }
 
 # Which threat profiles can attempt each vector
-_VECTOR_PROFILES: Dict[str, Set[str]] = {
+_VECTOR_PROFILES: dict[str, set[str]] = {
     ATTACK_PROMPT_INJECTION: {THREAT_SCRIPT_KIDDIE, THREAT_OPPORTUNIST, THREAT_MOTIVATED, THREAT_APT, THREAT_INSIDER},
     ATTACK_JAILBREAK: {THREAT_SCRIPT_KIDDIE, THREAT_OPPORTUNIST, THREAT_MOTIVATED, THREAT_APT},
     ATTACK_EXTRACTION: {THREAT_OPPORTUNIST, THREAT_MOTIVATED, THREAT_APT},
@@ -88,7 +88,7 @@ _VECTOR_PROFILES: Dict[str, Set[str]] = {
 }
 
 # Impact level for each vector
-_VECTOR_IMPACT: Dict[str, str] = {
+_VECTOR_IMPACT: dict[str, str] = {
     ATTACK_PROMPT_INJECTION: "HIGH",
     ATTACK_JAILBREAK: "HIGH",
     ATTACK_EXTRACTION: "CRITICAL",
@@ -104,11 +104,11 @@ RISK_MEDIUM = "MEDIUM"
 RISK_HIGH = "HIGH"
 RISK_CRITICAL = "CRITICAL"
 
-_RISK_RANK: Dict[str, int] = {
+_RISK_RANK: dict[str, int] = {
     RISK_CRITICAL: 4, RISK_HIGH: 3, RISK_MEDIUM: 2, RISK_LOW: 1, RISK_NEGLIGIBLE: 0,
 }
 
-_IMPACT_RANK: Dict[str, int] = {"CRITICAL": 3, "HIGH": 2, "MEDIUM": 1, "LOW": 0}
+_IMPACT_RANK: dict[str, int] = {"CRITICAL": 3, "HIGH": 2, "MEDIUM": 1, "LOW": 0}
 
 
 class SimulationError(ValueError):
@@ -148,7 +148,7 @@ def _clamp(value: float, lo: float = 0.0, hi: float = 1.0) -> float:
 def _adjusted_probability(
     threat_profile: str,
     vector: str,
-    ctx: Dict[str, Any],
+    ctx: dict[str, Any],
 ) -> float:
     """Compute probability after applying deployment-context modifiers."""
     base = _SOPHISTICATION[threat_profile] * _ACCESSIBILITY[vector]
@@ -182,7 +182,7 @@ def _adjusted_probability(
 
 # ── Mitigation recommendations ────────────────────────────────────────────────
 
-_MITIGATIONS: Dict[str, str] = {
+_MITIGATIONS: dict[str, str] = {
     ATTACK_PROMPT_INJECTION: "Deploy input/output guardrails (aiaf.core.guardrail_engine).",
     ATTACK_JAILBREAK: "Enable strict content policies and output classifiers.",
     ATTACK_EXTRACTION: "Implement rate limiting, output length caps, and watermarking.",
@@ -195,13 +195,13 @@ _MITIGATIONS: Dict[str, str] = {
 # ── Public API ─────────────────────────────────────────────────────────────────
 
 def simulate_adversary(
-    model_record: Dict[str, Any],
+    model_record: dict[str, Any],
     threat_profile: str,
     store: Any,
     *,
-    deployment_context: Optional[Dict[str, Any]] = None,
-    model_id: Optional[str] = None,
-) -> Dict[str, Any]:
+    deployment_context: dict[str, Any] | None = None,
+    model_id: str | None = None,
+) -> dict[str, Any]:
     """Simulate what a threat actor could achieve against this model.
 
     Parameters
@@ -229,9 +229,9 @@ def simulate_adversary(
     mid = model_id or (model_record.get("model_id") or model_record.get("id") or "unknown")
     ctx = dict(deployment_context or {})
 
-    vectors: List[Dict[str, Any]] = []
+    vectors: list[dict[str, Any]] = []
     overall_threat = RISK_NEGLIGIBLE
-    recommended_mitigations: List[str] = []
+    recommended_mitigations: list[str] = []
 
     for vector in sorted(ATTACK_VECTORS):
         if threat_profile not in _VECTOR_PROFILES[vector]:

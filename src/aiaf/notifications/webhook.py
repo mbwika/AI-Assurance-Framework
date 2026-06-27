@@ -10,7 +10,7 @@ import hmac
 import json
 import urllib.error
 import urllib.request
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ..observability.logging import get_logger
 
@@ -21,20 +21,20 @@ class WebhookNotifier:
     def __init__(
         self,
         url: str,
-        secret: Optional[str] = None,
+        secret: str | None = None,
         timeout: int = 10,
     ) -> None:
         self._url = url
         self._secret = secret
         self._timeout = timeout
 
-    def send(self, event_type: str, payload: Dict[str, Any]) -> bool:
+    def send(self, event_type: str, payload: dict[str, Any]) -> bool:
         """POST an event to the configured webhook URL.
 
         Returns True when the remote responded with a 2xx status code.
         """
         body = json.dumps({"event_type": event_type, "payload": payload}).encode()
-        headers: Dict[str, str] = {"Content-Type": "application/json"}
+        headers: dict[str, str] = {"Content-Type": "application/json"}
         if self._secret:
             sig = hmac.new(self._secret.encode(), body, hashlib.sha256).hexdigest()
             headers["X-AIAF-Signature"] = f"sha256={sig}"
@@ -57,10 +57,10 @@ class WebhookNotifier:
 
 
 def notify_critical_finding(
-    notifier: Optional[WebhookNotifier],
+    notifier: WebhookNotifier | None,
     finding_type: str,
-    artifact_id: Optional[str],
-    details: Dict[str, Any],
+    artifact_id: str | None,
+    details: dict[str, Any],
 ) -> None:
     """Fire-and-forget critical finding notification; safe when notifier is None."""
     if notifier is None:

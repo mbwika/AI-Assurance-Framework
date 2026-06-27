@@ -18,7 +18,7 @@ format and translated to the appropriate CEF/LEEF severity field.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any
 
 SIEM_VERSION = "1.0"
 
@@ -32,11 +32,11 @@ FORMAT_JSON = "JSON"
 
 EXPORT_FORMATS: frozenset = frozenset({FORMAT_CEF, FORMAT_LEEF, FORMAT_JSON})
 
-_CEF_SEVERITY: Dict[str, int] = {
+_CEF_SEVERITY: dict[str, int] = {
     "CRITICAL": 10, "HIGH": 7, "MEDIUM": 5, "LOW": 3, "INFO": 1,
 }
 
-_LEEF_SEVERITY: Dict[str, str] = {
+_LEEF_SEVERITY: dict[str, str] = {
     "CRITICAL": "Critical", "HIGH": "High",
     "MEDIUM": "Medium", "LOW": "Low", "INFO": "Info",
 }
@@ -69,7 +69,7 @@ def _leef_escape(value: str) -> str:
 
 # ── Format functions ───────────────────────────────────────────────────────────
 
-def export_incident_cef(incident: Dict[str, Any]) -> str:
+def export_incident_cef(incident: dict[str, Any]) -> str:
     """Format one incident as a CEF syslog line."""
     severity = str(incident.get("severity") or "INFO").upper()
     cef_sev = _CEF_SEVERITY.get(severity, 5)
@@ -90,7 +90,7 @@ def export_incident_cef(incident: Dict[str, Any]) -> str:
     return f"{header}|{ext}"
 
 
-def export_incident_leef(incident: Dict[str, Any]) -> str:
+def export_incident_leef(incident: dict[str, Any]) -> str:
     """Format one incident as a LEEF 2.0 syslog line."""
     severity = str(incident.get("severity") or "INFO").upper()
     leef_sev = _LEEF_SEVERITY.get(severity, "Medium")
@@ -109,7 +109,7 @@ def export_incident_leef(incident: Dict[str, Any]) -> str:
     return f"{header}\t{fields}"
 
 
-def export_incident_json(incident: Dict[str, Any]) -> Dict[str, Any]:
+def export_incident_json(incident: dict[str, Any]) -> dict[str, Any]:
     """Return a canonical JSON-serialisable dict for the incident."""
     return {
         "siem_version": SIEM_VERSION,
@@ -131,11 +131,11 @@ def export_incident_json(incident: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def export_batch(
-    incidents: List[Dict[str, Any]],
+    incidents: list[dict[str, Any]],
     export_format: str,
     *,
     max_records: int = 1000,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Export a batch of incidents in the specified format.
 
     Returns ``{format, count, records, exported_at}``.
@@ -148,7 +148,7 @@ def export_batch(
 
     batch = incidents[:max_records]
     if export_format == FORMAT_CEF:
-        records: List[Any] = [export_incident_cef(i) for i in batch]
+        records: list[Any] = [export_incident_cef(i) for i in batch]
     elif export_format == FORMAT_LEEF:
         records = [export_incident_leef(i) for i in batch]
     else:

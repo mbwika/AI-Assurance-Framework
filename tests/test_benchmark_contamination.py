@@ -1,20 +1,25 @@
 """Tests for analysis.benchmark_contamination (Phase E)."""
 
+from datetime import datetime, timezone
+
 import pytest
+
 from aiaf.analysis.benchmark_contamination import (
     CONTAMINATION_VERSION,
-    STATUS_CLEAN, STATUS_SUSPICIOUS, STATUS_CONTAMINATION_LIKELY, STATUS_CONTAMINATION_CONFIRMED,
+    STATUS_CLEAN,
+    STATUS_CONTAMINATION_CONFIRMED,
+    STATUS_CONTAMINATION_LIKELY,
+    STATUS_SUSPICIOUS,
     ContaminationError,
-    check_contamination,
-    _z_score,
-    _parse_date,
-    _worst_status,
     _h1_score_outlier,
     _h2_temporal_contamination,
     _h3_score_inconsistency,
     _h4_claimed_vs_verified_gap,
+    _parse_date,
+    _worst_status,
+    _z_score,
+    check_contamination,
 )
-from datetime import timezone, datetime
 
 
 class _Store:

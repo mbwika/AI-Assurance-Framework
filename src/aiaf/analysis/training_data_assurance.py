@@ -9,7 +9,7 @@ performance-aware.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 TRAINING_DATA_ASSURANCE_VERSION = "1.0"
 
@@ -23,7 +23,7 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _lineage_sources(meta: Dict[str, Any]) -> List[Any]:
+def _lineage_sources(meta: dict[str, Any]) -> list[Any]:
     if isinstance(meta.get("training_data_sources"), list):
         return list(meta.get("training_data_sources") or [])
     if isinstance(meta.get("training_artifacts"), list):
@@ -31,7 +31,7 @@ def _lineage_sources(meta: Dict[str, Any]) -> List[Any]:
     return []
 
 
-def _add_finding(findings: List[Dict[str, Any]], score_delta: int, severity: str, ftype: str, detail: str) -> None:
+def _add_finding(findings: list[dict[str, Any]], score_delta: int, severity: str, ftype: str, detail: str) -> None:
     findings.append({
         "type": ftype,
         "severity": severity,
@@ -52,14 +52,14 @@ def _risk_from_score(score: float) -> str:
 
 
 def assess_training_data_assurance(
-    model_record: Dict[str, Any],
+    model_record: dict[str, Any],
     store: Any,
     *,
-    model_id: Optional[str] = None,
-) -> Dict[str, Any]:
+    model_id: str | None = None,
+) -> dict[str, Any]:
     meta = model_record.get("metadata") or {}
     mid = model_id or model_record.get("model_id") or model_record.get("id") or "unknown"
-    findings: List[Dict[str, Any]] = []
+    findings: list[dict[str, Any]] = []
     score = 100
 
     training_data = meta.get("training_data")

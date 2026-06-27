@@ -1,31 +1,30 @@
 """Tests for src/aiaf/analysis/human_oversight_monitor.py."""
 
 import pytest
+
 from aiaf.analysis.human_oversight_monitor import (
-    create_oversight_session,
-    get_oversight_session,
-    record_agent_output,
-    record_tool_call,
-    assess_session,
-    close_session,
-    list_at_risk_sessions,
-    HUMAN_OVERSIGHT_VERSION,
     EVENT_AGENT_OUTPUT,
     EVENT_TOOL_CALL,
+    RISK_CRITICAL,
+    RISK_ELEVATED,
+    RISK_HIGH,
+    RISK_SAFE,
+    SESSION_ACTIVE,
+    SESSION_CLOSED,
+    SIGNAL_AUTHORITY_FABRICATION,
+    SIGNAL_CONFIDENCE_INFLATION,
     SIGNAL_CONSENT_MISMATCH,
     SIGNAL_OVERSIGHT_SUPPRESSION,
     SIGNAL_URGENCY_MANUFACTURE,
-    SIGNAL_CONFIDENCE_INFLATION,
-    SIGNAL_AUTHORITY_FABRICATION,
-    RISK_SAFE,
-    RISK_ELEVATED,
-    RISK_HIGH,
-    RISK_CRITICAL,
-    SESSION_ACTIVE,
-    SESSION_CLOSED,
     HumanOversightError,
+    assess_session,
+    close_session,
+    create_oversight_session,
+    get_oversight_session,
+    list_at_risk_sessions,
+    record_agent_output,
+    record_tool_call,
 )
-
 
 # ── Minimal fake store ────────────────────────────────────────────────────────
 

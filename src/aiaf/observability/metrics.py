@@ -5,7 +5,6 @@ is installed the same values can be scraped via a /metrics endpoint; without
 it the registry's ``snapshot()`` method exposes raw aggregates for the
 reporting layer.
 """
-from typing import Dict
 
 
 class _Counter:
@@ -27,7 +26,7 @@ class _Histogram:
 
     def __init__(self) -> None:
         self._buckets = self._DEFAULT_BUCKETS
-        self._counts: Dict[float, int] = {b: 0 for b in self._buckets}
+        self._counts: dict[float, int] = {b: 0 for b in self._buckets}
         self._total: float = 0.0
         self._count: int = 0
 
@@ -41,8 +40,8 @@ class _Histogram:
 
 class MetricsRegistry:
     def __init__(self) -> None:
-        self._counters: Dict[str, _Counter] = {}
-        self._histograms: Dict[str, _Histogram] = {}
+        self._counters: dict[str, _Counter] = {}
+        self._histograms: dict[str, _Histogram] = {}
 
     def counter(self, name: str) -> _Counter:
         if name not in self._counters:

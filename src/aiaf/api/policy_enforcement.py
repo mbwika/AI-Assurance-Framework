@@ -12,18 +12,23 @@ REST endpoints:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from .models import get_api_key, get_store
 from ..core.policy_enforcement import (
-    ENFORCEMENT_MODES, VERDICTS,
+    ENFORCEMENT_MODES,
+    VERDICTS,
     PolicyEnforcementError,
-    create_pep_policy, get_pep_policy, list_pep_policies, delete_pep_policy,
-    enforce_request, get_enforcement_log,
+    create_pep_policy,
+    delete_pep_policy,
+    enforce_request,
+    get_enforcement_log,
+    get_pep_policy,
+    list_pep_policies,
 )
+from .models import get_api_key, get_store
 
 router = APIRouter(prefix="/v1/pep", tags=["policy-enforcement"])
 
@@ -34,21 +39,21 @@ class CreatePolicyRequest(BaseModel):
     policy_id: str
     principal_id: str
     mode: str = "ENFORCE"
-    allowed_actions: Optional[List[str]] = None
-    denied_actions: Optional[List[str]] = None
-    allowed_resources: Optional[List[str]] = None
-    denied_resources: Optional[List[str]] = None
-    conditions: Optional[List[str]] = None
+    allowed_actions: list[str] | None = None
+    denied_actions: list[str] | None = None
+    allowed_resources: list[str] | None = None
+    denied_resources: list[str] | None = None
+    conditions: list[str] | None = None
     max_requests_per_min: float = Field(0, ge=0)
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class EnforceRequest(BaseModel):
     principal_id: str
     action: str
     resource: str
-    context: Optional[Dict[str, Any]] = None
-    policy_id: Optional[str] = None
+    context: dict[str, Any] | None = None
+    policy_id: str | None = None
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
@@ -77,8 +82,8 @@ def create_policy_route(
 
 @router.get("/policies")
 def list_policies_route(
-    principal_id: Optional[str] = None,
-    mode: Optional[str] = None,
+    principal_id: str | None = None,
+    mode: str | None = None,
     limit: int = 200,
     _: str = Depends(get_api_key),
     store: Any = Depends(get_store),
@@ -127,7 +132,7 @@ def enforce_route(
 @router.get("/policies/{policy_id}/log")
 def get_log_route(
     policy_id: str,
-    verdict: Optional[str] = None,
+    verdict: str | None = None,
     limit: int = 100,
     _: str = Depends(get_api_key),
     store: Any = Depends(get_store),

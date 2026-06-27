@@ -1,27 +1,26 @@
 """Tests for aiaf.core.inference_telemetry."""
 
+
 import pytest
-from unittest.mock import MagicMock
 
 from aiaf.core.inference_telemetry import (
-    TELEMETRY_VERSION,
     MAX_SESSION_EVENTS,
+    TELEMETRY_VERSION,
     VALID_EVENT_TYPES,
     VALID_STATUSES,
     TelemetryValidationError,
+    _coerce_non_negative_int,
+    _coerce_positive_float,
     _compute_summary,
     _normalise_event,
     _session_key,
     _sha256,
-    _coerce_positive_float,
-    _coerce_non_negative_int,
-    ingest_events,
+    delete_session,
     get_session,
     get_session_events,
+    ingest_events,
     list_sessions,
-    delete_session,
 )
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

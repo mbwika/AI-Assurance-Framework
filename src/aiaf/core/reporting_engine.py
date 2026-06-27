@@ -1,5 +1,5 @@
 """Reporting engine for assurance summaries and historical metrics."""
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ..reporting.assurance_report import (
     build_assurance_report,
@@ -11,15 +11,15 @@ from ..reporting.report import Reporter
 
 
 class ReportingEngine:
-    def __init__(self, datastore: Optional[object] = None):
+    def __init__(self, datastore: object | None = None):
         self.datastore = datastore
 
     def summarize(
         self,
-        artifact_id: Optional[str] = None,
-        model_id: Optional[str] = None,
-        registered_by: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        artifact_id: str | None = None,
+        model_id: str | None = None,
+        registered_by: str | None = None,
+    ) -> dict[str, Any]:
         if self.datastore is None:
             return {
                 "scope": build_assurance_report(
@@ -43,11 +43,11 @@ class ReportingEngine:
             for item in (report.get("model_inventory") or {}).get("models", [])
             if item.get("model_id")
         }
-        findings = self.datastore.list_findings(limit=100, artifact_id=scope_artifact)
+        self.datastore.list_findings(limit=100, artifact_id=scope_artifact)
         audit_logs = self.datastore.list_audit_logs(limit=100, artifact_id=scope_artifact)
         metrics = self.datastore.list_metrics(limit=100, artifact_id=scope_artifact)
         if scope.get("type") == "REGISTRANT":
-            findings = [
+            [
                 finding
                 for finding in self.datastore.list_findings(limit=1000)
                 if finding.get("artifact_id") in artifact_ids
@@ -75,10 +75,10 @@ class ReportingEngine:
 
     def assurance_report(
         self,
-        artifact_id: Optional[str] = None,
-        model_id: Optional[str] = None,
-        registered_by: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        artifact_id: str | None = None,
+        model_id: str | None = None,
+        registered_by: str | None = None,
+    ) -> dict[str, Any]:
         return build_assurance_report(
             self.datastore,
             artifact_id=artifact_id,
@@ -88,9 +88,9 @@ class ReportingEngine:
 
     def assurance_report_markdown(
         self,
-        artifact_id: Optional[str] = None,
-        model_id: Optional[str] = None,
-        registered_by: Optional[str] = None,
+        artifact_id: str | None = None,
+        model_id: str | None = None,
+        registered_by: str | None = None,
     ) -> str:
         return render_assurance_report_markdown(
             self.assurance_report(
@@ -102,9 +102,9 @@ class ReportingEngine:
 
     def assurance_report_html(
         self,
-        artifact_id: Optional[str] = None,
-        model_id: Optional[str] = None,
-        registered_by: Optional[str] = None,
+        artifact_id: str | None = None,
+        model_id: str | None = None,
+        registered_by: str | None = None,
     ) -> str:
         return render_assurance_report_html(
             self.assurance_report(
@@ -116,10 +116,10 @@ class ReportingEngine:
 
     def assurance_report_oscal(
         self,
-        artifact_id: Optional[str] = None,
-        model_id: Optional[str] = None,
-        registered_by: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        artifact_id: str | None = None,
+        model_id: str | None = None,
+        registered_by: str | None = None,
+    ) -> dict[str, Any]:
         report = self.assurance_report(
             artifact_id=artifact_id,
             model_id=model_id,
@@ -147,10 +147,10 @@ class ReportingEngine:
 
     def alerts(
         self,
-        artifact_id: Optional[str] = None,
-        model_id: Optional[str] = None,
-        registered_by: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        artifact_id: str | None = None,
+        model_id: str | None = None,
+        registered_by: str | None = None,
+    ) -> dict[str, Any]:
         return self.assurance_report(
             artifact_id=artifact_id,
             model_id=model_id,
@@ -162,10 +162,10 @@ class ReportingEngine:
 
     def compliance(
         self,
-        artifact_id: Optional[str] = None,
-        model_id: Optional[str] = None,
-        registered_by: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        artifact_id: str | None = None,
+        model_id: str | None = None,
+        registered_by: str | None = None,
+    ) -> dict[str, Any]:
         return self.assurance_report(
             artifact_id=artifact_id,
             model_id=model_id,
@@ -174,11 +174,11 @@ class ReportingEngine:
 
     def _scoped_control_evidence(
         self,
-        report: Dict[str, Any],
-        artifact_id: Optional[str],
-        model_id: Optional[str],
-        registered_by: Optional[str],
-    ) -> list[Dict[str, Any]]:
+        report: dict[str, Any],
+        artifact_id: str | None,
+        model_id: str | None,
+        registered_by: str | None,
+    ) -> list[dict[str, Any]]:
         if self.datastore is None:
             return []
         scope_artifact = artifact_id or model_id
@@ -198,10 +198,10 @@ class ReportingEngine:
         return evidence
 
 
-def _controls_from_report(report: Dict[str, Any]) -> list[Dict[str, Any]]:
+def _controls_from_report(report: dict[str, Any]) -> list[dict[str, Any]]:
     compliance = report.get("compliance") or {}
     frameworks = compliance.get("frameworks") or {}
-    consolidated: Dict[str, Dict[str, Any]] = {}
+    consolidated: dict[str, dict[str, Any]] = {}
 
     for framework in frameworks.values():
         for control in framework.get("control_evidence") or []:

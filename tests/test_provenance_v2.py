@@ -3,7 +3,6 @@ import json
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 SRC = str(ROOT / "src")
 if SRC not in sys.path:
@@ -18,7 +17,6 @@ from aiaf.registry.provenance_v2 import (  # noqa: E402
     assess_provenance_v2,
     determine_provenance_risk,
 )
-
 
 DIGEST = "a" * 64
 REVISION = "b" * 40

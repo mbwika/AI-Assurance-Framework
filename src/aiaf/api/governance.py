@@ -1,5 +1,5 @@
 """Governance engine API routes."""
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -14,13 +14,13 @@ router = APIRouter(prefix="/v1/governance", tags=["governance"])
 class EvidenceSubmission(BaseModel):
     artifact_id: str = Field(min_length=1, max_length=255)
     control_id: str = Field(min_length=1, max_length=64)
-    evidence_fields: List[str] = Field(min_length=1, max_length=50)
+    evidence_fields: list[str] = Field(min_length=1, max_length=50)
     evidence_type: str
     reference: str = Field(min_length=1, max_length=2048)
     sha256: str = Field(min_length=64, max_length=64)
     submitted_by: str = Field(min_length=1, max_length=255)
-    expires_at: Optional[str] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    expires_at: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class EvidenceReview(BaseModel):
@@ -35,7 +35,7 @@ def governance_controls(api_key: str = Depends(get_api_key)):
 
 
 @router.post("/evaluate")
-def evaluate_governance(artifact: Dict[str, Any], api_key: str = Depends(get_api_key)):
+def evaluate_governance(artifact: dict[str, Any], api_key: str = Depends(get_api_key)):
     store = get_store()
     engine = GovernanceEngine(datastore=store)
     return engine.evaluate(artifact)
@@ -64,9 +64,9 @@ def submit_control_evidence(
 @router.get("/evidence")
 def list_control_evidence(
     limit: int = 1000,
-    artifact_id: Optional[str] = None,
-    control_id: Optional[str] = None,
-    status: Optional[str] = None,
+    artifact_id: str | None = None,
+    control_id: str | None = None,
+    status: str | None = None,
     api_key: str = Depends(get_api_key),
 ):
     engine = GovernanceEvidenceEngine(get_store())

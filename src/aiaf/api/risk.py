@@ -1,5 +1,5 @@
 """Risk engine API routes."""
-from typing import Any, Dict
+from typing import Any
 
 from fastapi import APIRouter, Depends
 
@@ -10,7 +10,7 @@ router = APIRouter(prefix="/v1/risk", tags=["risk"])
 
 
 @router.post("/analyze")
-def analyze_risk(artifact: Dict[str, Any], api_key: str = Depends(get_api_key)):
+def analyze_risk(artifact: dict[str, Any], api_key: str = Depends(get_api_key)):
     store = get_store()
     engine = RiskEngine(datastore=store)
     return engine.analyze(artifact)

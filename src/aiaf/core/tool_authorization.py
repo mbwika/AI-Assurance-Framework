@@ -36,7 +36,7 @@ Session context keys
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 AUTH_VERSION = "1.0"
 
@@ -47,7 +47,7 @@ VERDICT_DENY = "DENY"
 VERDICT_CONDITIONAL = "CONDITIONAL"
 
 # Data sensitivity order (higher index = more sensitive)
-_DATA_SENSITIVITY_RANK: Dict[str, int] = {
+_DATA_SENSITIVITY_RANK: dict[str, int] = {
     "PUBLIC": 1,
     "INTERNAL": 2,
     "CONFIDENTIAL": 3,
@@ -55,7 +55,7 @@ _DATA_SENSITIVITY_RANK: Dict[str, int] = {
 }
 
 # Trust level rank
-_TRUST_RANK: Dict[str, int] = {
+_TRUST_RANK: dict[str, int] = {
     "VERIFIED": 5,
     "INTERNAL": 4,
     "EXTERNAL": 3,
@@ -82,12 +82,12 @@ class AuthorizationError(ValueError):
 
 def create_policy(
     agent_id: str,
-    tool_policies: List[Dict[str, Any]],
+    tool_policies: list[dict[str, Any]],
     store: Any,
     *,
     default_policy: str = VERDICT_DENY,
-    metadata: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Create or replace authorization policies for an agent.
 
     Parameters
@@ -137,7 +137,7 @@ def create_policy(
     existing = store.get_model(key) or {}
     existing_meta = existing.get("metadata") or {}
 
-    record: Dict[str, Any] = {
+    record: dict[str, Any] = {
         "model_id": key,
         "id": key,
         "metadata": {
@@ -155,7 +155,7 @@ def create_policy(
     return _policy_summary(record)
 
 
-def get_policy(agent_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def get_policy(agent_id: str, store: Any) -> dict[str, Any] | None:
     """Return the stored policy set for ``agent_id``, or ``None``."""
     record = store.get_model(_policy_key(agent_id))
     if not record:
@@ -181,7 +181,7 @@ def delete_policy(agent_id: str, store: Any) -> bool:
     return True
 
 
-def _policy_summary(record: Dict[str, Any]) -> Dict[str, Any]:
+def _policy_summary(record: dict[str, Any]) -> dict[str, Any]:
     meta = record.get("metadata") or {}
     policies = meta.get("tool_policies") or []
     return {
@@ -200,9 +200,9 @@ def _policy_summary(record: Dict[str, Any]) -> Dict[str, Any]:
 def authorize(
     agent_id: str,
     tool_name: str,
-    session_context: Dict[str, Any],
+    session_context: dict[str, Any],
     store: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Evaluate whether ``agent_id`` may call ``tool_name`` given ``session_context``.
 
     Parameters
@@ -222,8 +222,8 @@ def authorize(
     ``reasons`` (list of human-readable strings), ``unmet_conditions`` (for
     CONDITIONAL), ``policy_id``, ``authorized_at``.
     """
-    reasons: List[str] = []
-    unmet: List[str] = []
+    reasons: list[str] = []
+    unmet: list[str] = []
     authorized_at = _utc_now()
 
     # 1. Check agent is registered and active
@@ -280,7 +280,7 @@ def authorize(
         )
 
     default_policy = policy_record.get("default_policy", VERDICT_DENY)
-    matching_rule: Optional[Dict[str, Any]] = None
+    matching_rule: dict[str, Any] | None = None
     for rule in policy_record.get("tool_policies") or []:
         if rule.get("tool_name") == tool_name:
             matching_rule = rule
@@ -369,10 +369,10 @@ def _verdict(
     tool_name: str,
     authorized_at: str,
     *,
-    reasons: Optional[List[str]] = None,
-    unmet_conditions: Optional[List[str]] = None,
-    policy_id: Optional[str] = None,
-) -> Dict[str, Any]:
+    reasons: list[str] | None = None,
+    unmet_conditions: list[str] | None = None,
+    policy_id: str | None = None,
+) -> dict[str, Any]:
     return {
         "auth_version": AUTH_VERSION,
         "verdict": verdict_val,

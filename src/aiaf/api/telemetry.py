@@ -11,7 +11,7 @@ Every ingested event is tagged LOCALLY_OBSERVED.  Raw content is never stored
 — only ``content_hash`` (SHA-256 the caller computes before sending).
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -32,20 +32,20 @@ router = APIRouter(prefix="/v1/telemetry", tags=["telemetry"])
 
 class TraceEventRequest(BaseModel):
     event_type: str
-    timestamp: Optional[str] = None
-    event_id: Optional[str] = None
-    latency_ms: Optional[float] = None
-    token_count: Optional[int] = None
-    tool_name: Optional[str] = None
-    model_id: Optional[str] = None
-    content_hash: Optional[str] = None
+    timestamp: str | None = None
+    event_id: str | None = None
+    latency_ms: float | None = None
+    token_count: int | None = None
+    tool_name: str | None = None
+    model_id: str | None = None
+    content_hash: str | None = None
     status: str = "ok"
-    metadata: Dict[str, Any] = {}
+    metadata: dict[str, Any] = {}
 
 
 class IngestRequest(BaseModel):
     session_id: str
-    events: List[TraceEventRequest]
+    events: list[TraceEventRequest]
 
 
 @router.post("/traces", summary="Ingest trace events for a session")

@@ -1,16 +1,22 @@
 """Tests for aiaf.core.siem_export."""
 
-import json
 import pytest
 
 from aiaf.core.siem_export import (
-    SIEM_VERSION,
-    FORMAT_CEF, FORMAT_LEEF, FORMAT_JSON,
+    _CEF_SEVERITY,
+    _LEEF_SEVERITY,
     EXPORT_FORMATS,
-    _CEF_SEVERITY, _LEEF_SEVERITY,
-    _cef_escape, _leef_escape,
+    FORMAT_CEF,
+    FORMAT_JSON,
+    FORMAT_LEEF,
+    SIEM_VERSION,
     SiemExportError,
-    export_incident_cef, export_incident_leef, export_incident_json, export_batch,
+    _cef_escape,
+    _leef_escape,
+    export_batch,
+    export_incident_cef,
+    export_incident_json,
+    export_incident_leef,
 )
 
 

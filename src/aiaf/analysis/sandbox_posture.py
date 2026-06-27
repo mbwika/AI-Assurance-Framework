@@ -59,7 +59,7 @@ computed by AIAF locally based on the declared configuration.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 SANDBOX_POSTURE_VERSION = "1.0"
 
@@ -76,7 +76,7 @@ ISOLATION_LEVELS: frozenset = frozenset({
     ISOLATION_GVISOR, ISOLATION_VM, ISOLATION_HARDWARE,
 })
 
-_ISOLATION_RANK: Dict[str, int] = {
+_ISOLATION_RANK: dict[str, int] = {
     ISOLATION_NONE: 0,
     ISOLATION_PROCESS: 1,
     ISOLATION_CONTAINER: 2,
@@ -95,7 +95,7 @@ EGRESS_CONTROLS: frozenset = frozenset(
     {EGRESS_NONE, EGRESS_MONITORED, EGRESS_FILTERED, EGRESS_BLOCKED}
 )
 
-_EGRESS_RANK: Dict[str, int] = {
+_EGRESS_RANK: dict[str, int] = {
     EGRESS_NONE: 0, EGRESS_MONITORED: 1, EGRESS_FILTERED: 2, EGRESS_BLOCKED: 3,
 }
 
@@ -109,7 +109,7 @@ PRIVILEGE_LEVELS: frozenset = frozenset(
     {PRIVILEGE_ROOT, PRIVILEGE_USER, PRIVILEGE_RESTRICTED, PRIVILEGE_SANDBOXED}
 )
 
-_PRIVILEGE_RANK: Dict[str, int] = {
+_PRIVILEGE_RANK: dict[str, int] = {
     PRIVILEGE_ROOT: 0, PRIVILEGE_USER: 1,
     PRIVILEGE_RESTRICTED: 2, PRIVILEGE_SANDBOXED: 3,
 }
@@ -122,7 +122,7 @@ POSTURE_LOW = "LOW"
 POSTURE_ACCEPTABLE = "ACCEPTABLE"
 
 # ── Known CVEs / escape vectors per isolation level ───────────────────────────
-_ESCAPE_VECTORS: Dict[str, List[Dict[str, str]]] = {
+_ESCAPE_VECTORS: dict[str, list[dict[str, str]]] = {
     ISOLATION_NONE: [
         {"cve": "N/A", "desc": "Direct host access — all local privilege escalation vectors apply.",
          "severity": "CRITICAL"},
@@ -189,7 +189,7 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _validate_config(config: Dict[str, Any]) -> None:
+def _validate_config(config: dict[str, Any]) -> None:
     iso = str(config.get("isolation", "")).upper()
     if iso and iso not in ISOLATION_LEVELS:
         raise SandboxPostureError(
@@ -210,10 +210,10 @@ def _validate_config(config: Dict[str, Any]) -> None:
 # ── Public API ─────────────────────────────────────────────────────────────────
 
 def assess_sandbox_posture(
-    sandbox_config: Dict[str, Any],
+    sandbox_config: dict[str, Any],
     *,
-    context: Optional[str] = None,
-) -> Dict[str, Any]:
+    context: str | None = None,
+) -> dict[str, Any]:
     """Assess the security posture of a declared sandbox configuration.
 
     Parameters
@@ -255,7 +255,7 @@ def assess_sandbox_posture(
     seccomp = str(sandbox_config.get("seccomp_profile", "none")).lower()
     apparmor = bool(sandbox_config.get("apparmor", False))
 
-    findings: List[Dict[str, Any]] = []
+    findings: list[dict[str, Any]] = []
 
     # ── Isolation check ────────────────────────────────────────────────────────
     iso_rank = _ISOLATION_RANK.get(iso, 0)
@@ -380,7 +380,7 @@ def assess_sandbox_posture(
     )
 
     # ── Recommendations ────────────────────────────────────────────────────────
-    recommendations: List[str] = []
+    recommendations: list[str] = []
     if iso_rank < min_iso_rank:
         recommendations.append(
             f"Upgrade isolation to at least {_MIN_RECOMMENDED['isolation']!r} "
@@ -428,7 +428,7 @@ def assess_sandbox_posture(
     }
 
 
-def get_isolation_levels() -> Dict[str, Any]:
+def get_isolation_levels() -> dict[str, Any]:
     """Return available isolation levels with rank and known escape vectors."""
     return {
         level: {

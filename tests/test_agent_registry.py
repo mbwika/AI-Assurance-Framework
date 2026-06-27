@@ -3,31 +3,29 @@
 import pytest
 
 from aiaf.registry.agent_registry import (
-    REGISTRY_VERSION,
-    MAX_TOOLS_PER_AGENT,
+    CAPABILITY_APPROVAL_BYPASS,
+    CAPABILITY_CODE_EXECUTION,
     CAPABILITY_FLAGS,
+    CAPABILITY_NETWORK_EGRESS,
     CAPABILITY_RISK_RANK,
+    MAX_TOOLS_PER_AGENT,
+    REGISTRY_VERSION,
+    TRUST_EXTERNAL,
+    TRUST_INTERNAL,
     TRUST_LABELS,
     TRUST_RANK,
-    TRUST_VERIFIED,
-    TRUST_INTERNAL,
-    TRUST_EXTERNAL,
-    TRUST_USER,
     TRUST_UNTRUSTED,
-    CAPABILITY_NETWORK_EGRESS,
-    CAPABILITY_CODE_EXECUTION,
-    CAPABILITY_APPROVAL_BYPASS,
+    TRUST_USER,
+    TRUST_VERIFIED,
     AgentRegistryError,
-    _validate_trust_label,
     _validate_capabilities,
-    register_agent,
-    get_agent,
-    list_agents,
+    _validate_trust_label,
     deregister_agent,
+    get_agent,
     link_manifest,
-    _agent_summary,
+    list_agents,
+    register_agent,
 )
-
 
 # ── Fake store ────────────────────────────────────────────────────────────────
 

@@ -1,6 +1,6 @@
 """Governance engine for evaluating AI artifacts against assurance controls."""
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ..mapping.control_catalog import evaluate_catalog_controls, summarize_control_evaluations
 from ..mapping.standards import FRAMEWORKS
@@ -8,10 +8,10 @@ from .evidence_engine import approved_evidence, evidence_summary
 
 
 class GovernanceEngine:
-    def __init__(self, datastore: Optional[object] = None):
+    def __init__(self, datastore: object | None = None):
         self.datastore = datastore
 
-    def evaluate(self, artifact: Dict[str, Any]) -> Dict[str, Any]:
+    def evaluate(self, artifact: dict[str, Any]) -> dict[str, Any]:
         timestamp = _utc_now()
         controls = evaluate_catalog_controls(artifact)
         evidence = self._evidence(artifact.get("id"))
@@ -55,7 +55,7 @@ class GovernanceEngine:
 
         return record
 
-    def _evidence(self, artifact_id: Optional[str]):
+    def _evidence(self, artifact_id: str | None):
         if self.datastore is None or not artifact_id:
             return []
         list_evidence = getattr(self.datastore, "list_control_evidence", None)

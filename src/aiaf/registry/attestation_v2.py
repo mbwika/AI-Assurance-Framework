@@ -1,14 +1,13 @@
 """Hardened model-provenance attestations with explicit evidence bindings."""
 
-from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
 import json
 import re
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from .mbom_v2 import generate_attestable_ai_bom_v2, verify_ai_bom_v2
-
 
 PROVENANCE_ATTESTATION_SCHEMA_VERSION = "2.0"
 PROVENANCE_ATTESTATION_ALGORITHM = "HMAC-SHA256"
@@ -102,7 +101,7 @@ _CHECK_NAMES = (
 
 
 def create_provenance_attestation_v2(
-    model_record: Dict[str, Any],
+    model_record: dict[str, Any],
     signing_key: Any,
     *,
     attestation_id: str,
@@ -114,7 +113,7 @@ def create_provenance_attestation_v2(
     max_lifetime_seconds: int = _DEFAULT_MAX_LIFETIME_SECONDS,
     max_age_seconds: int = _DEFAULT_MAX_AGE_SECONDS,
     max_future_skew_seconds: int = _DEFAULT_MAX_FUTURE_SKEW_SECONDS,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create and self-check a schema-2 provenance attestation."""
     evidence, evidence_error = _model_evidence(model_record)
     if evidence_error:
@@ -172,11 +171,11 @@ def verify_provenance_attestation_v2(
     attestation: Any,
     signing_key: Any,
     expected_model: Any,
-    verification_context: Optional[Dict[str, Any]],
-) -> Dict[str, Any]:
+    verification_context: dict[str, Any] | None,
+) -> dict[str, Any]:
     """Verify envelope integrity, trusted subject bindings, and time policy."""
     checks = {name: False for name in _CHECK_NAMES}
-    diagnostics: List[Dict[str, Any]] = []
+    diagnostics: list[dict[str, Any]] = []
     envelope = attestation if isinstance(attestation, dict) else {}
     checks["attestation_is_object"] = isinstance(attestation, dict)
     checks["strict_envelope_fields"] = checks["attestation_is_object"] and set(envelope) == _ENVELOPE_FIELDS

@@ -2,9 +2,9 @@
 
 import math
 import re
-from typing import Any, Dict, Iterable, List, Optional, Sequence
+from collections.abc import Iterable, Sequence
+from typing import Any
 from urllib.parse import urlparse
-
 
 TRUSTWORTHINESS_SCORING_VERSION = "2.0"
 _MAX_FINDINGS = 1_000
@@ -67,10 +67,10 @@ _QUANTITATIVE_RELIABILITY_FIELDS = frozenset(
 
 
 def score_trustworthiness(
-    artifact: Dict[str, Any],
+    artifact: dict[str, Any],
     risk_score: float = 0.0,
-    findings: Optional[List[Dict[str, Any]]] = None,
-) -> Dict[str, Any]:
+    findings: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     """Score trustworthiness across applicable evidence-backed dimensions."""
     artifact = artifact if isinstance(artifact, dict) else {}
     bounded_risk, risk_warnings, risk_valid = _bounded_risk_score(risk_score)

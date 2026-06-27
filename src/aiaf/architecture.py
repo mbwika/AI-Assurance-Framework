@@ -5,10 +5,9 @@ component, and route in the framework.  It is exposed at ``GET /v1/architecture`
 so operators and automated tests can inspect the current layer/component contract.
 """
 from copy import deepcopy
-from typing import Any, Dict, List
+from typing import Any
 
-
-ARCHITECTURE_LAYERS: List[Dict[str, Any]] = [
+ARCHITECTURE_LAYERS: list[dict[str, Any]] = [
 
     # ── 1. User Portal ──────────────────────────────────────────────────────────
     {
@@ -1706,7 +1705,7 @@ ARCHITECTURE_LAYERS: List[Dict[str, Any]] = [
 ]
 
 
-def get_architecture_catalog() -> Dict[str, Any]:
+def get_architecture_catalog() -> dict[str, Any]:
     """Return a serialisable architecture catalog for API and documentation use."""
     layers = deepcopy(ARCHITECTURE_LAYERS)
     return {

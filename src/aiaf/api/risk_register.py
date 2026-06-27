@@ -1,6 +1,5 @@
 """Operational risk register APIs."""
 
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -8,23 +7,22 @@ from pydantic import BaseModel, Field
 from ..core import RiskRegisterEngine
 from .models import get_api_key, get_store
 
-
 router = APIRouter(prefix="/v1/risks", tags=["risk register"])
 
 
 class RiskUpdate(BaseModel):
-    status: Optional[str] = None
-    owner: Optional[str] = Field(default=None, max_length=255)
-    due_at: Optional[str] = None
-    resolution: Optional[str] = Field(default=None, max_length=4000)
+    status: str | None = None
+    owner: str | None = Field(default=None, max_length=255)
+    due_at: str | None = None
+    resolution: str | None = Field(default=None, max_length=4000)
 
 
 @router.get("")
 def list_risks(
     limit: int = 100,
-    status: Optional[str] = None,
-    artifact_id: Optional[str] = None,
-    severity: Optional[str] = None,
+    status: str | None = None,
+    artifact_id: str | None = None,
+    severity: str | None = None,
     api_key: str = Depends(get_api_key),
 ):
     engine = RiskRegisterEngine(get_store())

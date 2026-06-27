@@ -6,7 +6,6 @@ until then, operator roles can be enforced programmatically via
 ``require_permission``.
 """
 from enum import Enum
-from typing import Dict, Set
 
 
 class Role(str, Enum):
@@ -40,7 +39,7 @@ class Permission(str, Enum):
     ADMIN_ALL = "admin:all"
 
 
-ROLE_PERMISSIONS: Dict[Role, Set[Permission]] = {
+ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
     Role.READER: {
         Permission.READ_REGISTRY,
         Permission.READ_RISK,

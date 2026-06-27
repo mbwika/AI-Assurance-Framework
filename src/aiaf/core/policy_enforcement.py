@@ -40,7 +40,7 @@ LOCALLY_OBSERVED — all enforcement decisions are computed and logged locally b
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 POLICY_ENFORCEMENT_VERSION = "1.0"
 
@@ -84,7 +84,7 @@ def _log_key(policy_id: str, decision_id: str) -> str:
     return f"{_LOG_PREFIX}{policy_id}:{decision_id}"
 
 
-def _load_meta(record: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def _load_meta(record: dict[str, Any] | None) -> dict[str, Any]:
     return (record or {}).get("metadata") or {}
 
 
@@ -157,14 +157,14 @@ def create_pep_policy(
     store: Any,
     *,
     mode: str = MODE_ENFORCE,
-    allowed_actions: Optional[List[str]] = None,
-    denied_actions: Optional[List[str]] = None,
-    allowed_resources: Optional[List[str]] = None,
-    denied_resources: Optional[List[str]] = None,
-    conditions: Optional[List[str]] = None,
+    allowed_actions: list[str] | None = None,
+    denied_actions: list[str] | None = None,
+    allowed_resources: list[str] | None = None,
+    denied_resources: list[str] | None = None,
+    conditions: list[str] | None = None,
     max_requests_per_min: float = 0,
-    description: Optional[str] = None,
-) -> Dict[str, Any]:
+    description: str | None = None,
+) -> dict[str, Any]:
     """Create an enforcement policy for a principal.
 
     Parameters
@@ -191,7 +191,7 @@ def create_pep_policy(
             f"Unknown mode {mode!r}. Valid: {sorted(ENFORCEMENT_MODES)}"
         )
 
-    record: Dict[str, Any] = {
+    record: dict[str, Any] = {
         "model_id": _policy_key(policy_id),
         "id": _policy_key(policy_id),
         "metadata": {
@@ -216,7 +216,7 @@ def create_pep_policy(
     return _load_meta(store.get_model(_policy_key(policy_id)))
 
 
-def get_pep_policy(policy_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def get_pep_policy(policy_id: str, store: Any) -> dict[str, Any] | None:
     """Return policy record, or None if not found."""
     rec = store.get_model(_policy_key(policy_id))
     return _load_meta(rec) if rec else None
@@ -225,10 +225,10 @@ def get_pep_policy(policy_id: str, store: Any) -> Optional[Dict[str, Any]]:
 def list_pep_policies(
     store: Any,
     *,
-    principal_id: Optional[str] = None,
-    mode: Optional[str] = None,
+    principal_id: str | None = None,
+    mode: str | None = None,
     limit: int = 200,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """List enforcement policies with optional filters."""
     all_records = store.list_models() if hasattr(store, "list_models") else []
     results = []
@@ -265,9 +265,9 @@ def enforce_request(
     resource: str,
     store: Any,
     *,
-    context: Optional[Dict[str, Any]] = None,
-    policy_id: Optional[str] = None,
-) -> Dict[str, Any]:
+    context: dict[str, Any] | None = None,
+    policy_id: str | None = None,
+) -> dict[str, Any]:
     """Evaluate an incoming request against all applicable policies.
 
     Looks up policies for the given ``principal_id`` (or a specific policy if
@@ -331,8 +331,8 @@ def enforce_request(
     import uuid
     decision_id = str(uuid.uuid4())[:8]
 
-    reasons: List[str] = []
-    conditions_required: List[str] = []
+    reasons: list[str] = []
+    conditions_required: list[str] = []
     overall_verdict = VERDICT_ALLOW
     effective_mode = MODE_ENFORCE
     rate_limited = False
@@ -459,7 +459,7 @@ def enforce_request(
         effective_verdict = VERDICT_ALLOW
 
     # Persist the enforcement log entry
-    log_entry: Dict[str, Any] = {
+    log_entry: dict[str, Any] = {
         "model_id": _log_key(policy_ids_evaluated[0] if policy_ids_evaluated else "default", decision_id),
         "id": _log_key(policy_ids_evaluated[0] if policy_ids_evaluated else "default", decision_id),
         "metadata": {
@@ -501,9 +501,9 @@ def get_enforcement_log(
     policy_id: str,
     store: Any,
     *,
-    verdict: Optional[str] = None,
+    verdict: str | None = None,
     limit: int = 100,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Return enforcement log entries for a policy, newest first.
 
     Parameters

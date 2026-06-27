@@ -1,6 +1,6 @@
 """Evidence matrix construction for governance and standards reporting."""
 
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from ..mapping.standards import (
     FRAMEWORKS,
@@ -8,7 +8,6 @@ from ..mapping.standards import (
     describe_framework_reference,
     get_framework_profile,
 )
-
 
 FRAMEWORK_ALIASES = {
     "NIST SSDF": "NIST Secure Software Development Framework",
@@ -21,9 +20,9 @@ FRAMEWORK_ALIASES = {
 
 
 def build_compliance_matrix(
-    finding_items: List[Dict[str, Any]],
-    latest_governance: Optional[Dict[str, Any]],
-) -> Dict[str, Any]:
+    finding_items: list[dict[str, Any]],
+    latest_governance: dict[str, Any] | None,
+) -> dict[str, Any]:
     """Build per-framework control evidence without asserting certification."""
     declared_scope = _declared_scope(latest_governance)
     scoped_frameworks = declared_scope or set(FRAMEWORKS)
@@ -99,7 +98,7 @@ def build_compliance_matrix(
     }
 
 
-def _framework_record(framework: str, in_scope: bool) -> Dict[str, Any]:
+def _framework_record(framework: str, in_scope: bool) -> dict[str, Any]:
     profile = next(
         (item for item in STANDARD_PROFILES.values() if item["name"] == framework),
         {"version": "unknown", "source_url": ""},
@@ -121,7 +120,7 @@ def _framework_record(framework: str, in_scope: bool) -> Dict[str, Any]:
 
 
 def _add_control_evidence(
-    frameworks: Dict[str, Dict[str, Any]], control: Dict[str, Any]
+    frameworks: dict[str, dict[str, Any]], control: dict[str, Any]
 ) -> None:
     status = control.get("status", "unknown")
     for framework_name, references in control.get("standards", {}).items():
@@ -158,7 +157,7 @@ def _add_control_evidence(
 
 
 def _add_finding_evidence(
-    frameworks: Dict[str, Dict[str, Any]], finding: Dict[str, Any]
+    frameworks: dict[str, dict[str, Any]], finding: dict[str, Any]
 ) -> None:
     for mapped in finding.get("mapping", {}).get("controls", []):
         framework = _canonical_framework(mapped.get("standard"))
@@ -182,7 +181,7 @@ def _add_finding_evidence(
         frameworks[framework]["mapped_references"].extend(references)
 
 
-def _finalize_framework(record: Dict[str, Any], governance_evaluated: bool) -> None:
+def _finalize_framework(record: dict[str, Any], governance_evaluated: bool) -> None:
     applicable = record["applicable_controls"]
     satisfied = record["satisfied_controls"]
     record["coverage_percent"] = round((satisfied / applicable) * 100, 1) if applicable else 0.0
@@ -200,7 +199,7 @@ def _finalize_framework(record: Dict[str, Any], governance_evaluated: bool) -> N
         record["status"] = "NO_APPLICABLE_CONTROLS"
 
 
-def _declared_scope(latest_governance: Optional[Dict[str, Any]]) -> Set[str]:
+def _declared_scope(latest_governance: dict[str, Any] | None) -> set[str]:
     if not latest_governance:
         return set()
     scope = latest_governance.get("compliance_scope") or []
@@ -213,7 +212,7 @@ def _declared_scope(latest_governance: Optional[Dict[str, Any]]) -> Set[str]:
     }
 
 
-def _canonical_framework(framework: Optional[str]) -> Optional[str]:
+def _canonical_framework(framework: str | None) -> str | None:
     if framework is None:
         return None
     return FRAMEWORK_ALIASES.get(framework, framework)

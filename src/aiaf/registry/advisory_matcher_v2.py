@@ -5,15 +5,15 @@ advisory records. It performs no I/O and deliberately distinguishes "no known
 match" from an incomplete or indeterminate assessment.
 """
 
-from dataclasses import dataclass
 import re
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
+from typing import Any
 
 from packaging.markers import InvalidMarker, Marker
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
-
 
 ADVISORY_MATCHER_SCORING_VERSION = "2.0"
 
@@ -65,15 +65,15 @@ class _Dependency:
 
 @dataclass(frozen=True)
 class _SemVer:
-    release: Tuple[int, int, int]
-    prerelease: Tuple[Tuple[int, Any], ...]
+    release: tuple[int, int, int]
+    prerelease: tuple[tuple[int, Any], ...]
 
 
 def match_dependency_advisories_v2(
     dependencies: Any,
     advisories: Any,
-    assessment_context: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    assessment_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Match exact dependency versions against normalized advisory evidence.
 
     Supported ecosystems are PyPI and npm. Environment markers are evaluated
@@ -81,9 +81,9 @@ def match_dependency_advisories_v2(
     ``assessment_context.marker_environment``. Unknown applicability is scanned
     conservatively and marks the assessment partial.
     """
-    diagnostics: List[Dict[str, Any]] = []
-    unresolved: List[Dict[str, Any]] = []
-    indeterminate: List[Dict[str, Any]] = []
+    diagnostics: list[dict[str, Any]] = []
+    unresolved: list[dict[str, Any]] = []
+    indeterminate: list[dict[str, Any]] = []
     assessment_complete = True
 
     context, context_complete = _context(assessment_context, diagnostics)
@@ -101,8 +101,8 @@ def match_dependency_advisories_v2(
             "Dependency inventory is malformed or exceeds the analysis bound.",
         )
 
-    parsed_dependencies: List[_Dependency] = []
-    skipped_dependencies: List[Dict[str, Any]] = []
+    parsed_dependencies: list[_Dependency] = []
+    skipped_dependencies: list[dict[str, Any]] = []
     applicability_unknown = 0
     for index, item in enumerate(dependency_items):
         dependency, reason = _parse_dependency(
@@ -166,7 +166,7 @@ def match_dependency_advisories_v2(
             "Advisory catalog is malformed or exceeds the analysis bound.",
         )
 
-    index: Dict[Tuple[str, str], List[Dict[str, Any]]] = {}
+    index: dict[tuple[str, str], list[dict[str, Any]]] = {}
     invalid_advisory_count = 0
     withdrawn_advisory_count = 0
     active_advisory_count = 0
@@ -191,7 +191,7 @@ def match_dependency_advisories_v2(
             (advisory["ecosystem"], advisory["package_name"]), []
         ).append(advisory)
 
-    raw_matches: List[Dict[str, Any]] = []
+    raw_matches: list[dict[str, Any]] = []
     evaluated_dependencies = 0
     dependencies_with_candidates = 0
     candidate_evaluations = 0
@@ -435,7 +435,7 @@ def _validate_advisory(value, index):
 
 
 def _affected_outcome(dependency, advisory):
-    reasons: List[str] = []
+    reasons: list[str] = []
     indeterminate = advisory["evidence_truncated"] or not advisory["evidence_valid"]
     if advisory["evidence_truncated"]:
         reasons.append("advisory_evidence_truncated")
@@ -584,7 +584,7 @@ def _merge_alias_matches(matches):
         if left_root != right_root:
             parents[right_root] = left_root
 
-    identifiers: Dict[Tuple[str, str, str, str], int] = {}
+    identifiers: dict[tuple[str, str, str, str], int] = {}
     for index, match in enumerate(matches):
         coordinate = (
             match["ecosystem"],
@@ -602,7 +602,7 @@ def _merge_alias_matches(matches):
             else:
                 identifiers[key] = index
 
-    groups: Dict[int, List[Dict[str, Any]]] = {}
+    groups: dict[int, list[dict[str, Any]]] = {}
     for index, match in enumerate(matches):
         groups.setdefault(find(index), []).append(match)
 
@@ -727,7 +727,7 @@ def _compare_semver(left, right):
         return 1
     if not right.prerelease:
         return -1
-    for left_item, right_item in zip(left.prerelease, right.prerelease):
+    for left_item, right_item in zip(left.prerelease, right.prerelease, strict=False):
         if left_item == right_item:
             continue
         if left_item[0] != right_item[0]:
@@ -830,7 +830,7 @@ def _duplicate_coordinates(dependencies):
 
 
 def _conflicting_versions(dependencies):
-    versions: Dict[Tuple[str, str], set] = {}
+    versions: dict[tuple[str, str], set] = {}
     for item in dependencies:
         versions.setdefault((item.ecosystem, item.name), set()).add(item.version)
     return [
@@ -918,8 +918,8 @@ def _unique_dicts(values):
     return result
 
 
-def _count_by(values: Sequence[Dict[str, Any]], field: str) -> Dict[str, int]:
-    result: Dict[str, int] = {}
+def _count_by(values: Sequence[dict[str, Any]], field: str) -> dict[str, int]:
+    result: dict[str, int] = {}
     for item in values:
         key = str(item.get(field) or "UNKNOWN")
         result[key] = result.get(key, 0) + 1

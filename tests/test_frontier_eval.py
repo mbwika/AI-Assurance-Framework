@@ -1,33 +1,29 @@
 """Tests for src/aiaf/analysis/frontier_eval.py."""
 
 import pytest
+
 from aiaf.analysis.frontier_eval import (
-    assess_frontier_capabilities,
-    map_to_gpai_commitments,
-    get_capability_taxonomy,
-    FRONTIER_EVAL_VERSION,
-    CAP_CYBER_OFFENSE,
-    CAP_CBRN_UPLIFT,
     CAP_AUTONOMY_SELF_REPLICATION,
+    CAP_CBRN_UPLIFT,
+    CAP_CYBER_OFFENSE,
     CAP_DECEPTION,
-    CAP_PERSUASION_MANIPULATION,
-    CAP_CRITICAL_INFRASTRUCTURE,
-    CAP_POWER_SEEKING,
     CAPABILITY_CATEGORIES,
     EVIDENCE_CONFIRMED,
-    EVIDENCE_PROBABLE,
-    EVIDENCE_POSSIBLE,
     EVIDENCE_INSUFFICIENT,
     EVIDENCE_NOT_EVALUATED,
-    VERDICT_SAFE,
-    VERDICT_CONDITIONAL,
-    VERDICT_UNSAFE,
-    VERDICT_INSUFFICIENT_EVIDENCE,
+    EVIDENCE_POSSIBLE,
+    EVIDENCE_PROBABLE,
+    FRONTIER_EVAL_VERSION,
     GPAI_COMMITMENTS,
     SYSTEMIC_RISK_FLOP_THRESHOLD,
+    VERDICT_CONDITIONAL,
+    VERDICT_INSUFFICIENT_EVIDENCE,
+    VERDICT_UNSAFE,
     FrontierEvalError,
+    assess_frontier_capabilities,
+    get_capability_taxonomy,
+    map_to_gpai_commitments,
 )
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -378,7 +374,7 @@ class TestMapToGPAICommitments:
         result = map_to_gpai_commitments(assessment)
         valid_statuses = {"COMPLIANT", "NON_COMPLIANT", "PARTIALLY_COMPLIANT",
                           "EVIDENCE_INSUFFICIENT", "NOT_APPLICABLE"}
-        for cid, commitment in result["gpai_commitments"].items():
+        for _cid, commitment in result["gpai_commitments"].items():
             assert commitment["compliance_status"] in valid_statuses
 
 

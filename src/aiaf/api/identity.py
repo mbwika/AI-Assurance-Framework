@@ -15,19 +15,26 @@ REST endpoints:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from .models import get_api_key, get_store
 from ..registry.identity_registry import (
-    PRINCIPAL_TYPES, TRUST_LEVELS, TRUST_INTERNAL,
+    TRUST_INTERNAL,
     IdentityError,
-    register_principal, get_principal, list_principals, update_principal,
-    grant_delegation, get_delegation, revoke_delegation, list_delegations,
-    verify_authority, get_authority_chain,
+    get_authority_chain,
+    get_delegation,
+    get_principal,
+    grant_delegation,
+    list_delegations,
+    list_principals,
+    register_principal,
+    revoke_delegation,
+    update_principal,
+    verify_authority,
 )
+from .models import get_api_key, get_store
 
 router = APIRouter(prefix="/v1/identity", tags=["identity"])
 
@@ -39,27 +46,27 @@ class RegisterPrincipalRequest(BaseModel):
     principal_type: str
     name: str
     trust_level: str = TRUST_INTERNAL
-    capabilities: Optional[List[str]] = None
-    attributes: Optional[Dict[str, Any]] = None
+    capabilities: list[str] | None = None
+    attributes: dict[str, Any] | None = None
 
 
 class UpdatePrincipalRequest(BaseModel):
-    trust_level: Optional[str] = None
-    capabilities: Optional[List[str]] = None
-    attributes: Optional[Dict[str, Any]] = None
+    trust_level: str | None = None
+    capabilities: list[str] | None = None
+    attributes: dict[str, Any] | None = None
 
 
 class GrantDelegationRequest(BaseModel):
     delegation_id: str
     delegator_id: str
     delegate_id: str
-    scope: List[str]
-    granted_by: Optional[str] = None
-    expires_at: Optional[str] = None
+    scope: list[str]
+    granted_by: str | None = None
+    expires_at: str | None = None
 
 
 class RevokeDelegationRequest(BaseModel):
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class VerifyAuthorityRequest(BaseModel):
@@ -89,8 +96,8 @@ def register_principal_route(
 
 @router.get("/principals")
 def list_principals_route(
-    principal_type: Optional[str] = None,
-    trust_level: Optional[str] = None,
+    principal_type: str | None = None,
+    trust_level: str | None = None,
     limit: int = 100,
     _: str = Depends(get_api_key),
     store: Any = Depends(get_store),
@@ -176,8 +183,8 @@ def revoke_delegation_route(
 
 @router.get("/delegations")
 def list_delegations_route(
-    delegator_id: Optional[str] = None,
-    delegate_id: Optional[str] = None,
+    delegator_id: str | None = None,
+    delegate_id: str | None = None,
     active_only: bool = True,
     limit: int = 100,
     _: str = Depends(get_api_key),

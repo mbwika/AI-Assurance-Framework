@@ -19,7 +19,7 @@ finding that triggered the incident.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 INCIDENT_VERSION = "1.0"
 
@@ -37,7 +37,7 @@ SEVERITY_VALUES: frozenset = frozenset(
     {SEVERITY_CRITICAL, SEVERITY_HIGH, SEVERITY_MEDIUM, SEVERITY_LOW, SEVERITY_INFO}
 )
 
-_SEVERITY_RANK: Dict[str, int] = {
+_SEVERITY_RANK: dict[str, int] = {
     SEVERITY_CRITICAL: 4, SEVERITY_HIGH: 3,
     SEVERITY_MEDIUM: 2, SEVERITY_LOW: 1, SEVERITY_INFO: 0,
 }
@@ -55,7 +55,7 @@ STATE_VALUES: frozenset = frozenset(
 
 _TERMINAL_STATES: frozenset = frozenset({STATE_RESOLVED, STATE_ACCEPTED})
 
-_ALLOWED_TRANSITIONS: Dict[str, frozenset] = {
+_ALLOWED_TRANSITIONS: dict[str, frozenset] = {
     STATE_OPEN: frozenset({STATE_INVESTIGATING, STATE_CONTAINED, STATE_RESOLVED, STATE_ACCEPTED}),
     STATE_INVESTIGATING: frozenset({STATE_CONTAINED, STATE_RESOLVED, STATE_ACCEPTED}),
     STATE_CONTAINED: frozenset({STATE_RESOLVED, STATE_ACCEPTED}),
@@ -82,7 +82,7 @@ def _incident_key(incident_id: str) -> str:
     return f"{_INCIDENT_PREFIX}{incident_id}"
 
 
-def _summary(record: Dict[str, Any]) -> Dict[str, Any]:
+def _summary(record: dict[str, Any]) -> dict[str, Any]:
     m = record.get("metadata") or {}
     return {
         "incident_id": m.get("incident_id"),
@@ -114,11 +114,11 @@ def create_incident(
     model_id: str,
     store: Any,
     *,
-    description: Optional[str] = None,
-    findings: Optional[List[Dict[str, Any]]] = None,
-    evidence_origin: Optional[str] = None,
-    tags: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    description: str | None = None,
+    findings: list[dict[str, Any]] | None = None,
+    evidence_origin: str | None = None,
+    tags: list[str] | None = None,
+) -> dict[str, Any]:
     incident_id = str(incident_id).strip()
     if not incident_id:
         raise IncidentError("incident_id must be non-empty")
@@ -134,7 +134,7 @@ def create_incident(
     existing = store.get_model(key)
     created_at = (existing or {}).get("metadata", {}).get("created_at") or now
 
-    record: Dict[str, Any] = {
+    record: dict[str, Any] = {
         "model_id": key,
         "id": key,
         "metadata": {
@@ -160,7 +160,7 @@ def create_incident(
     return _summary(record)
 
 
-def get_incident(incident_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def get_incident(incident_id: str, store: Any) -> dict[str, Any] | None:
     record = store.get_model(_incident_key(incident_id))
     return _summary(record) if record else None
 
@@ -168,11 +168,11 @@ def get_incident(incident_id: str, store: Any) -> Optional[Dict[str, Any]]:
 def list_incidents(
     store: Any,
     *,
-    severity: Optional[str] = None,
-    state: Optional[str] = None,
-    model_id: Optional[str] = None,
+    severity: str | None = None,
+    state: str | None = None,
+    model_id: str | None = None,
     limit: int = 50,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     all_models = store.list_models() if hasattr(store, "list_models") else []
     result = []
     for m in all_models:
@@ -196,8 +196,8 @@ def update_incident_state(
     new_state: str,
     store: Any,
     *,
-    note: Optional[str] = None,
-) -> Dict[str, Any]:
+    note: str | None = None,
+) -> dict[str, Any]:
     key = _incident_key(incident_id)
     record = store.get_model(key)
     if not record:
@@ -234,8 +234,8 @@ def add_incident_note(
     note: str,
     store: Any,
     *,
-    author: Optional[str] = None,
-) -> Dict[str, Any]:
+    author: str | None = None,
+) -> dict[str, Any]:
     key = _incident_key(incident_id)
     record = store.get_model(key)
     if not record:
@@ -255,7 +255,7 @@ def add_incident_note(
     return _summary(record)
 
 
-def snapshot_incident(incident_id: str, store: Any) -> Dict[str, Any]:
+def snapshot_incident(incident_id: str, store: Any) -> dict[str, Any]:
     """Return a point-in-time snapshot dict of the incident (immutable copy)."""
     record = store.get_model(_incident_key(incident_id))
     if not record:

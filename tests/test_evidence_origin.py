@@ -12,9 +12,9 @@ def ensure_src():
 def test_origin_rank_and_weight_are_monotonic():
     ensure_src()
     from aiaf.registry.evidence_origin import (
-        EvidenceOrigin,
         ORIGIN_RANK,
         ORIGIN_TRUST_WEIGHT,
+        EvidenceOrigin,
     )
 
     ordered = [

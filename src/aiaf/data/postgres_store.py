@@ -4,7 +4,7 @@ import json
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import psycopg2
 
@@ -282,7 +282,7 @@ class PostgresStore:
             cur.execute(statement)
         self._conn.commit()
 
-    def save_finding(self, finding: Dict[str, Any]) -> int:
+    def save_finding(self, finding: dict[str, Any]) -> int:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -302,8 +302,8 @@ class PostgresStore:
         return finding_id
 
     def list_findings(
-        self, limit: int = 100, artifact_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, limit: int = 100, artifact_id: str | None = None
+    ) -> list[dict[str, Any]]:
         cur = self._conn.cursor()
         if artifact_id:
             cur.execute(
@@ -333,7 +333,7 @@ class PostgresStore:
             for row in cur.fetchall()
         ]
 
-    def save_model(self, model_record: Dict[str, Any]) -> str:
+    def save_model(self, model_record: dict[str, Any]) -> str:
         cur = self._conn.cursor()
         model_id = str(model_record.get("model_id") or uuid.uuid4())
         metadata = dict(model_record.get("metadata", {}) or {})
@@ -389,7 +389,7 @@ class PostgresStore:
         self._conn.commit()
         return model_id
 
-    def get_model(self, model_id: str) -> Optional[Dict[str, Any]]:
+    def get_model(self, model_id: str) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -429,8 +429,8 @@ class PostgresStore:
         }
 
     def list_models(
-        self, limit: int = 100, registered_by: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, limit: int = 100, registered_by: str | None = None
+    ) -> list[dict[str, Any]]:
         cur = self._conn.cursor()
         if registered_by:
             cur.execute(
@@ -486,7 +486,7 @@ class PostgresStore:
         self._conn.commit()
         return job_id
 
-    def update_job(self, job_id: str, status: str, result: Dict[str, Any]) -> None:
+    def update_job(self, job_id: str, status: str, result: dict[str, Any]) -> None:
         cur = self._conn.cursor()
         cur.execute(
             "UPDATE jobs SET status = %s, result = %s, updated_at = now() WHERE id = %s",
@@ -494,7 +494,7 @@ class PostgresStore:
         )
         self._conn.commit()
 
-    def get_job(self, job_id: str) -> Optional[Dict[str, Any]]:
+    def get_job(self, job_id: str) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         cur.execute(
             "SELECT id, status, result, created_at, updated_at FROM jobs WHERE id = %s",
@@ -511,7 +511,7 @@ class PostgresStore:
             "updated_at": _isoformat(row[4]),
         }
 
-    def save_audit_log(self, event: Dict[str, Any]) -> int:
+    def save_audit_log(self, event: dict[str, Any]) -> int:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -531,8 +531,8 @@ class PostgresStore:
         return event_id
 
     def list_audit_logs(
-        self, limit: int = 100, artifact_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, limit: int = 100, artifact_id: str | None = None
+    ) -> list[dict[str, Any]]:
         cur = self._conn.cursor()
         if artifact_id:
             cur.execute(
@@ -566,7 +566,7 @@ class PostgresStore:
         self,
         metric_name: str,
         metric_value: float,
-        dimensions: Optional[Dict[str, Any]] = None,
+        dimensions: dict[str, Any] | None = None,
     ) -> int:
         dimensions = dimensions or {}
         cur = self._conn.cursor()
@@ -590,8 +590,8 @@ class PostgresStore:
         return metric_id
 
     def list_metrics(
-        self, limit: int = 100, artifact_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, limit: int = 100, artifact_id: str | None = None
+    ) -> list[dict[str, Any]]:
         cur = self._conn.cursor()
         if artifact_id:
             cur.execute(
@@ -624,7 +624,7 @@ class PostgresStore:
             for row in cur.fetchall()
         ]
 
-    def save_monitoring_schedule(self, schedule: Dict[str, Any]) -> str:
+    def save_monitoring_schedule(self, schedule: dict[str, Any]) -> str:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -656,7 +656,7 @@ class PostgresStore:
         self._conn.commit()
         return schedule["id"]
 
-    def get_monitoring_schedule(self, schedule_id: str) -> Optional[Dict[str, Any]]:
+    def get_monitoring_schedule(self, schedule_id: str) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -672,11 +672,11 @@ class PostgresStore:
     def list_monitoring_schedules(
         self,
         limit: int = 100,
-        enabled: Optional[bool] = None,
-        artifact_id: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        enabled: bool | None = None,
+        artifact_id: str | None = None,
+    ) -> list[dict[str, Any]]:
         conditions = []
-        params: List[Any] = []
+        params: list[Any] = []
         if enabled is not None:
             conditions.append("enabled = %s")
             params.append(enabled)
@@ -698,7 +698,7 @@ class PostgresStore:
 
     def list_due_monitoring_schedules(
         self, as_of: str, limit: int = 100
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -712,7 +712,7 @@ class PostgresStore:
         )
         return [_monitoring_schedule_from_row(row) for row in cur.fetchall()]
 
-    def save_monitoring_run(self, run: Dict[str, Any]) -> str:
+    def save_monitoring_run(self, run: dict[str, Any]) -> str:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -743,11 +743,11 @@ class PostgresStore:
     def list_monitoring_runs(
         self,
         limit: int = 100,
-        schedule_id: Optional[str] = None,
-        artifact_id: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        schedule_id: str | None = None,
+        artifact_id: str | None = None,
+    ) -> list[dict[str, Any]]:
         conditions = []
-        params: List[Any] = []
+        params: list[Any] = []
         if schedule_id:
             conditions.append("schedule_id = %s")
             params.append(schedule_id)
@@ -767,7 +767,7 @@ class PostgresStore:
         )
         return [_monitoring_run_from_row(row) for row in cur.fetchall()]
 
-    def upsert_risk_observation(self, risk: Dict[str, Any]) -> Dict[str, Any]:
+    def upsert_risk_observation(self, risk: dict[str, Any]) -> dict[str, Any]:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -822,7 +822,7 @@ class PostgresStore:
         self._conn.commit()
         return _risk_from_row(row)
 
-    def get_risk(self, risk_id: str) -> Optional[Dict[str, Any]]:
+    def get_risk(self, risk_id: str) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -840,12 +840,12 @@ class PostgresStore:
     def list_risks(
         self,
         limit: int = 100,
-        status: Optional[str] = None,
-        artifact_id: Optional[str] = None,
-        severity: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        status: str | None = None,
+        artifact_id: str | None = None,
+        severity: str | None = None,
+    ) -> list[dict[str, Any]]:
         conditions = []
-        params: List[Any] = []
+        params: list[Any] = []
         if status:
             conditions.append("status = %s")
             params.append(status)
@@ -870,7 +870,7 @@ class PostgresStore:
         )
         return [_risk_from_row(row) for row in cur.fetchall()]
 
-    def update_risk(self, risk_id: str, changes: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def update_risk(self, risk_id: str, changes: dict[str, Any]) -> dict[str, Any] | None:
         columns = {
             "status": "status",
             "owner": "owner",
@@ -888,7 +888,7 @@ class PostgresStore:
         self._conn.commit()
         return self.get_risk(risk_id)
 
-    def save_advisory(self, advisory: Dict[str, Any]) -> str:
+    def save_advisory(self, advisory: dict[str, Any]) -> str:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -937,11 +937,11 @@ class PostgresStore:
     def list_advisories(
         self,
         limit: int = 1000,
-        ecosystem: Optional[str] = None,
-        package_name: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        ecosystem: str | None = None,
+        package_name: str | None = None,
+    ) -> list[dict[str, Any]]:
         conditions = []
-        params: List[Any] = []
+        params: list[Any] = []
         if ecosystem:
             conditions.append("ecosystem = %s")
             params.append(ecosystem)
@@ -963,7 +963,7 @@ class PostgresStore:
         )
         return [_advisory_from_row(row) for row in cur.fetchall()]
 
-    def save_advisory_feed_snapshot(self, snapshot: Dict[str, Any]) -> str:
+    def save_advisory_feed_snapshot(self, snapshot: dict[str, Any]) -> str:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -998,7 +998,7 @@ class PostgresStore:
 
     def get_advisory_feed_snapshot(
         self, snapshot_id: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -1014,8 +1014,8 @@ class PostgresStore:
         return _advisory_feed_snapshot_from_row(row) if row else None
 
     def get_latest_advisory_feed_snapshot(
-        self, feed_id: Optional[str] = None
-    ) -> Optional[Dict[str, Any]]:
+        self, feed_id: str | None = None
+    ) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         if feed_id:
             cur.execute(
@@ -1044,8 +1044,8 @@ class PostgresStore:
         return _advisory_feed_snapshot_from_row(row) if row else None
 
     def list_advisory_feed_snapshots(
-        self, limit: int = 100, feed_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, limit: int = 100, feed_id: str | None = None
+    ) -> list[dict[str, Any]]:
         cur = self._conn.cursor()
         if feed_id:
             cur.execute(
@@ -1073,7 +1073,7 @@ class PostgresStore:
             )
         return [_advisory_feed_snapshot_from_row(row) for row in cur.fetchall()]
 
-    def save_control_evidence(self, evidence: Dict[str, Any]) -> str:
+    def save_control_evidence(self, evidence: dict[str, Any]) -> str:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -1106,7 +1106,7 @@ class PostgresStore:
         self._conn.commit()
         return evidence["id"]
 
-    def save_assurance_report_snapshot(self, snapshot: Dict[str, Any]) -> str:
+    def save_assurance_report_snapshot(self, snapshot: dict[str, Any]) -> str:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -1136,7 +1136,7 @@ class PostgresStore:
 
     def get_assurance_report_snapshot(
         self, snapshot_id: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -1151,8 +1151,8 @@ class PostgresStore:
         return _assurance_report_snapshot_from_row(row) if row else None
 
     def list_assurance_report_snapshots(
-        self, limit: int = 100, artifact_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, limit: int = 100, artifact_id: str | None = None
+    ) -> list[dict[str, Any]]:
         cur = self._conn.cursor()
         if artifact_id:
             cur.execute(
@@ -1180,7 +1180,7 @@ class PostgresStore:
             _assurance_report_snapshot_from_row(row) for row in cur.fetchall()
         ]
 
-    def get_control_evidence(self, evidence_id: str) -> Optional[Dict[str, Any]]:
+    def get_control_evidence(self, evidence_id: str) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -1198,12 +1198,12 @@ class PostgresStore:
     def list_control_evidence(
         self,
         limit: int = 1000,
-        artifact_id: Optional[str] = None,
-        control_id: Optional[str] = None,
-        status: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        artifact_id: str | None = None,
+        control_id: str | None = None,
+        status: str | None = None,
+    ) -> list[dict[str, Any]]:
         conditions = []
-        params: List[Any] = []
+        params: list[Any] = []
         for column, value in (
             ("artifact_id", artifact_id),
             ("control_id", control_id),
@@ -1228,8 +1228,8 @@ class PostgresStore:
         return [_control_evidence_from_row(row) for row in cur.fetchall()]
 
     def review_control_evidence(
-        self, evidence_id: str, review: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+        self, evidence_id: str, review: dict[str, Any]
+    ) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -1252,7 +1252,7 @@ class PostgresStore:
         self._conn.commit()
         return self.get_control_evidence(evidence_id)
 
-    def save_agent_session(self, session: Dict[str, Any]) -> str:
+    def save_agent_session(self, session: dict[str, Any]) -> str:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -1276,7 +1276,7 @@ class PostgresStore:
         self._conn.commit()
         return session["id"]
 
-    def get_agent_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+    def get_agent_session(self, session_id: str) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         cur.execute(
             """
@@ -1292,11 +1292,11 @@ class PostgresStore:
     def list_agent_sessions(
         self,
         limit: int = 100,
-        artifact_id: Optional[str] = None,
-        status: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        artifact_id: str | None = None,
+        status: str | None = None,
+    ) -> list[dict[str, Any]]:
         conditions = []
-        params: List[Any] = []
+        params: list[Any] = []
         if artifact_id:
             conditions.append("artifact_id = %s")
             params.append(artifact_id)
@@ -1318,7 +1318,7 @@ class PostgresStore:
 
     def update_agent_session_status(
         self, session_id: str, status: str, updated_at: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         cur = self._conn.cursor()
         cur.execute(
             "UPDATE agent_sessions SET status = %s, updated_at = %s WHERE id = %s",
@@ -1328,8 +1328,8 @@ class PostgresStore:
         return self.get_agent_session(session_id)
 
     def record_tool_invocation(
-        self, invocation: Dict[str, Any], max_external_calls: Optional[int]
-    ) -> Dict[str, Any]:
+        self, invocation: dict[str, Any], max_external_calls: int | None
+    ) -> dict[str, Any]:
         cur = self._conn.cursor()
         try:
             cur.execute(
@@ -1433,12 +1433,12 @@ class PostgresStore:
     def list_tool_invocations(
         self,
         limit: int = 100,
-        session_id: Optional[str] = None,
-        decision: Optional[str] = None,
-        artifact_id: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        session_id: str | None = None,
+        decision: str | None = None,
+        artifact_id: str | None = None,
+    ) -> list[dict[str, Any]]:
         conditions = []
-        params: List[Any] = []
+        params: list[Any] = []
         if session_id:
             conditions.append("d.session_id = %s")
             params.append(session_id)
@@ -1483,7 +1483,7 @@ def _json_value(value: Any, default: Any) -> Any:
     return value
 
 
-def _isoformat(value: Any) -> Optional[str]:
+def _isoformat(value: Any) -> str | None:
     if value is None:
         return None
     if isinstance(value, datetime):
@@ -1495,7 +1495,7 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _monitoring_schedule_from_row(row) -> Dict[str, Any]:
+def _monitoring_schedule_from_row(row) -> dict[str, Any]:
     return {
         "id": str(row[0]),
         "artifact_id": row[1],
@@ -1509,7 +1509,7 @@ def _monitoring_schedule_from_row(row) -> Dict[str, Any]:
     }
 
 
-def _monitoring_run_from_row(row) -> Dict[str, Any]:
+def _monitoring_run_from_row(row) -> dict[str, Any]:
     return {
         "id": str(row[0]),
         "schedule_id": str(row[1]),
@@ -1522,7 +1522,7 @@ def _monitoring_run_from_row(row) -> Dict[str, Any]:
     }
 
 
-def _risk_from_row(row) -> Dict[str, Any]:
+def _risk_from_row(row) -> dict[str, Any]:
     return {
         "id": str(row[0]),
         "fingerprint": row[1],
@@ -1543,7 +1543,7 @@ def _risk_from_row(row) -> Dict[str, Any]:
     }
 
 
-def _advisory_from_row(row) -> Dict[str, Any]:
+def _advisory_from_row(row) -> dict[str, Any]:
     return {
         "record_key": row[0],
         "advisory_id": row[1],
@@ -1564,7 +1564,7 @@ def _advisory_from_row(row) -> Dict[str, Any]:
     }
 
 
-def _advisory_feed_snapshot_from_row(row) -> Dict[str, Any]:
+def _advisory_feed_snapshot_from_row(row) -> dict[str, Any]:
     return {
         "id": str(row[0]),
         "feed_id": row[1],
@@ -1585,7 +1585,7 @@ def _advisory_feed_snapshot_from_row(row) -> Dict[str, Any]:
     }
 
 
-def _control_evidence_from_row(row) -> Dict[str, Any]:
+def _control_evidence_from_row(row) -> dict[str, Any]:
     return {
         "id": str(row[0]),
         "artifact_id": row[1],
@@ -1606,7 +1606,7 @@ def _control_evidence_from_row(row) -> Dict[str, Any]:
     }
 
 
-def _assurance_report_snapshot_from_row(row) -> Dict[str, Any]:
+def _assurance_report_snapshot_from_row(row) -> dict[str, Any]:
     return {
         "id": str(row[0]),
         "artifact_id": row[1],
@@ -1623,7 +1623,7 @@ def _assurance_report_snapshot_from_row(row) -> Dict[str, Any]:
     }
 
 
-def _agent_session_from_row(row) -> Dict[str, Any]:
+def _agent_session_from_row(row) -> dict[str, Any]:
     return {
         "id": str(row[0]),
         "artifact_id": row[1],
@@ -1637,7 +1637,7 @@ def _agent_session_from_row(row) -> Dict[str, Any]:
     }
 
 
-def _tool_invocation_from_row(row) -> Dict[str, Any]:
+def _tool_invocation_from_row(row) -> dict[str, Any]:
     artifact_id = str(row[16]) if len(row) > 16 and row[16] is not None else None
     return {
         "id": str(row[0]),
@@ -1661,7 +1661,7 @@ def _tool_invocation_from_row(row) -> Dict[str, Any]:
 
 
 def _same_invocation_request(
-    existing: Dict[str, Any], requested: Dict[str, Any]
+    existing: dict[str, Any], requested: dict[str, Any]
 ) -> bool:
     scalar_fields = (
         "workflow_step_id",

@@ -16,31 +16,29 @@ POST /v1/rag/scan/document        Scan a document before ingestion
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from .models import get_api_key, get_store
-from ..registry.rag_inventory import (
-    INVENTORY_VERSION,
-    RAGInventoryError,
-    TRUST_LABELS,
-    SOURCE_TYPES,
-    ACCESS_CONTROL_MODES,
-    register_store,
-    get_vector_store,
-    list_vector_stores,
-    register_document,
-    get_document,
-    list_documents,
-)
 from ..analysis.rag_security import (
-    SCAN_VERSION,
+    assess_store_security,
     scan_chunks,
     scan_document_for_ingestion,
-    assess_store_security,
 )
+from ..registry.rag_inventory import (
+    ACCESS_CONTROL_MODES,
+    INVENTORY_VERSION,
+    SOURCE_TYPES,
+    TRUST_LABELS,
+    RAGInventoryError,
+    get_vector_store,
+    list_documents,
+    list_vector_stores,
+    register_document,
+    register_store,
+)
+from .models import get_api_key, get_store
 
 router = APIRouter(prefix="/v1/rag", tags=["rag"])
 
@@ -54,33 +52,33 @@ class RegisterStoreRequest(BaseModel):
     default_trust_label: str = Field(
         ..., description=f"Default document trust label; one of {sorted(TRUST_LABELS)}"
     )
-    endpoint: Optional[str] = Field(None, description="Connection endpoint (reference only)")
-    embedding_model: Optional[str] = Field(None, description="Embedding model name")
-    access_control_mode: Optional[str] = Field(
+    endpoint: str | None = Field(None, description="Connection endpoint (reference only)")
+    embedding_model: str | None = Field(None, description="Embedding model name")
+    access_control_mode: str | None = Field(
         None, description=f"Access posture; one of {sorted(ACCESS_CONTROL_MODES)}"
     )
-    tenant_isolation: Optional[bool] = Field(
+    tenant_isolation: bool | None = Field(
         None, description="Whether tenant or collection isolation is enforced"
     )
-    last_indexed_at: Optional[str] = Field(
+    last_indexed_at: str | None = Field(
         None, description="Last successful index refresh timestamp (ISO-8601 UTC)"
     )
-    freshness_sla_hours: Optional[int] = Field(
+    freshness_sla_hours: int | None = Field(
         None, ge=1, description="Maximum acceptable age of the retrieval index"
     )
-    embedding_source_url: Optional[str] = Field(
+    embedding_source_url: str | None = Field(
         None, description="Canonical source for the embedding model or service"
     )
-    embedding_source_trust: Optional[str] = Field(
+    embedding_source_trust: str | None = Field(
         None, description=f"Trust label for embedding provenance; one of {sorted(TRUST_LABELS)}"
     )
-    embedding_verified: Optional[bool] = Field(
+    embedding_verified: bool | None = Field(
         None, description="Whether embedding provenance has been independently verified"
     )
-    pii_screening_enabled: Optional[bool] = Field(
+    pii_screening_enabled: bool | None = Field(
         None, description="Whether documents are screened for secrets/PII before indexing"
     )
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Arbitrary extra fields")
+    metadata: dict[str, Any] | None = Field(None, description="Arbitrary extra fields")
 
 
 class RegisterDocumentRequest(BaseModel):
@@ -92,23 +90,23 @@ class RegisterDocumentRequest(BaseModel):
     source_type: str = Field(
         ..., description=f"Document origin; one of {sorted(SOURCE_TYPES)}"
     )
-    source_url: Optional[str] = Field(None, description="Optional source URL")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Arbitrary extra fields")
-    scan_result: Optional[Dict[str, Any]] = Field(
+    source_url: str | None = Field(None, description="Optional source URL")
+    metadata: dict[str, Any] | None = Field(None, description="Arbitrary extra fields")
+    scan_result: dict[str, Any] | None = Field(
         None, description="Pre-ingestion scan result (from /v1/rag/scan/document)"
     )
 
 
 class ChunkItem(BaseModel):
     content: str = Field(..., description="Text content of this chunk")
-    doc_id: Optional[str] = Field(None, description="Source document ID")
-    trust_label: Optional[str] = Field(None, description="Trust label for this chunk")
-    metadata: Optional[Dict[str, Any]] = None
+    doc_id: str | None = Field(None, description="Source document ID")
+    trust_label: str | None = Field(None, description="Trust label for this chunk")
+    metadata: dict[str, Any] | None = None
 
 
 class ScanChunksRequest(BaseModel):
-    chunks: List[ChunkItem] = Field(..., description="Retrieved chunks to scan")
-    minimum_trust_label: Optional[str] = Field(
+    chunks: list[ChunkItem] = Field(..., description="Retrieved chunks to scan")
+    minimum_trust_label: str | None = Field(
         None, description="Minimum acceptable trust label; violations are flagged"
     )
     scan_for_leakage: bool = Field(True, description="Check chunks for PII/credentials")
@@ -117,7 +115,7 @@ class ScanChunksRequest(BaseModel):
 class ScanDocumentRequest(BaseModel):
     content: str = Field(..., description="Document text to scan")
     trust_label: str = Field(..., description="Intended trust label for this document")
-    doc_id: Optional[str] = Field(None, description="Document identifier (echoed in output)")
+    doc_id: str | None = Field(None, description="Document identifier (echoed in output)")
     scan_for_leakage: bool = Field(True, description="Check for PII/credentials")
 
 
@@ -214,7 +212,7 @@ def list_docs(
     store_id: str,
     offset: int = 0,
     limit: int = 100,
-    trust_label: Optional[str] = None,
+    trust_label: str | None = None,
     _key: str = Depends(get_api_key),
     store: Any = Depends(get_store),
 ):

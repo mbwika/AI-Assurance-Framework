@@ -1,43 +1,51 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks, Depends, Header
-from typing import Any, Dict, List, Optional
 import io
-import sys
-import tempfile
-import shutil
-import os
-import uuid
-import httpx
 import json
 import logging
+import os
+import shutil
+import sys
+import tempfile
 import threading
+import uuid
 from collections import deque
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
-from ..registry import (
-    SourceTracker,
-    calculate_sha256,
-    verify_model,
-    ModelRecord,
-    PROVENANCE_SCORING_VERSION,
-    assess_provenance_v2,
-    generate_mbom,
-    discover_dependencies_v2,
-    merge_dependencies,
-    create_provenance_attestation,
-    verify_provenance_attestation,
-    PROVENANCE_ATTESTATION_SCHEMA_VERSION,
-    create_provenance_attestation_v2,
-    verify_provenance_attestation_v2,
-    EvidenceOrigin,
-    FactLedger,
+import httpx
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    UploadFile,
 )
-from ..registry.serialization_scanner import scan_file as _scan_artifact
+from fastapi.responses import JSONResponse
+
 from ..core import VulnerabilityIntelligenceEngine
 from ..data.postgres_store import PostgresStore
 from ..data.store import DataStore
-from fastapi.responses import JSONResponse
+from ..registry import (
+    PROVENANCE_ATTESTATION_SCHEMA_VERSION,
+    PROVENANCE_SCORING_VERSION,
+    EvidenceOrigin,
+    FactLedger,
+    ModelRecord,
+    SourceTracker,
+    assess_provenance_v2,
+    calculate_sha256,
+    create_provenance_attestation_v2,
+    discover_dependencies_v2,
+    generate_mbom,
+    merge_dependencies,
+    verify_provenance_attestation,
+    verify_provenance_attestation_v2,
+)
+from ..registry.serialization_scanner import scan_file as _scan_artifact
 
 router = APIRouter()
 
@@ -45,7 +53,7 @@ router = APIRouter()
 # Per-job log telemetry — in-memory ring buffer, cleared on server restart.
 # ---------------------------------------------------------------------------
 
-_JOB_LOGS: Dict[str, deque] = {}
+_JOB_LOGS: dict[str, deque] = {}
 _JOB_LOGS_LOCK = threading.Lock()
 _STDERR_REDIRECT_LOCK = threading.Lock()  # serialises stderr redirects for tqdm capture
 _JOB_LOG_MAX = 500
@@ -67,13 +75,13 @@ def _job_log_append(job_id: str, line: str) -> None:
             buf.append(line)
 
 
-def get_job_logs(job_id: str) -> List[str]:
+def get_job_logs(job_id: str) -> list[str]:
     with _JOB_LOGS_LOCK:
         buf = _JOB_LOGS.get(job_id)
         return list(buf) if buf is not None else []
 
 
-def _redact_token(text: str, token: Optional[str]) -> str:
+def _redact_token(text: str, token: str | None) -> str:
     """Replace a literal token value in error messages with [REDACTED]."""
     if token and token in text:
         return text.replace(token, "[REDACTED]")
@@ -150,7 +158,7 @@ class _JobLogHandler(logging.Handler):
 API_KEY = os.getenv("AIAF_API_KEY", "dev-key")
 
 
-def get_api_key(x_api_key: Optional[str] = Header(None, alias="X-API-Key")):
+def get_api_key(x_api_key: str | None = Header(None, alias="X-API-Key")):
     """Dependency that extracts the API key from the `X-API-Key` header."""
     if x_api_key is None:
         raise HTTPException(status_code=401, detail="Missing API key")
@@ -210,9 +218,9 @@ def get_store():
 
 def _register_from_file(
     file_path: str,
-    source_url: Optional[str],
-    registered_by: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None,
+    source_url: str | None,
+    registered_by: str | None = None,
+    metadata: dict[str, Any] | None = None,
     artifact_name: str = "",
 ):
     sha = calculate_sha256(file_path)
@@ -289,8 +297,8 @@ def _register_from_file(
 
 def _build_evidence_ledger(
     rec: "ModelRecord",
-    record_metadata: Dict[str, Any],
-    discovery: Dict[str, Any],
+    record_metadata: dict[str, Any],
+    discovery: dict[str, Any],
 ) -> FactLedger:
     """Build the origin-tagged fact ledger for a freshly registered model."""
     ledger = FactLedger()
@@ -334,7 +342,7 @@ def _build_evidence_ledger(
     return ledger
 
 
-def _summarize_provenance(assessment: Dict[str, Any]) -> Dict[str, Any]:
+def _summarize_provenance(assessment: dict[str, Any]) -> dict[str, Any]:
     """Persist the bounded, explainable provenance evidence from the v2 scorer."""
     return {
         "scoring_version": assessment.get("scoring_version", PROVENANCE_SCORING_VERSION),
@@ -351,15 +359,15 @@ def _summarize_provenance(assessment: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _registration_metadata(
-    publisher: Optional[str] = None,
-    license: Optional[str] = None,
-    training_data: Optional[str] = None,
-    dependencies: Optional[str] = None,
-    training_artifacts: Optional[str] = None,
-    deployment_pipeline: Optional[str] = None,
-    version: Optional[str] = None,
-) -> Dict[str, Any]:
-    metadata: Dict[str, Any] = {}
+    publisher: str | None = None,
+    license: str | None = None,
+    training_data: str | None = None,
+    dependencies: str | None = None,
+    training_artifacts: str | None = None,
+    deployment_pipeline: str | None = None,
+    version: str | None = None,
+) -> dict[str, Any]:
+    metadata: dict[str, Any] = {}
     if publisher:
         metadata["publisher"] = publisher
     if license:
@@ -397,11 +405,11 @@ def _parse_json_or_lines(value: str, field_name: str):
         return [item.strip() for item in text.replace(",", "\n").splitlines() if item.strip()]
 
 
-def _update_job(store, job_id: str, status: str, result: Dict[str, Any]) -> None:
+def _update_job(store, job_id: str, status: str, result: dict[str, Any]) -> None:
     store.update_job(job_id, status, result)
 
 
-def _save_registered_model(store, rec: ModelRecord) -> Dict[str, Any]:
+def _save_registered_model(store, rec: ModelRecord) -> dict[str, Any]:
     store.save_model(rec.to_dict())
     return VulnerabilityIntelligenceEngine(store).scan_model(rec.model_id) or {}
 
@@ -444,9 +452,9 @@ def _register_hf_snapshot_job(
     store,
     job_id: str,
     source_url: str,
-    registered_by: Optional[str],
-    metadata: Optional[Dict[str, Any]] = None,
-    hf_token: Optional[str] = None,
+    registered_by: str | None,
+    metadata: dict[str, Any] | None = None,
+    hf_token: str | None = None,
 ) -> None:
     _job_log_init(job_id)
     _update_job(store, job_id, "RUNNING", {"source_url": source_url})
@@ -529,7 +537,7 @@ def _register_hf_snapshot_job(
         archive_path = shutil.make_archive(archive_base, "gztar", root_dir=local_dir)
         _job_log_append(job_id, "[AIAF] Archive created — computing provenance…")
 
-        merged_meta: Dict[str, Any] = {
+        merged_meta: dict[str, Any] = {
             **(metadata or {}),
             "artifact_kind": "huggingface_snapshot_archive",
             "archive_format": "gztar",
@@ -589,17 +597,17 @@ def _register_hf_snapshot_job(
 async def register_model(
     background_tasks: BackgroundTasks,
     api_key: str = Depends(get_api_key),
-    source_url: Optional[str] = Form(None),
-    file: Optional[UploadFile] = File(None),
-    registered_by: Optional[str] = Form(None),
-    publisher: Optional[str] = Form(None),
-    license: Optional[str] = Form(None),
-    training_data: Optional[str] = Form(None),
-    dependencies: Optional[str] = Form(None),
-    training_artifacts: Optional[str] = Form(None),
-    deployment_pipeline: Optional[str] = Form(None),
-    version: Optional[str] = Form(None),
-    hf_token: Optional[str] = Form(None, description="HuggingFace API token — optional, enables private repos and higher rate limits. Falls back to HF_TOKEN / HUGGINGFACE_TOKEN env vars."),
+    source_url: str | None = Form(None),
+    file: UploadFile | None = File(None),
+    registered_by: str | None = Form(None),
+    publisher: str | None = Form(None),
+    license: str | None = Form(None),
+    training_data: str | None = Form(None),
+    dependencies: str | None = Form(None),
+    training_artifacts: str | None = Form(None),
+    deployment_pipeline: str | None = Form(None),
+    version: str | None = Form(None),
+    hf_token: str | None = Form(None, description="HuggingFace API token — optional, enables private repos and higher rate limits. Falls back to HF_TOKEN / HUGGINGFACE_TOKEN env vars."),
 ):
     """Register a model either by providing a source_url or uploading a file.
 
@@ -747,8 +755,8 @@ async def register_model(
 @router.post("/models/verify")
 async def verify_model_endpoint(
     api_key: str = Depends(get_api_key),
-    model_id: Optional[str] = Form(None),
-    file: Optional[UploadFile] = File(None),
+    model_id: str | None = Form(None),
+    file: UploadFile | None = File(None),
 ):
     store = get_store()
     if model_id is None and file is None:
@@ -964,7 +972,7 @@ def list_model_attestations(model_id: str, api_key: str = Depends(get_api_key)):
 @router.post("/models/{model_id}/attestations/verify")
 def verify_model_attestation(
     model_id: str,
-    attestation: Dict[str, Any],
+    attestation: dict[str, Any],
     api_key: str = Depends(get_api_key),
 ):
     store = get_store()
@@ -1005,7 +1013,7 @@ def verify_model_attestation(
 def list_models(
     api_key: str = Depends(get_api_key),
     limit: int = 100,
-    registered_by: Optional[str] = None,
+    registered_by: str | None = None,
 ):
     store = get_store()
     return {"models": store.list_models(limit=limit, registered_by=registered_by)}

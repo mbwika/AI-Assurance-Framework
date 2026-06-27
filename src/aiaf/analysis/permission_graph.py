@@ -33,7 +33,7 @@ H8 ``excessive_tool_count``   — declared_tools count exceeds policy threshold
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 GRAPH_VERSION = "1.0"
 
@@ -44,7 +44,7 @@ STATUS_SUSPICIOUS = "SUSPICIOUS"
 STATUS_RISK_DETECTED = "RISK_DETECTED"
 STATUS_CRITICAL_RISK = "CRITICAL_RISK"
 
-_STATUS_RANK: Dict[str, int] = {
+_STATUS_RANK: dict[str, int] = {
     STATUS_CLEAN: 0,
     STATUS_SUSPICIOUS: 1,
     STATUS_RISK_DETECTED: 2,
@@ -67,9 +67,9 @@ _CAP_APPROVAL_BYPASS = "approval_bypass"
 _CAP_MEMORY_READ = "memory_read"
 _CAP_MEMORY_WRITE = "memory_write"
 
-_READ_CAPS: Set[str] = {_CAP_DATA_READ, _CAP_FILE_READ, _CAP_MEMORY_READ}
-_WRITE_CAPS: Set[str] = {_CAP_DATA_WRITE, _CAP_FILE_WRITE, _CAP_MEMORY_WRITE}
-_CRITICAL_CAPS: Set[str] = {_CAP_CODE_EXECUTION, _CAP_SUBAGENT_SPAWN, _CAP_APPROVAL_BYPASS}
+_READ_CAPS: set[str] = {_CAP_DATA_READ, _CAP_FILE_READ, _CAP_MEMORY_READ}
+_WRITE_CAPS: set[str] = {_CAP_DATA_WRITE, _CAP_FILE_WRITE, _CAP_MEMORY_WRITE}
+_CRITICAL_CAPS: set[str] = {_CAP_CODE_EXECUTION, _CAP_SUBAGENT_SPAWN, _CAP_APPROVAL_BYPASS}
 
 _SEVERITY_RANK = {"CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1}
 _LOW_TRUST = frozenset({"EXTERNAL", "USER", "UNTRUSTED"})
@@ -88,8 +88,8 @@ def _worst_status(a: str, b: str) -> str:
     return a if _STATUS_RANK.get(a, 0) >= _STATUS_RANK.get(b, 0) else b
 
 
-def _by_severity(findings: List[Dict[str, Any]]) -> Dict[str, int]:
-    result: Dict[str, int] = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
+def _by_severity(findings: list[dict[str, Any]]) -> dict[str, int]:
+    result: dict[str, int] = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
     for f in findings:
         sev = f.get("severity", "LOW")
         result[sev] = result.get(sev, 0) + 1
@@ -97,8 +97,8 @@ def _by_severity(findings: List[Dict[str, Any]]) -> Dict[str, int]:
 
 
 def _finding(ftype: str, severity: str, description: str,
-             refs: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Any]:
-    f: Dict[str, Any] = {
+             refs: list[str] | None = None, **kwargs: Any) -> dict[str, Any]:
+    f: dict[str, Any] = {
         "type": ftype,
         "severity": severity,
         "description": description,
@@ -110,11 +110,11 @@ def _finding(ftype: str, severity: str, description: str,
 
 
 def _effective_caps(
-    agent_record: Dict[str, Any],
-    tool_capabilities: Optional[Dict[str, List[str]]],
-) -> Set[str]:
+    agent_record: dict[str, Any],
+    tool_capabilities: dict[str, list[str]] | None,
+) -> set[str]:
     """Union of agent's own capability_flags + all tool-level capabilities."""
-    caps: Set[str] = set(agent_record.get("capability_flags") or [])
+    caps: set[str] = set(agent_record.get("capability_flags") or [])
     if tool_capabilities:
         for tool_caps in tool_capabilities.values():
             caps.update(str(c).lower() for c in (tool_caps or []))
@@ -124,10 +124,10 @@ def _effective_caps(
 # ── Detectors ─────────────────────────────────────────────────────────────────
 
 def _h1_exfiltration_path(
-    agent_record: Dict[str, Any],
-    effective: Set[str],
-    dedup: Set[str],
-) -> Optional[Dict[str, Any]]:
+    agent_record: dict[str, Any],
+    effective: set[str],
+    dedup: set[str],
+) -> dict[str, Any] | None:
     key = "exfiltration_path"
     if key in dedup:
         return None
@@ -151,9 +151,9 @@ def _h1_exfiltration_path(
 
 
 def _h2_code_execution(
-    effective: Set[str],
-    dedup: Set[str],
-) -> Optional[Dict[str, Any]]:
+    effective: set[str],
+    dedup: set[str],
+) -> dict[str, Any] | None:
     key = "code_execution_risk"
     if key in dedup or _CAP_CODE_EXECUTION not in effective:
         return None
@@ -167,9 +167,9 @@ def _h2_code_execution(
 
 
 def _h3_subagent_spawn(
-    effective: Set[str],
-    dedup: Set[str],
-) -> Optional[Dict[str, Any]]:
+    effective: set[str],
+    dedup: set[str],
+) -> dict[str, Any] | None:
     key = "subagent_spawn_risk"
     if key in dedup or _CAP_SUBAGENT_SPAWN not in effective:
         return None
@@ -183,9 +183,9 @@ def _h3_subagent_spawn(
 
 
 def _h4_approval_bypass(
-    effective: Set[str],
-    dedup: Set[str],
-) -> Optional[Dict[str, Any]]:
+    effective: set[str],
+    dedup: set[str],
+) -> dict[str, Any] | None:
     key = "approval_bypass_risk"
     if key in dedup or _CAP_APPROVAL_BYPASS not in effective:
         return None
@@ -199,10 +199,10 @@ def _h4_approval_bypass(
 
 
 def _h5_write_without_gate(
-    agent_record: Dict[str, Any],
-    effective: Set[str],
-    dedup: Set[str],
-) -> Optional[Dict[str, Any]]:
+    agent_record: dict[str, Any],
+    effective: set[str],
+    dedup: set[str],
+) -> dict[str, Any] | None:
     key = "write_without_gate"
     if key in dedup:
         return None
@@ -224,10 +224,10 @@ def _h5_write_without_gate(
 
 
 def _h6_over_permissioned(
-    agent_record: Dict[str, Any],
-    effective: Set[str],
-    dedup: Set[str],
-) -> Optional[Dict[str, Any]]:
+    agent_record: dict[str, Any],
+    effective: set[str],
+    dedup: set[str],
+) -> dict[str, Any] | None:
     key = "over_permissioned"
     if key in dedup:
         return None
@@ -250,10 +250,10 @@ def _h6_over_permissioned(
 
 
 def _h7_undeclared_tool_caps(
-    agent_record: Dict[str, Any],
-    tool_capabilities: Optional[Dict[str, List[str]]],
-    dedup: Set[str],
-) -> Optional[Dict[str, Any]]:
+    agent_record: dict[str, Any],
+    tool_capabilities: dict[str, list[str]] | None,
+    dedup: set[str],
+) -> dict[str, Any] | None:
     key = "undeclared_tool_caps"
     if key in dedup or not tool_capabilities:
         return None
@@ -273,10 +273,10 @@ def _h7_undeclared_tool_caps(
 
 
 def _h8_excessive_tool_count(
-    agent_record: Dict[str, Any],
-    dedup: Set[str],
+    agent_record: dict[str, Any],
+    dedup: set[str],
     max_tools: int = _DEFAULT_MAX_TOOLS,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     key = "excessive_tool_count"
     if key in dedup:
         return None
@@ -297,11 +297,11 @@ def _h8_excessive_tool_count(
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def analyse_permissions(
-    agent_record: Dict[str, Any],
+    agent_record: dict[str, Any],
     *,
-    tool_capabilities: Optional[Dict[str, List[str]]] = None,
+    tool_capabilities: dict[str, list[str]] | None = None,
     max_tools: int = _DEFAULT_MAX_TOOLS,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Analyse the permission graph of a registered agent.
 
     Parameters
@@ -322,8 +322,8 @@ def analyse_permissions(
     ``findings``, ``by_severity``, ``capability_summary``, ``risk_paths``,
     ``evidence_origin``, ``analysed_at``.
     """
-    findings: List[Dict[str, Any]] = []
-    dedup: Set[str] = set()
+    findings: list[dict[str, Any]] = []
+    dedup: set[str] = set()
     status = STATUS_CLEAN
 
     effective = _effective_caps(agent_record, tool_capabilities)

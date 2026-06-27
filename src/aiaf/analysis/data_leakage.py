@@ -8,9 +8,8 @@ import math
 import re
 import unicodedata
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from urllib.parse import unquote
-
 
 DATA_LEAKAGE_SCORING_VERSION = "2.0"
 _MAX_INPUT_CHARS = 100_000
@@ -24,7 +23,7 @@ _MAX_MATCHES = 100
 class _TextView:
     text: str
     source: str
-    transformations: Tuple[str, ...] = ()
+    transformations: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -140,8 +139,8 @@ _AUTHENTICATION_INDICATORS = {
 
 
 def detect_data_leakage(
-    text: str, analysis_context: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+    text: str, analysis_context: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Detect validated PII and credentials without returning matched values."""
     context = analysis_context if isinstance(analysis_context, dict) else {}
     raw = _coerce_text(text)
@@ -155,7 +154,7 @@ def detect_data_leakage(
     views = [_TextView(normalized, "normalized", transformations)]
     views.extend(_decoded_views(normalized))
 
-    detections: List[_Detection] = []
+    detections: list[_Detection] = []
     match_limit_reached = False
     for view in views:
         view_detections, view_limit_reached = _scan_view(view)
@@ -281,8 +280,8 @@ def detect_data_leakage(
     }
 
 
-def _scan_view(view: _TextView) -> Tuple[List[_Detection], bool]:
-    detections: List[_Detection] = []
+def _scan_view(view: _TextView) -> tuple[list[_Detection], bool]:
+    detections: list[_Detection] = []
     embedded_credential_matches = list(_EMBEDDED_CREDENTIALS.finditer(view.text))
 
     for match in _EMAIL.finditer(view.text):
@@ -507,7 +506,7 @@ def _add(
     )
 
 
-def _append_unique(detections: List[_Detection], candidate: _Detection) -> None:
+def _append_unique(detections: list[_Detection], candidate: _Detection) -> None:
     for existing in detections:
         if candidate.synthetic and existing.indicator == candidate.indicator:
             return
@@ -609,7 +608,7 @@ def _serialize_detection(detection):
 
 
 def _score(detections, context_multiplier):
-    grouped: Dict[str, List[_Detection]] = {}
+    grouped: dict[str, list[_Detection]] = {}
     for detection in detections:
         grouped.setdefault(detection.indicator, []).append(detection)
 

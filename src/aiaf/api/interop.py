@@ -28,36 +28,24 @@ import uuid
 from collections import deque as _deque
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from ..core.redteam_engine import (
+    BACKEND_GARAK,
+    run_redteam,
+)
+from ..registry.cyclonedx_bom import export_bom
+from ..registry.evidence_origin import EvidenceOrigin, ledger_from_list
 from ..registry.hf_model_card import (
-    fetch_from_hub,
     enrich_ledger,
-    STATUS_FETCH_FAILED,
-    STATUS_NO_CARD,
+    fetch_from_hub,
 )
 from ..registry.sigstore_verifier import (
     verify_resolved_file,
-    STATUS_VERIFIED,
-    STATUS_NOT_SIGNED,
-    STATUS_NOT_AVAILABLE,
-)
-from ..registry.cyclonedx_bom import export_bom, import_bom
-from ..registry.evidence_origin import EvidenceOrigin, ledger_from_list
-from ..core.redteam_engine import (
-    run_redteam,
-    BACKEND_GARAK,
-    BACKEND_PYRIT,
-    PROBE_FAMILIES_QUICK,
-    PROBE_FAMILIES_FULL,
-    STATUS_TOOL_NOT_INSTALLED,
-    STATUS_COMPLETED,
-    STATUS_PARTIAL,
-    STATUS_ERROR,
 )
 from .models import get_api_key, get_store
 
@@ -67,7 +55,7 @@ router = APIRouter(prefix="/v1/interop", tags=["interop"])
 # In-process red-team job registry (mirrors the pattern in api/models.py)
 # ---------------------------------------------------------------------------
 
-_RT_JOBS: Dict[str, Dict[str, Any]] = {}
+_RT_JOBS: dict[str, dict[str, Any]] = {}
 _RT_JOBS_LOCK = threading.Lock()
 _RT_LOG_MAX = 200
 
@@ -85,7 +73,7 @@ def _rt_job_init(job_id: str, model_id: str) -> None:
         }
 
 
-def _rt_job_update(job_id: str, status: str, result: Optional[Dict] = None) -> None:
+def _rt_job_update(job_id: str, status: str, result: dict | None = None) -> None:
     with _RT_JOBS_LOCK:
         job = _RT_JOBS.get(job_id)
         if job:
@@ -102,7 +90,7 @@ def _rt_job_log(job_id: str, line: str) -> None:
             job["logs"].append(line)
 
 
-def _rt_job_get(job_id: str) -> Optional[Dict[str, Any]]:
+def _rt_job_get(job_id: str) -> dict[str, Any] | None:
     with _RT_JOBS_LOCK:
         job = _RT_JOBS.get(job_id)
         if job:
@@ -110,7 +98,7 @@ def _rt_job_get(job_id: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def _rt_jobs_for_model(model_id: str) -> List[Dict[str, Any]]:
+def _rt_jobs_for_model(model_id: str) -> list[dict[str, Any]]:
     with _RT_JOBS_LOCK:
         return [
             {**j, "logs": list(j["logs"])}
@@ -127,12 +115,12 @@ def _project_root() -> Path:
     return Path(__file__).resolve().parents[3]
 
 
-def _approved_sigstore_roots() -> List[Path]:
+def _approved_sigstore_roots() -> list[Path]:
     roots = [(_project_root() / "data").resolve()]
     return roots
 
 
-def _resolve_sigstore_path(path_value: str) -> Optional[Path]:
+def _resolve_sigstore_path(path_value: str) -> Path | None:
     raw_path = str(path_value).strip()
     if not raw_path:
         return None
@@ -158,7 +146,7 @@ def _resolve_sigstore_path(path_value: str) -> Optional[Path]:
     return None
 
 
-def _stored_sigstore_artifact_path(rec: Dict[str, Any]) -> Optional[str]:
+def _stored_sigstore_artifact_path(rec: dict[str, Any]) -> str | None:
     metadata = rec.get("metadata")
     metadata = metadata if isinstance(metadata, dict) else {}
     return (
@@ -169,7 +157,7 @@ def _stored_sigstore_artifact_path(rec: Dict[str, Any]) -> Optional[str]:
     )
 
 
-def _stored_sigstore_bundle_path(rec: Dict[str, Any]) -> Optional[str]:
+def _stored_sigstore_bundle_path(rec: dict[str, Any]) -> str | None:
     metadata = rec.get("metadata")
     metadata = metadata if isinstance(metadata, dict) else {}
     return metadata.get("sigstore_bundle_path") or metadata.get("bundle_path")
@@ -181,21 +169,21 @@ def _stored_sigstore_bundle_path(rec: Dict[str, Any]) -> Optional[str]:
 
 
 class HfEnrichRequest(BaseModel):
-    repo_id: Optional[str] = None
-    hf_token: Optional[str] = None
+    repo_id: str | None = None
+    hf_token: str | None = None
 
 
 class SigstoreVerifyRequest(BaseModel):
-    expected_identity: Optional[str] = None
-    expected_issuer: Optional[str] = None
+    expected_identity: str | None = None
+    expected_issuer: str | None = None
 
 
 class RedTeamRequest(BaseModel):
     endpoint_url: str
     backend: str = BACKEND_GARAK
-    endpoint_api_key: Optional[str] = None
+    endpoint_api_key: str | None = None
     model_name: str = "default"
-    probe_families: Optional[List[str]] = None
+    probe_families: list[str] | None = None
     depth: str = "quick"
     timeout: int = 600
 
@@ -338,7 +326,7 @@ def verify_sigstore_signature(
             detail="artifact_path must reference an existing file under AIAF-managed artifact storage.",
         )
 
-    resolved_bundle_path: Optional[str] = None
+    resolved_bundle_path: str | None = None
     stored_bundle_path = _stored_sigstore_bundle_path(rec)
     if stored_bundle_path is not None:
         bundle_path = _resolve_sigstore_path(stored_bundle_path)
@@ -481,7 +469,7 @@ def list_redteam_jobs(
 
 
 def _persist_redteam_results(
-    store, rec: Dict[str, Any], result: Dict[str, Any]
+    store, rec: dict[str, Any], result: dict[str, Any]
 ) -> None:
     """Persist red-team results to the model record's metadata."""
     if not rec:
@@ -505,7 +493,7 @@ def _persist_redteam_results(
         pass
 
 
-def _repo_id_from_record(rec: Dict[str, Any]) -> Optional[str]:
+def _repo_id_from_record(rec: dict[str, Any]) -> str | None:
     """Derive a HuggingFace repo_id from a model record's source_url."""
     from urllib.parse import urlparse
     source_url = rec.get("source_url") or ""
@@ -519,7 +507,7 @@ def _repo_id_from_record(rec: Dict[str, Any]) -> Optional[str]:
     return None
 
 
-def _record_sigstore_verification(store, rec: Dict[str, Any], result: Dict[str, Any]) -> None:
+def _record_sigstore_verification(store, rec: dict[str, Any], result: dict[str, Any]) -> None:
     """Persist a successful Sigstore verification into the evidence ledger."""
     metadata = dict(rec.get("metadata") or {})
     ledger = ledger_from_list(metadata.get("evidence_ledger"))

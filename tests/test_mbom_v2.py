@@ -3,7 +3,6 @@ import json
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 SRC = str(ROOT / "src")
 if SRC not in sys.path:
@@ -13,8 +12,8 @@ import aiaf.registry.mbom_v2 as mbom_module  # noqa: E402
 from aiaf.registry.mbom_v2 import (  # noqa: E402
     AI_BOM_FORMAT,
     AI_BOM_SPEC_VERSION,
-    generate_attestable_ai_bom_v2,
     generate_ai_bom_v2,
+    generate_attestable_ai_bom_v2,
     verify_ai_bom_v2,
 )
 

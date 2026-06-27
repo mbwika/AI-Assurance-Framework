@@ -1,7 +1,7 @@
 """Supply-chain vulnerability intelligence APIs."""
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -9,13 +9,12 @@ from pydantic import BaseModel, Field
 from ..core import VulnerabilityIntelligenceEngine
 from .models import get_api_key, get_store
 
-
 router = APIRouter(prefix="/v1/supply-chain", tags=["supply chain"])
 
 
 class AdvisoryImport(BaseModel):
-    advisories: List[Dict[str, Any]] = Field(min_length=1, max_length=5000)
-    source: Optional[str] = Field(default=None, max_length=255)
+    advisories: list[dict[str, Any]] = Field(min_length=1, max_length=5000)
+    source: str | None = Field(default=None, max_length=255)
     rescan_models: bool = True
 
 
@@ -24,7 +23,7 @@ class DependencyScan(BaseModel):
 
 
 class SignedAdvisoryFeedImport(BaseModel):
-    feed: Dict[str, Any]
+    feed: dict[str, Any]
     rescan_models: bool = True
 
 
@@ -45,8 +44,8 @@ def import_advisories(
 @router.get("/advisories")
 def list_advisories(
     limit: int = 1000,
-    ecosystem: Optional[str] = None,
-    package_name: Optional[str] = None,
+    ecosystem: str | None = None,
+    package_name: str | None = None,
     api_key: str = Depends(get_api_key),
 ):
     advisories = VulnerabilityIntelligenceEngine(get_store()).list_advisories(
@@ -80,7 +79,7 @@ def import_signed_advisory_feed(
 @router.get("/advisories/feeds")
 def list_advisory_feed_snapshots(
     limit: int = 100,
-    feed_id: Optional[str] = None,
+    feed_id: str | None = None,
     api_key: str = Depends(get_api_key),
 ):
     snapshots = VulnerabilityIntelligenceEngine(get_store()).list_feed_snapshots(
@@ -97,7 +96,7 @@ def list_advisory_feed_snapshots(
 
 @router.get("/advisories/feeds/status")
 def advisory_feed_status(
-    as_of: Optional[str] = None, api_key: str = Depends(get_api_key)
+    as_of: str | None = None, api_key: str = Depends(get_api_key)
 ):
     try:
         return VulnerabilityIntelligenceEngine(get_store()).feed_status(as_of=as_of)
@@ -120,7 +119,7 @@ def get_advisory_feed_snapshot(
 @router.post("/advisories/feeds/{snapshot_id}/verify")
 def verify_advisory_feed_snapshot(
     snapshot_id: str,
-    as_of: Optional[str] = None,
+    as_of: str | None = None,
     api_key: str = Depends(get_api_key),
 ):
     verification = VulnerabilityIntelligenceEngine(

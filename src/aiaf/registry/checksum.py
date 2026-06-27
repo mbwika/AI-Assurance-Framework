@@ -1,6 +1,5 @@
 """Checksum utilities for model integrity verification."""
 import hashlib
-from typing import Optional
 
 
 def calculate_sha256(filepath: str, chunk_size: int = 4096) -> str:
@@ -11,7 +10,7 @@ def calculate_sha256(filepath: str, chunk_size: int = 4096) -> str:
     return sha256.hexdigest()
 
 
-def verify_model(file_path: str, stored_hash: Optional[str]) -> bool:
+def verify_model(file_path: str, stored_hash: str | None) -> bool:
     if stored_hash is None:
         return False
     current_hash = calculate_sha256(file_path)

@@ -1,20 +1,32 @@
 """Tests for aiaf.analysis.telemetry_ingest."""
 
-import pytest
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from aiaf.analysis.telemetry_ingest import (
-    TELEMETRY_INGEST_VERSION,
-    EVENT_LATENCY, EVENT_ERROR_RATE, EVENT_REFUSAL_RATE,
-    EVENT_TOKEN_USAGE, EVENT_INJECTION_ATTEMPT, EVENT_POLICY_VIOLATION,
-    EVENT_TYPES,
-    TELEM_STATUS_NORMAL, TELEM_STATUS_ELEVATED,
-    TELEM_STATUS_ANOMALY_DETECTED, TELEM_STATUS_CRITICAL,
-    TelemetryIngestError,
-    MAX_EVENTS_PER_STORE,
-    _worst_status, _stddev, _percentile,
-    ingest_event, get_window_summary, list_events, detect_anomalies,
     _DEFAULT_THRESHOLDS,
+    EVENT_ERROR_RATE,
+    EVENT_INJECTION_ATTEMPT,
+    EVENT_LATENCY,
+    EVENT_POLICY_VIOLATION,
+    EVENT_REFUSAL_RATE,
+    EVENT_TOKEN_USAGE,
+    EVENT_TYPES,
+    MAX_EVENTS_PER_STORE,
+    TELEM_STATUS_ANOMALY_DETECTED,
+    TELEM_STATUS_CRITICAL,
+    TELEM_STATUS_ELEVATED,
+    TELEM_STATUS_NORMAL,
+    TELEMETRY_INGEST_VERSION,
+    TelemetryIngestError,
+    _percentile,
+    _stddev,
+    _worst_status,
+    detect_anomalies,
+    get_window_summary,
+    ingest_event,
+    list_events,
 )
 
 

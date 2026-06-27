@@ -7,21 +7,18 @@ REST endpoints:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from .models import get_api_key
 from ..analysis.sandbox_posture import (
+    EGRESS_CONTROLS,
+    PRIVILEGE_LEVELS,
     SANDBOX_POSTURE_VERSION,
     SandboxPostureError,
     assess_sandbox_posture,
     get_isolation_levels,
-    ISOLATION_LEVELS,
-    EGRESS_CONTROLS,
-    PRIVILEGE_LEVELS,
 )
+from .models import get_api_key
 
 router = APIRouter(prefix="/v1/sandbox-posture", tags=["sandbox-posture"])
 
@@ -41,7 +38,7 @@ class SandboxConfigRequest(BaseModel):
     docker_socket: bool = False
     seccomp_profile: str = "none"
     apparmor: bool = False
-    context: Optional[str] = None
+    context: str | None = None
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────

@@ -11,29 +11,25 @@ REST endpoints:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from .models import get_api_key, get_store
 from ..analysis.human_oversight_monitor import (
     HUMAN_OVERSIGHT_VERSION,
-    HumanOversightError,
+    RISK_CRITICAL,
     RISK_ELEVATED,
     RISK_HIGH,
-    RISK_CRITICAL,
-    SIGNAL_TYPES,
-    SESSION_ACTIVE,
-    SESSION_CLOSED,
-    create_oversight_session,
-    get_oversight_session,
-    record_agent_output,
-    record_tool_call,
+    HumanOversightError,
     assess_session,
     close_session,
+    create_oversight_session,
     list_at_risk_sessions,
+    record_agent_output,
+    record_tool_call,
 )
+from .models import get_api_key, get_store
 
 router = APIRouter(prefix="/v1/oversight", tags=["human-oversight"])
 
@@ -43,23 +39,23 @@ router = APIRouter(prefix="/v1/oversight", tags=["human-oversight"])
 class CreateSessionRequest(BaseModel):
     session_id: str = Field(..., min_length=1, max_length=128)
     agent_id: str = Field(..., min_length=1, max_length=256)
-    principal_id: Optional[str] = None
-    known_principals: Optional[List[str]] = None
-    context: Optional[str] = None
+    principal_id: str | None = None
+    known_principals: list[str] | None = None
+    context: str | None = None
 
 
 class RecordOutputRequest(BaseModel):
     text: str = Field(..., min_length=1)
-    turn_id: Optional[str] = None
-    occurred_at: Optional[str] = None
+    turn_id: str | None = None
+    occurred_at: str | None = None
 
 
 class RecordToolCallRequest(BaseModel):
     tool_name: str = Field(..., min_length=1, max_length=256)
-    tool_params: Dict[str, Any] = Field(default_factory=dict)
-    turn_id: Optional[str] = None
-    described_intent: Optional[str] = None
-    occurred_at: Optional[str] = None
+    tool_params: dict[str, Any] = Field(default_factory=dict)
+    turn_id: str | None = None
+    described_intent: str | None = None
+    occurred_at: str | None = None
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────

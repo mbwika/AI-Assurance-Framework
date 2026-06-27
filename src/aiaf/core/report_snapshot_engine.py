@@ -8,10 +8,9 @@ import subprocess
 import tempfile
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ..reporting.assurance_report import build_assurance_report
-
 
 SNAPSHOT_VERSION = "1.0"
 SIGNATURE_ALGORITHM = "HMAC-SHA256"
@@ -22,10 +21,10 @@ class AssuranceReportSnapshotEngine:
     def __init__(
         self,
         datastore: object,
-        signing_key: Optional[str] = None,
+        signing_key: str | None = None,
         key_id: str = "default",
-        signing_private_key_pem: Optional[str] = None,
-        verification_public_key_pem: Optional[str] = None,
+        signing_private_key_pem: str | None = None,
+        verification_public_key_pem: str | None = None,
     ):
         self.datastore = datastore
         self.signing_key = signing_key or ""
@@ -37,11 +36,11 @@ class AssuranceReportSnapshotEngine:
         self,
         *,
         created_by: str,
-        artifact_id: Optional[str] = None,
-        model_id: Optional[str] = None,
-        registered_by: Optional[str] = None,
+        artifact_id: str | None = None,
+        model_id: str | None = None,
+        registered_by: str | None = None,
         sign: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         creator = str(created_by or "").strip()
         if not creator:
             raise ValueError("created_by is required")
@@ -130,16 +129,16 @@ class AssuranceReportSnapshotEngine:
         )
         return snapshot
 
-    def get(self, snapshot_id: str) -> Optional[Dict[str, Any]]:
+    def get(self, snapshot_id: str) -> dict[str, Any] | None:
         return self.datastore.get_assurance_report_snapshot(snapshot_id)
 
     def list(
         self,
         limit: int = 100,
-        artifact_id: Optional[str] = None,
-        model_id: Optional[str] = None,
-        registered_by: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        artifact_id: str | None = None,
+        model_id: str | None = None,
+        registered_by: str | None = None,
+    ) -> list[dict[str, Any]]:
         normalized_artifact = str(artifact_id or "").strip() or None
         normalized_model = str(model_id or "").strip() or None
         normalized_registrant = str(registered_by or "").strip() or None
@@ -163,7 +162,7 @@ class AssuranceReportSnapshotEngine:
             ]
         return snapshots
 
-    def verify(self, snapshot_id: str) -> Optional[Dict[str, Any]]:
+    def verify(self, snapshot_id: str) -> dict[str, Any] | None:
         snapshot = self.get(snapshot_id)
         if not snapshot:
             return None
@@ -224,7 +223,7 @@ class AssuranceReportSnapshotEngine:
     def _can_sign(self) -> bool:
         return bool(self.signing_private_key_pem or self.signing_key)
 
-    def _sign_snapshot(self, value: Dict[str, Any]) -> tuple[str, str]:
+    def _sign_snapshot(self, value: dict[str, Any]) -> tuple[str, str]:
         if self.signing_private_key_pem:
             return (
                 ASYMMETRIC_SIGNATURE_ALGORITHM,
@@ -232,7 +231,7 @@ class AssuranceReportSnapshotEngine:
             )
         return SIGNATURE_ALGORITHM, _sign_hmac(value, self.signing_key)
 
-    def _has_verification_material(self, algorithm: Optional[str]) -> bool:
+    def _has_verification_material(self, algorithm: str | None) -> bool:
         algorithm = str(algorithm or "")
         if algorithm == ASYMMETRIC_SIGNATURE_ALGORITHM:
             return bool(self.verification_public_key_pem or self.signing_private_key_pem)
@@ -241,7 +240,7 @@ class AssuranceReportSnapshotEngine:
         return False
 
     def _verify_signature(
-        self, value: Dict[str, Any], algorithm: str, signature: str
+        self, value: dict[str, Any], algorithm: str, signature: str
     ) -> bool:
         if algorithm == SIGNATURE_ALGORITHM:
             expected = _sign_hmac(value, self.signing_key)
@@ -256,7 +255,7 @@ class AssuranceReportSnapshotEngine:
         return False
 
 
-def _signature_envelope(snapshot: Dict[str, Any]) -> Dict[str, Any]:
+def _signature_envelope(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "snapshot_version": snapshot["snapshot_version"],
         "snapshot_id": snapshot["id"],
@@ -270,13 +269,13 @@ def _signature_envelope(snapshot: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _sign_hmac(value: Dict[str, Any], signing_key: str) -> str:
+def _sign_hmac(value: dict[str, Any], signing_key: str) -> str:
     return hmac.new(
         signing_key.encode("utf-8"), _canonical_json(value), hashlib.sha256
     ).hexdigest()
 
 
-def _sign_ed25519(value: Dict[str, Any], private_key_pem: str) -> str:
+def _sign_ed25519(value: dict[str, Any], private_key_pem: str) -> str:
     try:
         from cryptography.hazmat.primitives import serialization
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -293,7 +292,7 @@ def _sign_ed25519(value: Dict[str, Any], private_key_pem: str) -> str:
         return _openssl_sign_ed25519(value, private_key_pem)
 
 
-def _verify_ed25519(value: Dict[str, Any], signature: str, public_key_pem: str) -> bool:
+def _verify_ed25519(value: dict[str, Any], signature: str, public_key_pem: str) -> bool:
     try:
         from cryptography.hazmat.primitives import serialization
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -309,7 +308,7 @@ def _verify_ed25519(value: Dict[str, Any], signature: str, public_key_pem: str) 
         return False
 
 
-def _derive_public_pem(private_key_pem: Optional[str]) -> str:
+def _derive_public_pem(private_key_pem: str | None) -> str:
     if not private_key_pem:
         return ""
     try:
@@ -334,7 +333,7 @@ def _derive_public_pem(private_key_pem: Optional[str]) -> str:
         return _openssl_derive_public_pem(private_key_pem)
 
 
-def _openssl_sign_ed25519(value: Dict[str, Any], private_key_pem: str) -> str:
+def _openssl_sign_ed25519(value: dict[str, Any], private_key_pem: str) -> str:
     with tempfile.TemporaryDirectory(prefix="aiaf_snap_sig_") as tmp:
         key_path = f"{tmp}/signing-key.pem"
         data_path = f"{tmp}/payload.bin"
@@ -350,7 +349,7 @@ def _openssl_sign_ed25519(value: Dict[str, Any], private_key_pem: str) -> str:
         return base64.b64encode(result.stdout).decode("ascii")
 
 
-def _openssl_verify_ed25519(value: Dict[str, Any], signature: str, public_key_pem: str) -> bool:
+def _openssl_verify_ed25519(value: dict[str, Any], signature: str, public_key_pem: str) -> bool:
     try:
         with tempfile.TemporaryDirectory(prefix="aiaf_snap_verify_") as tmp:
             key_path = f"{tmp}/verify-key.pem"
@@ -401,11 +400,11 @@ def _openssl_derive_public_pem(private_key_pem: str) -> str:
         return ""
 
 
-def _sha256_json(value: Dict[str, Any]) -> str:
+def _sha256_json(value: dict[str, Any]) -> str:
     return hashlib.sha256(_canonical_json(value)).hexdigest()
 
 
-def _canonical_json(value: Dict[str, Any]) -> bytes:
+def _canonical_json(value: dict[str, Any]) -> bytes:
     return json.dumps(
         value, sort_keys=True, separators=(",", ":"), ensure_ascii=True
     ).encode("utf-8")
@@ -415,7 +414,7 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _normalize_pem(value: Optional[str]) -> str:
+def _normalize_pem(value: str | None) -> str:
     if not value:
         return ""
     return str(value).replace("\\n", "\n").strip()

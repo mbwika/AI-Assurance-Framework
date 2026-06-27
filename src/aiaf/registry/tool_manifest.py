@@ -33,7 +33,7 @@ import hashlib
 import hmac
 import json
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 MANIFEST_VERSION = "1.0"
 
@@ -56,14 +56,14 @@ def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-def _hmac_sign(statement: Dict[str, Any], key: bytes) -> str:
+def _hmac_sign(statement: dict[str, Any], key: bytes) -> str:
     if len(key) < 32:
         raise ManifestError("Signing key must be at least 32 bytes.")
     payload = _canonical_json(statement).encode()
     return hmac.new(key, payload, hashlib.sha256).hexdigest()
 
 
-def _hmac_verify(statement: Dict[str, Any], key: bytes, expected_sig: str) -> bool:
+def _hmac_verify(statement: dict[str, Any], key: bytes, expected_sig: str) -> bool:
     if len(key) < 32:
         return False
     return hmac.compare_digest(_hmac_sign(statement, key), expected_sig)
@@ -83,14 +83,14 @@ def create_manifest(
     tool_name: str,
     version: str,
     description: str,
-    input_schema: Dict[str, Any],
-    declared_capabilities: List[str],
+    input_schema: dict[str, Any],
+    declared_capabilities: list[str],
     signing_key: bytes,
     *,
-    allowed_agents: Optional[List[str]] = None,
-    issuer: Optional[str] = None,
-    expires_at: Optional[str] = None,
-) -> Dict[str, Any]:
+    allowed_agents: list[str] | None = None,
+    issuer: str | None = None,
+    expires_at: str | None = None,
+) -> dict[str, Any]:
     """Create and sign a tool capability manifest.
 
     Parameters
@@ -132,7 +132,7 @@ def create_manifest(
     schema_hash = _sha256(_canonical_json(input_schema))
     declared_capabilities = sorted({str(c).lower() for c in (declared_capabilities or [])})
 
-    statement: Dict[str, Any] = {
+    statement: dict[str, Any] = {
         "manifest_version": MANIFEST_VERSION,
         "tool_name": tool_name,
         "version": version,
@@ -160,11 +160,11 @@ def create_manifest(
 # ── Manifest verification ─────────────────────────────────────────────────────
 
 def verify_manifest(
-    manifest: Dict[str, Any],
+    manifest: dict[str, Any],
     signing_key: bytes,
     *,
-    current_schema: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    current_schema: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Verify a signed tool manifest.
 
     Parameters
@@ -186,7 +186,7 @@ def verify_manifest(
     stored_sig = str(manifest.get("signature") or "")
     algorithm = str(manifest.get("algorithm") or "").lower()
 
-    checks: Dict[str, bool] = {}
+    checks: dict[str, bool] = {}
 
     # Algorithm supported
     checks["algorithm_supported"] = algorithm in _SUPPORTED_ALGORITHMS
@@ -237,7 +237,7 @@ def verify_manifest(
 
 # ── Storage operations ────────────────────────────────────────────────────────
 
-def register_manifest(manifest: Dict[str, Any], store: Any) -> Dict[str, Any]:
+def register_manifest(manifest: dict[str, Any], store: Any) -> dict[str, Any]:
     """Persist a manifest in the AIAF store (after signing/verification).
 
     The manifest is stored as-is; no re-verification is performed here.
@@ -251,7 +251,7 @@ def register_manifest(manifest: Dict[str, Any], store: Any) -> Dict[str, Any]:
 
     key = _manifest_key(tool_name, version)
     now = _utc_now()
-    record: Dict[str, Any] = {
+    record: dict[str, Any] = {
         "model_id": key,
         "id": key,
         "metadata": {
@@ -279,7 +279,7 @@ def get_manifest(
     tool_name: str,
     version: str,
     store: Any,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Return the stored manifest for ``tool_name`` + ``version``, or ``None``."""
     record = store.get_model(_manifest_key(tool_name, version))
     if not record:
@@ -290,9 +290,9 @@ def get_manifest(
 def list_manifests(
     store: Any,
     *,
-    tool_name: Optional[str] = None,
+    tool_name: str | None = None,
     limit: int = 50,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """List registered tool manifests, newest first.
 
     Optionally filter by ``tool_name``.
@@ -311,7 +311,7 @@ def list_manifests(
     return result[:limit]
 
 
-def _manifest_summary(record: Dict[str, Any]) -> Dict[str, Any]:
+def _manifest_summary(record: dict[str, Any]) -> dict[str, Any]:
     meta = record.get("metadata") or {}
     return {
         "tool_name": meta.get("tool_name"),

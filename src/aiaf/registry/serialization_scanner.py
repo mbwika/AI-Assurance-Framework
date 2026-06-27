@@ -41,7 +41,7 @@ import pickletools
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +109,7 @@ _SAFE_EXACT = frozenset(
 )
 
 # Module roots known to allow arbitrary code execution → severity.
-_DANGEROUS_ROOTS: Dict[str, str] = {
+_DANGEROUS_ROOTS: dict[str, str] = {
     "os": "CRITICAL",
     "nt": "CRITICAL",        # Windows os module
     "posix": "CRITICAL",     # POSIX os module
@@ -140,7 +140,7 @@ _DANGEROUS_ROOTS: Dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 
-def scan_file(file_path: str) -> Dict[str, Any]:
+def scan_file(file_path: str) -> dict[str, Any]:
     """Scan ``file_path`` and return a structured serialization security report.
 
     The scan is purely inspective — no pickle machinery is invoked.  Call
@@ -199,7 +199,7 @@ def scan_file(file_path: str) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _scan_pickle(file_path: str) -> List[Dict[str, Any]]:
+def _scan_pickle(file_path: str) -> list[dict[str, Any]]:
     """Scan a pickle file (or ZIP of pickles) for dangerous opcodes."""
     if zipfile.is_zipfile(file_path):
         return _scan_zip_pickle(file_path)
@@ -207,9 +207,9 @@ def _scan_pickle(file_path: str) -> List[Dict[str, Any]]:
         return _scan_pickle_bytes(fh.read(), source=file_path)
 
 
-def _scan_zip_pickle(file_path: str) -> List[Dict[str, Any]]:
+def _scan_zip_pickle(file_path: str) -> list[dict[str, Any]]:
     """Scan pickle streams inside a ZIP archive (PyTorch ≥1.6 format)."""
-    findings: List[Dict[str, Any]] = []
+    findings: list[dict[str, Any]] = []
     try:
         with zipfile.ZipFile(file_path, "r") as zf:
             for name in zf.namelist():
@@ -227,13 +227,13 @@ def _scan_zip_pickle(file_path: str) -> List[Dict[str, Any]]:
     return findings
 
 
-def _scan_pickle_bytes(data: bytes, *, source: str = "") -> List[Dict[str, Any]]:
+def _scan_pickle_bytes(data: bytes, *, source: str = "") -> list[dict[str, Any]]:
     """Non-executing opcode scan of raw pickle bytes.
 
     Iterates opcodes via :func:`pickletools.genops` — this decodes the byte
     stream without invoking any Python callable.
     """
-    findings: List[Dict[str, Any]] = []
+    findings: list[dict[str, Any]] = []
     try:
         stream = io.BytesIO(data)
         for opcode, arg, pos in pickletools.genops(stream):
@@ -274,7 +274,7 @@ def _scan_pickle_bytes(data: bytes, *, source: str = "") -> List[Dict[str, Any]]
 
 def _check_global(
     module: str, name: str, offset: int, source: str
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Return a finding dict if (module, name) is dangerous, else None."""
     if (module, name) in _SAFE_EXACT:
         return None
@@ -311,9 +311,9 @@ def _check_global(
     }
 
 
-def _scan_safetensors(file_path: str) -> List[Dict[str, Any]]:
+def _scan_safetensors(file_path: str) -> list[dict[str, Any]]:
     """Validate safetensors header structure (CVE-2024-36110 class checks)."""
-    findings: List[Dict[str, Any]] = []
+    findings: list[dict[str, Any]] = []
     try:
         with open(file_path, "rb") as fh:
             # First 8 bytes: little-endian uint64 header length.
@@ -384,7 +384,7 @@ def _scan_safetensors(file_path: str) -> List[Dict[str, Any]]:
     return findings
 
 
-def _scan_onnx(file_path: str) -> List[Dict[str, Any]]:
+def _scan_onnx(file_path: str) -> list[dict[str, Any]]:
     """Minimal ONNX header check — serialization layer has no execution risk."""
     try:
         with open(file_path, "rb") as fh:
@@ -411,7 +411,7 @@ def _scan_onnx(file_path: str) -> List[Dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 
-def _try_modelscan(file_path: str) -> Optional[Dict[str, Any]]:
+def _try_modelscan(file_path: str) -> dict[str, Any] | None:
     """Delegate to the ``modelscan`` package if installed; else return None."""
     try:
         from modelscan.scan import ModelScan  # type: ignore[import]
@@ -420,7 +420,7 @@ def _try_modelscan(file_path: str) -> Optional[Dict[str, Any]]:
     try:
         ms = ModelScan()
         result = ms.scan(file_path)
-        findings: List[Dict[str, Any]] = []
+        findings: list[dict[str, Any]] = []
         for issue in result.issues or []:
             sev = str(getattr(issue, "severity", "MEDIUM")).upper()
             # modelscan uses e.g. "Severity.CRITICAL" — strip prefix.
@@ -459,14 +459,14 @@ def _try_modelscan(file_path: str) -> Optional[Dict[str, Any]]:
 
 def _result(
     status: str,
-    findings: List[Dict[str, Any]],
+    findings: list[dict[str, Any]],
     fmt: str,
     *,
     scanner: str = "aiaf-native",
     assessment_complete: bool = True,
     file_path: str = "",
-) -> Dict[str, Any]:
-    by_severity: Dict[str, int] = {
+) -> dict[str, Any]:
+    by_severity: dict[str, int] = {
         "CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0
     }
     for f in findings:

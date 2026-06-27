@@ -8,11 +8,13 @@ and returns a single graded **adoption verdict** with origin-tagged reasons and
 an explicit list of evidence it could not obtain.
 """
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from ..analysis.backdoor_heuristics import analyse as analyse_backdoor
+from ..analysis.unknown_model_probe import probe_unknown_model
 from ..core import (
     GovernanceEngine,
     RiskEngine,
@@ -20,12 +22,10 @@ from ..core import (
     build_unknown_model_assurance,
     recommend_adoption,
 )
-from ..core.probe_engine import run_probes, run_probes_no_endpoint
+from ..core.probe_engine import run_probes
 from ..registry import assess_provenance_v2
-from ..registry.lineage_graph import derive_lineage
 from ..registry.fact_reconciler import reconcile as reconcile_facts
-from ..analysis.backdoor_heuristics import analyse as analyse_backdoor
-from ..analysis.unknown_model_probe import probe_unknown_model
+from ..registry.lineage_graph import derive_lineage
 from .models import get_api_key, get_store
 
 router = APIRouter(prefix="/v1/intake", tags=["intake"])
@@ -34,18 +34,18 @@ router = APIRouter(prefix="/v1/intake", tags=["intake"])
 class TriageRequest(BaseModel):
     model_id: str
     persist: bool = True
-    policy_context: Optional[Dict[str, Any]] = None
-    endpoint_url: Optional[str] = None
-    endpoint_api_key: Optional[str] = None
+    policy_context: dict[str, Any] | None = None
+    endpoint_url: str | None = None
+    endpoint_api_key: str | None = None
     endpoint_model_name: str = "default"
-    mcp_server_id: Optional[str] = None
+    mcp_server_id: str | None = None
 
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _artifact_from_model(rec: Dict[str, Any]) -> Dict[str, Any]:
+def _artifact_from_model(rec: dict[str, Any]) -> dict[str, Any]:
     """Build a risk/governance artifact view from a registered model record.
 
     Assessment inputs an operator attached at registration (e.g.
@@ -55,7 +55,7 @@ def _artifact_from_model(rec: Dict[str, Any]) -> Dict[str, Any]:
     """
     metadata = rec.get("metadata")
     metadata = metadata if isinstance(metadata, dict) else {}
-    artifact: Dict[str, Any] = dict(metadata)
+    artifact: dict[str, Any] = dict(metadata)
     artifact.update(
         {
             "id": rec.get("model_id"),
@@ -71,7 +71,7 @@ def _artifact_from_model(rec: Dict[str, Any]) -> Dict[str, Any]:
     return artifact
 
 
-def _append_probe_facts(rec: Dict[str, Any], probe_result: Dict[str, Any]) -> None:
+def _append_probe_facts(rec: dict[str, Any], probe_result: dict[str, Any]) -> None:
     """Tag behavioral probe findings into the model's evidence ledger (in-place)."""
     from ..registry.evidence_origin import EvidenceOrigin, ledger_from_list
 
@@ -91,7 +91,7 @@ def _append_probe_facts(rec: Dict[str, Any], probe_result: Dict[str, Any]) -> No
 
 
 def _persist_probe_results(
-    store, rec: Dict[str, Any], probe_result: Dict[str, Any]
+    store, rec: dict[str, Any], probe_result: dict[str, Any]
 ) -> None:
     """Persist behavioral probe results to the model record and audit log."""
     metadata = dict(rec.get("metadata") or {})
@@ -115,7 +115,7 @@ def _persist_probe_results(
 
 
 def _persist_recommendation(
-    store, rec: Dict[str, Any], recommendation: Dict[str, Any]
+    store, rec: dict[str, Any], recommendation: dict[str, Any]
 ) -> None:
     metadata = dict(rec.get("metadata") or {})
     metadata["adoption_recommendation"] = recommendation
@@ -202,7 +202,7 @@ def triage_model(req: TriageRequest, api_key: str = Depends(get_api_key)):
 
     # Phase 6a: MCP tool supply-chain scan — load stored scan if caller provided
     # a server_id that was previously registered via POST /v1/mcp/servers.
-    mcp_scan: Optional[Dict[str, Any]] = None
+    mcp_scan: dict[str, Any] | None = None
     if req.mcp_server_id:
         mcp_record = store.get_model(f"mcp_server:{req.mcp_server_id}")
         if mcp_record:
@@ -211,7 +211,7 @@ def triage_model(req: TriageRequest, api_key: str = Depends(get_api_key)):
 
     # Phase 6b: Backdoor/trojan heuristics — runs whenever weight_inspection,
     # lineage, or provenance are available; degrades gracefully otherwise.
-    backdoor_result: Optional[Dict[str, Any]] = None
+    backdoor_result: dict[str, Any] | None = None
     if weight_insp is not None or lineage or provenance:
         backdoor_result = analyse_backdoor(
             rec,
@@ -269,7 +269,7 @@ def triage_model(req: TriageRequest, api_key: str = Depends(get_api_key)):
 
 
 def _persist_weight_inspection(
-    store, rec: Dict[str, Any], result: Dict[str, Any]
+    store, rec: dict[str, Any], result: dict[str, Any]
 ) -> None:
     metadata = dict(rec.get("metadata") or {})
     metadata["weight_inspection"] = result

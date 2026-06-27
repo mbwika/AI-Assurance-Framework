@@ -1,10 +1,9 @@
 """Versioned standards mappings for AI assurance findings."""
 
 from copy import deepcopy
-from typing import Any, Dict, Optional
+from typing import Any
 
-
-STANDARD_PROFILES: Dict[str, Dict[str, str]] = {
+STANDARD_PROFILES: dict[str, dict[str, str]] = {
     "nist_ai_rmf": {
         "name": "NIST AI RMF",
         "version": "1.0",
@@ -37,7 +36,7 @@ STANDARD_PROFILES: Dict[str, Dict[str, str]] = {
     },
 }
 
-REFERENCE_PROFILES: Dict[str, Dict[str, Dict[str, str]]] = {
+REFERENCE_PROFILES: dict[str, dict[str, dict[str, str]]] = {
     "NIST AI RMF": {
         "GOVERN 1.1": {"summary": "Establish and communicate AI governance policies, roles, and accountability structures."},
         "GOVERN 1.5": {"summary": "Review governance processes regularly so AI risk management stays current over time."},
@@ -564,12 +563,12 @@ FINDING_MAPPINGS = {
 }
 
 
-def get_standard_profiles() -> Dict[str, Dict[str, str]]:
+def get_standard_profiles() -> dict[str, dict[str, str]]:
     """Return version and authoritative-source metadata for mapped standards."""
     return deepcopy(STANDARD_PROFILES)
 
 
-def get_framework_profile(framework_name: str) -> Dict[str, str]:
+def get_framework_profile(framework_name: str) -> dict[str, str]:
     for profile in STANDARD_PROFILES.values():
         if profile["name"] == framework_name:
             return deepcopy(profile)
@@ -578,7 +577,7 @@ def get_framework_profile(framework_name: str) -> Dict[str, str]:
 
 def describe_framework_reference(
     framework_name: str, reference: str
-) -> Dict[str, str]:
+) -> dict[str, str]:
     profile = get_framework_profile(framework_name)
     description = (
         REFERENCE_PROFILES.get(framework_name, {}).get(reference, {}).get("summary")
@@ -593,7 +592,7 @@ def describe_framework_reference(
     }
 
 
-def map_finding_to_controls(finding: Dict[str, Any]) -> Dict[str, Any]:
+def map_finding_to_controls(finding: dict[str, Any]) -> dict[str, Any]:
     """Map a finding to versioned standard controls and threat techniques."""
     finding_type = finding.get("type")
     mapping = FINDING_MAPPINGS.get(finding_type, {"nist_ai_rmf": ["MAP 5.1"]})

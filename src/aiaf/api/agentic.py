@@ -1,6 +1,6 @@
 """Agentic AI assurance API routes."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -13,20 +13,20 @@ router = APIRouter(prefix="/v1/agentic", tags=["agentic assurance"])
 
 
 class AgentSessionCreate(BaseModel):
-    artifact: Dict[str, Any]
+    artifact: dict[str, Any]
 
 
 class ToolAuthorizationRequest(BaseModel):
     request_id: str = Field(min_length=1, max_length=255)
     tool: str = Field(min_length=1, max_length=255)
-    action: Optional[str] = Field(default=None, max_length=255)
-    permissions: List[str] = Field(default_factory=list, max_length=100)
-    workflow_step_id: Optional[str] = Field(default=None, max_length=255)
-    input_source: Optional[str] = Field(default=None, max_length=255)
-    input_validation: Optional[str] = Field(default=None, max_length=1000)
-    target: Optional[str] = Field(default=None, max_length=2048)
-    approval_id: Optional[str] = Field(default=None, max_length=255)
-    approved_by: Optional[str] = Field(default=None, max_length=255)
+    action: str | None = Field(default=None, max_length=255)
+    permissions: list[str] = Field(default_factory=list, max_length=100)
+    workflow_step_id: str | None = Field(default=None, max_length=255)
+    input_source: str | None = Field(default=None, max_length=255)
+    input_validation: str | None = Field(default=None, max_length=1000)
+    target: str | None = Field(default=None, max_length=2048)
+    approval_id: str | None = Field(default=None, max_length=255)
+    approved_by: str | None = Field(default=None, max_length=255)
 
 
 class AgentSessionStatusUpdate(BaseModel):
@@ -41,7 +41,7 @@ def policy_profiles(api_key: str = Depends(get_api_key)):
 
 @router.post("/validate")
 def validate_agentic_artifact(
-    artifact: Dict[str, Any], api_key: str = Depends(get_api_key)
+    artifact: dict[str, Any], api_key: str = Depends(get_api_key)
 ):
     return AgenticAssuranceEngine(datastore=get_store()).evaluate(artifact)
 
@@ -59,8 +59,8 @@ def create_agent_session(
 @router.get("/sessions")
 def list_agent_sessions(
     limit: int = 100,
-    artifact_id: Optional[str] = None,
-    status: Optional[str] = None,
+    artifact_id: str | None = None,
+    status: str | None = None,
     api_key: str = Depends(get_api_key),
 ):
     try:
@@ -100,8 +100,8 @@ def authorize_tool_invocation(
 @router.get("/invocations")
 def list_tool_invocations(
     limit: int = 100,
-    session_id: Optional[str] = None,
-    decision: Optional[str] = None,
+    session_id: str | None = None,
+    decision: str | None = None,
     api_key: str = Depends(get_api_key),
 ):
     try:

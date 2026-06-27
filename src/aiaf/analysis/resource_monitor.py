@@ -31,7 +31,7 @@ AIAF performs the accounting and violation detection locally.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 RESOURCE_MONITOR_VERSION = "1.0"
 
@@ -65,7 +65,7 @@ SESSION_ELEVATED = "ELEVATED"
 SESSION_CRITICAL = "CRITICAL"
 
 # ── Defaults ───────────────────────────────────────────────────────────────────
-DEFAULT_BUDGET: Dict[str, float] = {
+DEFAULT_BUDGET: dict[str, float] = {
     "max_tokens_per_request": 8_000.0,
     "max_tokens_per_session": 100_000.0,
     "max_tool_calls_per_session": 200.0,
@@ -98,7 +98,7 @@ def _session_key(budget_id: str) -> str:
     return f"{_SESSION_PREFIX}{budget_id}"
 
 
-def _load_metadata(record: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def _load_metadata(record: dict[str, Any] | None) -> dict[str, Any]:
     return (record or {}).get("metadata") or {}
 
 
@@ -107,10 +107,10 @@ def _compute_cost(total_tokens: float, cost_per_1k: float) -> float:
 
 
 def _detect_violations(
-    state: Dict[str, Any],
-    budget: Dict[str, Any],
-    last_token_delta: Optional[float] = None,
-) -> List[Dict[str, Any]]:
+    state: dict[str, Any],
+    budget: dict[str, Any],
+    last_token_delta: float | None = None,
+) -> list[dict[str, Any]]:
     """Return list of new violation dicts for the current state."""
     violations = []
     now = _utc_now()
@@ -180,7 +180,7 @@ def _detect_violations(
     return violations
 
 
-def _risk_level(violations: List[Dict[str, Any]]) -> str:
+def _risk_level(violations: list[dict[str, Any]]) -> str:
     critical_types = {RISK_DENIAL_OF_WALLET, RISK_RUNAWAY_LOOP, RISK_RECURSIVE_PLANNING}
     for v in violations:
         if v.get("risk_type") in critical_types:
@@ -195,11 +195,11 @@ def create_budget(
     model_id: str,
     store: Any,
     *,
-    budget: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    budget: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Define a resource budget for a model/agent session."""
     merged_budget = {**DEFAULT_BUDGET, **(budget or {})}
-    record: Dict[str, Any] = {
+    record: dict[str, Any] = {
         "model_id": _budget_key(budget_id),
         "id": _budget_key(budget_id),
         "metadata": {
@@ -216,7 +216,7 @@ def create_budget(
     return _load_metadata(store.get_model(_budget_key(budget_id)))
 
 
-def get_budget(budget_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def get_budget(budget_id: str, store: Any) -> dict[str, Any] | None:
     """Return budget definition, or None if not found."""
     rec = store.get_model(_budget_key(budget_id))
     return _load_metadata(rec) if rec else None
@@ -224,7 +224,7 @@ def get_budget(budget_id: str, store: Any) -> Optional[Dict[str, Any]]:
 
 def _init_session(budget_id: str, model_id: str, store: Any) -> None:
     """Create or reset a fresh session state record."""
-    record: Dict[str, Any] = {
+    record: dict[str, Any] = {
         "model_id": _session_key(budget_id),
         "id": _session_key(budget_id),
         "metadata": {
@@ -251,8 +251,8 @@ def record_usage(
     value: float,
     store: Any,
     *,
-    metadata: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Record a resource usage event and return the updated session state.
 
     For TOKENS, ``value`` is the token count for this request.
@@ -305,7 +305,7 @@ def record_usage(
     state["risk_level"] = _risk_level(state.get("violations", []))
     state["updated_at"] = _utc_now()
 
-    updated_record: Dict[str, Any] = {
+    updated_record: dict[str, Any] = {
         "model_id": _session_key(budget_id),
         "id": _session_key(budget_id),
         "metadata": state,
@@ -314,13 +314,13 @@ def record_usage(
     return state
 
 
-def get_session_state(budget_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def get_session_state(budget_id: str, store: Any) -> dict[str, Any] | None:
     """Return current session state, or None if budget not found."""
     rec = store.get_model(_session_key(budget_id))
     return _load_metadata(rec) if rec else None
 
 
-def check_budget_violations(budget_id: str, store: Any) -> Dict[str, Any]:
+def check_budget_violations(budget_id: str, store: Any) -> dict[str, Any]:
     """Return all violations for a session with summary."""
     state = get_session_state(budget_id, store)
     if not state:
@@ -340,9 +340,9 @@ def check_budget_violations(budget_id: str, store: Any) -> Dict[str, Any]:
 def list_at_risk_sessions(
     store: Any,
     *,
-    risk_type: Optional[str] = None,
+    risk_type: str | None = None,
     limit: int = 50,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """List sessions with at least one violation."""
     all_records = store.list_models() if hasattr(store, "list_models") else []
     results = []

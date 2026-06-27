@@ -1,8 +1,7 @@
 """Reusable policy profiles for agentic AI assurance."""
 
 from copy import deepcopy
-from typing import Any, Dict, Optional
-
+from typing import Any
 
 AUTONOMY_ORDER = {
     "none": 0,
@@ -14,7 +13,7 @@ AUTONOMY_ORDER = {
     "full": 6,
 }
 
-AGENT_POLICY_PROFILES: Dict[str, Dict[str, Any]] = {
+AGENT_POLICY_PROFILES: dict[str, dict[str, Any]] = {
     "restricted": {
         "name": "Restricted",
         "description": "Least-privilege profile for sensitive or externally exposed agents.",
@@ -78,13 +77,13 @@ AGENT_POLICY_PROFILES: Dict[str, Dict[str, Any]] = {
 }
 
 
-def get_agent_policy_profiles() -> Dict[str, Dict[str, Any]]:
+def get_agent_policy_profiles() -> dict[str, dict[str, Any]]:
     return deepcopy(AGENT_POLICY_PROFILES)
 
 
 def resolve_agent_policy(
-    profile_name: Optional[str], overrides: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+    profile_name: str | None, overrides: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Resolve a profile and conservatively merge optional local constraints."""
     overrides = deepcopy(overrides or {})
     if not profile_name:

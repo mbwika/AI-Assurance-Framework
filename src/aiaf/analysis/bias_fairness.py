@@ -10,8 +10,7 @@ import math
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
-
+from typing import Any
 
 BIAS_FAIRNESS_SCORING_VERSION = "2.0"
 
@@ -29,9 +28,9 @@ class BiasIndicator:
     indicator: str
     severity: BiasSeverity
     description: str
-    mitigation: Optional[str] = None
+    mitigation: str | None = None
     weight: float = 0.0
-    evidence: Dict[str, Any] = field(default_factory=dict)
+    evidence: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -39,27 +38,27 @@ class BiasFairnessResult:
     model_id: str
     overall_severity: BiasSeverity
     risk_score: float
-    indicators: List[BiasIndicator] = field(default_factory=list)
-    recommendations: List[str] = field(default_factory=list)
-    mitre_atlas_refs: List[str] = field(default_factory=list)
-    nist_ai_rmf_refs: List[str] = field(default_factory=list)
-    eu_ai_act_refs: List[str] = field(default_factory=list)
+    indicators: list[BiasIndicator] = field(default_factory=list)
+    recommendations: list[str] = field(default_factory=list)
+    mitre_atlas_refs: list[str] = field(default_factory=list)
+    nist_ai_rmf_refs: list[str] = field(default_factory=list)
+    eu_ai_act_refs: list[str] = field(default_factory=list)
     scoring_version: str = BIAS_FAIRNESS_SCORING_VERSION
-    fairness_metrics_summary: Dict[str, Any] = field(default_factory=dict)
+    fairness_metrics_summary: dict[str, Any] = field(default_factory=dict)
     evidence_quality: str = "NONE"
-    evaluation_warnings: List[str] = field(default_factory=list)
+    evaluation_warnings: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
 class _GroupEvidence:
     name: str
-    attributes: Tuple[str, ...]
+    attributes: tuple[str, ...]
     sample_size: int
-    favorable_outcomes: Optional[int]
-    true_positives: Optional[int]
-    actual_positives: Optional[int]
-    false_positives: Optional[int]
-    actual_negatives: Optional[int]
+    favorable_outcomes: int | None
+    true_positives: int | None
+    actual_positives: int | None
+    false_positives: int | None
+    actual_negatives: int | None
 
 
 _HIGH_STAKES_DOMAIN_PHRASES = (
@@ -117,7 +116,7 @@ _LOW_OVERSIGHT = frozenset({"none", "minimal", "ad_hoc", "unknown", ""})
 # Bias or disparate outcomes do not, by themselves, establish an adversarial
 # ATLAS technique. Craft Adversarial Data (AML.T0043) belongs on a separate
 # finding only when evidence supports intentional data manipulation.
-_MITRE_ATLAS_REFS: Tuple[str, ...] = ()
+_MITRE_ATLAS_REFS: tuple[str, ...] = ()
 _CAMEL_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
 _TOKEN = re.compile(r"[a-z0-9]+")
 _DEFAULT_MIN_GROUP_SAMPLE_SIZE = 100
@@ -126,16 +125,16 @@ _DEFAULT_MIN_GROUP_SAMPLE_SIZE = 100
 def assess_bias_fairness(
     model_id: str,
     domain: str,
-    declared_sensitive_attributes: Optional[List[str]] = None,
+    declared_sensitive_attributes: list[str] | None = None,
     has_bias_evaluation: bool = False,
     has_fairness_metrics: bool = False,
     has_demographic_parity_check: bool = False,
     has_disparate_impact_analysis: bool = False,
     has_counterfactual_testing: bool = False,
     human_oversight_level: str = "none",
-    group_metrics: Optional[List[Dict[str, Any]]] = None,
-    evaluation_context: Optional[Dict[str, Any]] = None,
-    decision_context: Optional[Dict[str, Any]] = None,
+    group_metrics: list[dict[str, Any]] | None = None,
+    evaluation_context: dict[str, Any] | None = None,
+    decision_context: dict[str, Any] | None = None,
 ) -> BiasFairnessResult:
     """Assess bias risk from declarations and exact group-outcome evidence.
 
@@ -160,9 +159,9 @@ def assess_bias_fairness(
         group_metrics, list
     )
     raw_groups = group_metrics if isinstance(group_metrics, list) else []
-    indicators: List[BiasIndicator] = []
-    recommendations: List[str] = []
-    warnings: List[str] = []
+    indicators: list[BiasIndicator] = []
+    recommendations: list[str] = []
+    warnings: list[str] = []
 
     def add(
         indicator: str,
@@ -170,7 +169,7 @@ def assess_bias_fairness(
         weight: float,
         description: str,
         mitigation: str = "",
-        evidence: Optional[Dict[str, Any]] = None,
+        evidence: dict[str, Any] | None = None,
     ) -> None:
         if any(item.indicator == indicator for item in indicators):
             return
@@ -393,7 +392,7 @@ def assess_bias_fairness(
             {"attributes": protected_attributes},
         )
 
-    summary: Dict[str, Any] = {
+    summary: dict[str, Any] = {
         "group_count": len(groups),
         "invalid_group_records": invalid_groups,
         "minimum_group_sample_size": minimum_group_size,
@@ -851,9 +850,9 @@ def _bounded_count(value, total):
 
 
 def _first_present(mapping, fields):
-    for field in fields:
-        if field in mapping:
-            return mapping[field]
+    for key in fields:
+        if key in mapping:
+            return mapping[key]
     return None
 
 

@@ -1,17 +1,14 @@
 """Tests for aiaf.analysis.permission_graph."""
 
-import pytest
 
 from aiaf.analysis.permission_graph import (
     GRAPH_VERSION,
     STATUS_CLEAN,
-    STATUS_SUSPICIOUS,
-    STATUS_RISK_DETECTED,
     STATUS_CRITICAL_RISK,
-    _worst_status,
+    STATUS_RISK_DETECTED,
+    STATUS_SUSPICIOUS,
     _by_severity,
     _effective_caps,
-    analyse_permissions,
     _h1_exfiltration_path,
     _h2_code_execution,
     _h3_subagent_spawn,
@@ -20,8 +17,9 @@ from aiaf.analysis.permission_graph import (
     _h6_over_permissioned,
     _h7_undeclared_tool_caps,
     _h8_excessive_tool_count,
+    _worst_status,
+    analyse_permissions,
 )
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

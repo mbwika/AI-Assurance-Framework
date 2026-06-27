@@ -36,7 +36,7 @@ from __future__ import annotations
 
 from collections import deque
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 AGENT_TOPOLOGY_VERSION = "1.0"
 
@@ -50,7 +50,7 @@ TRUST_LEVELS: frozenset = frozenset(
     {TRUST_UNTRUSTED, TRUST_EXTERNAL, TRUST_INTERNAL, TRUST_PRIVILEGED}
 )
 
-_TRUST_RANK: Dict[str, int] = {
+_TRUST_RANK: dict[str, int] = {
     TRUST_UNTRUSTED: 0,
     TRUST_EXTERNAL: 1,
     TRUST_INTERNAL: 2,
@@ -114,11 +114,11 @@ def _edge_key(topology_id: str, from_id: str, to_id: str) -> str:
     return f"{_EDGE_PREFIX}{topology_id}:{from_id}->{to_id}"
 
 
-def _load_meta(record: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def _load_meta(record: dict[str, Any] | None) -> dict[str, Any]:
     return (record or {}).get("metadata") or {}
 
 
-def _get_all_nodes(topology_id: str, store: Any) -> List[Dict[str, Any]]:
+def _get_all_nodes(topology_id: str, store: Any) -> list[dict[str, Any]]:
     prefix = _node_key(topology_id, "")
     return [
         _load_meta(rec)
@@ -127,7 +127,7 @@ def _get_all_nodes(topology_id: str, store: Any) -> List[Dict[str, Any]]:
     ]
 
 
-def _get_all_edges(topology_id: str, store: Any) -> List[Dict[str, Any]]:
+def _get_all_edges(topology_id: str, store: Any) -> list[dict[str, Any]]:
     prefix = f"{_EDGE_PREFIX}{topology_id}:"
     return [
         _load_meta(rec)
@@ -136,9 +136,9 @@ def _get_all_edges(topology_id: str, store: Any) -> List[Dict[str, Any]]:
     ]
 
 
-def _bfs_reachable(start: str, adj: Dict[str, List[str]]) -> Set[str]:
+def _bfs_reachable(start: str, adj: dict[str, list[str]]) -> set[str]:
     """BFS from start node; returns all reachable nodes (excluding start)."""
-    visited: Set[str] = set()
+    visited: set[str] = set()
     queue = deque([start])
     while queue:
         node = queue.popleft()
@@ -149,10 +149,10 @@ def _bfs_reachable(start: str, adj: Dict[str, List[str]]) -> Set[str]:
     return visited
 
 
-def _all_paths(start: str, adj: Dict[str, List[str]], max_depth: int = 10) -> List[List[str]]:
+def _all_paths(start: str, adj: dict[str, list[str]], max_depth: int = 10) -> list[list[str]]:
     """Enumerate all simple paths from start up to max_depth length."""
-    paths: List[List[str]] = []
-    stack: List[Tuple[str, List[str]]] = [(start, [start])]
+    paths: list[list[str]] = []
+    stack: list[tuple[str, list[str]]] = [(start, [start])]
     while stack:
         node, path = stack.pop()
         if len(path) > max_depth:
@@ -176,9 +176,9 @@ def register_topology(
     topology_id: str,
     store: Any,
     *,
-    name: Optional[str] = None,
-    description: Optional[str] = None,
-) -> Dict[str, Any]:
+    name: str | None = None,
+    description: str | None = None,
+) -> dict[str, Any]:
     """Register a new agent topology graph.
 
     Parameters
@@ -189,7 +189,7 @@ def register_topology(
     if not topology_id or not topology_id.strip():
         raise AgentTopologyError("topology_id must be non-empty.")
 
-    record: Dict[str, Any] = {
+    record: dict[str, Any] = {
         "model_id": _topology_key(topology_id),
         "id": _topology_key(topology_id),
         "metadata": {
@@ -207,7 +207,7 @@ def register_topology(
     return _load_meta(store.get_model(_topology_key(topology_id)))
 
 
-def get_topology(topology_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def get_topology(topology_id: str, store: Any) -> dict[str, Any] | None:
     """Return topology metadata, or None if not registered."""
     rec = store.get_model(_topology_key(topology_id))
     return _load_meta(rec) if rec else None
@@ -221,10 +221,10 @@ def add_agent_node(
     store: Any,
     *,
     has_guardrail: bool = False,
-    capabilities: Optional[List[str]] = None,
+    capabilities: list[str] | None = None,
     internet_facing: bool = False,
-    attributes: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    attributes: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Add a node (agent, model, tool, or service) to the topology.
 
     Parameters
@@ -259,7 +259,7 @@ def add_agent_node(
             f"Topology {topology_id!r} not found. Call register_topology first."
         )
 
-    record: Dict[str, Any] = {
+    record: dict[str, Any] = {
         "model_id": _node_key(topology_id, node_id),
         "id": _node_key(topology_id, node_id),
         "metadata": {
@@ -300,8 +300,8 @@ def add_communication_edge(
     channel: str = CHANNEL_DIRECT_CALL,
     bidirectional: bool = False,
     has_guardrail: bool = False,
-    attributes: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    attributes: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Add a directed communication edge between two nodes.
 
     Parameters
@@ -338,14 +338,14 @@ def add_communication_edge(
     from_rank = _TRUST_RANK.get(from_meta.get("trust_level", TRUST_UNTRUSTED), 0)
     to_rank = _TRUST_RANK.get(to_meta.get("trust_level", TRUST_UNTRUSTED), 0)
     crosses_trust_boundary = to_rank > from_rank
-    privilege_escalation = crosses_trust_boundary and to_meta.get("trust_level") == TRUST_PRIVILEGED
+    crosses_trust_boundary and to_meta.get("trust_level") == TRUST_PRIVILEGED
 
-    def _save_edge(fid: str, tid: str, fm: Dict, tm: Dict) -> None:
+    def _save_edge(fid: str, tid: str, fm: dict, tm: dict) -> None:
         f_rank = _TRUST_RANK.get(fm.get("trust_level", TRUST_UNTRUSTED), 0)
         t_rank = _TRUST_RANK.get(tm.get("trust_level", TRUST_UNTRUSTED), 0)
         crosses = t_rank > f_rank
         priv_esc = crosses and tm.get("trust_level") == TRUST_PRIVILEGED
-        edge_record: Dict[str, Any] = {
+        edge_record: dict[str, Any] = {
             "model_id": _edge_key(topology_id, fid, tid),
             "id": _edge_key(topology_id, fid, tid),
             "metadata": {
@@ -382,7 +382,7 @@ def add_communication_edge(
     return _load_meta(store.get_model(_edge_key(topology_id, from_node_id, to_node_id)))
 
 
-def analyze_topology(topology_id: str, store: Any) -> Dict[str, Any]:
+def analyze_topology(topology_id: str, store: Any) -> dict[str, Any]:
     """Run full topology analysis — trust boundaries, blast radius, SPOCFs.
 
     Returns
@@ -427,11 +427,11 @@ def analyze_topology(topology_id: str, store: Any) -> Dict[str, Any]:
             "analyzed_at": _utc_now(),
         }
 
-    node_map: Dict[str, Dict[str, Any]] = {n["node_id"]: n for n in nodes}
+    node_map: dict[str, dict[str, Any]] = {n["node_id"]: n for n in nodes}
     n_total = len(nodes)
 
     # Build adjacency list
-    adj: Dict[str, List[str]] = {n["node_id"]: [] for n in nodes}
+    adj: dict[str, list[str]] = {n["node_id"]: [] for n in nodes}
     for edge in edges:
         fid = edge.get("from_node_id", "")
         tid = edge.get("to_node_id", "")
@@ -455,7 +455,7 @@ def analyze_topology(topology_id: str, store: Any) -> Dict[str, Any]:
     priv_esc_paths = [c for c in trust_crossings if c["privilege_escalation"]]
 
     # ── Blast radius per node ──────────────────────────────────────────────────
-    blast_radius_by_node: Dict[str, float] = {}
+    blast_radius_by_node: dict[str, float] = {}
     for node in nodes:
         nid = node["node_id"]
         reachable = _bfs_reachable(nid, adj)
@@ -467,7 +467,7 @@ def analyze_topology(topology_id: str, store: Any) -> Dict[str, Any]:
     # ── SPOCF — node whose removal reduces max reachability significantly ─────
     # Simplified heuristic: nodes reachable from ALL internet-facing nodes
     internet_nodes = [n["node_id"] for n in nodes if n.get("internet_facing")]
-    spocf_candidates: Set[str] = set()
+    spocf_candidates: set[str] = set()
     if len(internet_nodes) >= 1:
         # A node is SPOCF if it's on every path from internet-facing nodes to PRIVILEGED nodes
         privileged_nodes = {n["node_id"] for n in nodes if n.get("trust_level") == TRUST_PRIVILEGED}
@@ -499,7 +499,7 @@ def analyze_topology(topology_id: str, store: Any) -> Dict[str, Any]:
             internet_unguarded.append(inode)
 
     # ── Build findings ─────────────────────────────────────────────────────────
-    findings: List[Dict[str, Any]] = []
+    findings: list[dict[str, Any]] = []
 
     for crossing in [c for c in trust_crossings if not c["has_guardrail"]]:
         sev = "CRITICAL" if crossing["privilege_escalation"] else "HIGH"
@@ -561,7 +561,7 @@ def analyze_topology(topology_id: str, store: Any) -> Dict[str, Any]:
         overall_risk = TOPOLOGY_RISK_LOW
 
     # ── Mitigations ────────────────────────────────────────────────────────────
-    mitigations: List[str] = []
+    mitigations: list[str] = []
     if priv_esc_paths:
         mitigations.append(
             "Add inline policy enforcement (guardrail) on all edges leading to PRIVILEGED nodes."

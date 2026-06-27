@@ -35,7 +35,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 LEDGER_VERSION = "1.0"
 _LEDGER_PREFIX = "ledger:"
@@ -53,7 +53,7 @@ def _ledger_key(session_id: str) -> str:
     return f"{_LEDGER_PREFIX}{session_id}"
 
 
-def _entry_payload(entry: Dict[str, Any]) -> str:
+def _entry_payload(entry: dict[str, Any]) -> str:
     """Return the canonical JSON string used to hash a ledger entry."""
     return json.dumps(
         {
@@ -75,7 +75,7 @@ def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-def _compute_entry_hash(entry: Dict[str, Any]) -> str:
+def _compute_entry_hash(entry: dict[str, Any]) -> str:
     return _sha256(_entry_payload(entry))
 
 
@@ -107,9 +107,9 @@ def append_entry(
     decision: str,
     store: Any,
     *,
-    metadata: Optional[Dict[str, Any]] = None,
-    timestamp: Optional[str] = None,
-) -> Dict[str, Any]:
+    metadata: dict[str, Any] | None = None,
+    timestamp: str | None = None,
+) -> dict[str, Any]:
     """Append a hash-chained entry to the action ledger for ``session_id``.
 
     Parameters
@@ -144,13 +144,13 @@ def append_entry(
         "metadata": {},
     }
     meta = record.setdefault("metadata", {})
-    entries: List[Dict[str, Any]] = meta.get("entries") or []
+    entries: list[dict[str, Any]] = meta.get("entries") or []
 
     prev_hash = entries[-1]["entry_hash"] if entries else _GENESIS_HASH
     sequence = len(entries)
 
     # Build the entry (entry_hash computed last so it covers all fields)
-    entry: Dict[str, Any] = {
+    entry: dict[str, Any] = {
         "session_id": session_id,
         "entry_id": _sha256(f"{session_id}:{sequence}:{ts}"),
         "sequence": sequence,
@@ -180,7 +180,7 @@ def append_entry(
     return entry
 
 
-def verify_chain(session_id: str, store: Any) -> Dict[str, Any]:
+def verify_chain(session_id: str, store: Any) -> dict[str, Any]:
     """Verify the hash chain integrity of ``session_id``'s ledger.
 
     Returns a report with ``chain_valid``, ``entry_count``, and if tampered
@@ -197,7 +197,7 @@ def verify_chain(session_id: str, store: Any) -> Dict[str, Any]:
             "verified_at": _utc_now(),
         }
 
-    entries: List[Dict[str, Any]] = (record.get("metadata") or {}).get("entries") or []
+    entries: list[dict[str, Any]] = (record.get("metadata") or {}).get("entries") or []
     if not entries:
         return {
             "session_id": session_id,
@@ -240,7 +240,7 @@ def verify_chain(session_id: str, store: Any) -> Dict[str, Any]:
     }
 
 
-def get_ledger(session_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def get_ledger(session_id: str, store: Any) -> dict[str, Any] | None:
     """Return the full ledger record for ``session_id``, or ``None``."""
     session_id = _validate_session_id(session_id)
     record = store.get_model(_ledger_key(session_id))
@@ -272,7 +272,7 @@ def get_ledger_entries(
     return entries[offset: offset + limit], len(entries)
 
 
-def list_ledgers(store: Any, limit: int = 50) -> List[Dict[str, Any]]:
+def list_ledgers(store: Any, limit: int = 50) -> list[dict[str, Any]]:
     """Return summary metadata for up to ``limit`` ledger sessions."""
     all_models = store.list_models() if hasattr(store, "list_models") else []
     ledgers = []

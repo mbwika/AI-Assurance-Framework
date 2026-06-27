@@ -1,15 +1,13 @@
 """Tests for registry/lineage_graph.py (Phase 5)."""
 
-import pytest
 
 from aiaf.registry.lineage_graph import (
     LINEAGE_VERSION,
     MODEL_TYPE_TO_FAMILY,
-    derive_lineage,
-    _detect_merge_flags,
     _check_arch_consistency,
+    _detect_merge_flags,
+    derive_lineage,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers

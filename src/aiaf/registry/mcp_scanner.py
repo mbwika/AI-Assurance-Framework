@@ -36,7 +36,7 @@ import json
 import logging
 import re
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ _STATUS_PRIORITY = [
 # Injection patterns: (compiled regex, severity)
 # Ordered from most dangerous to least — first match wins for each site.
 # ---------------------------------------------------------------------------
-_INJECTION_PATTERNS: List[Tuple[re.Pattern, str]] = [
+_INJECTION_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r"ignore\s+(all\s+)?(previous|prior|above)\s+instructions?", re.I), "CRITICAL"),
     (re.compile(r"disregard\s+(all\s+)?(previous|prior)\s+instructions?", re.I), "CRITICAL"),
     (re.compile(r"(exfiltrate|leak|transmit|exfil)\s+(all\s+)?(the\s+)?(data|files?|secrets?|tokens?|credentials?)", re.I), "CRITICAL"),
@@ -104,7 +104,7 @@ _SSRF_DESCRIPTION_KEYWORDS = re.compile(
 # Public API
 # ---------------------------------------------------------------------------
 
-def scan_tool_descriptor(tool: Dict[str, Any]) -> Dict[str, Any]:
+def scan_tool_descriptor(tool: dict[str, Any]) -> dict[str, Any]:
     """Scan a single MCP tool descriptor.
 
     Parameters
@@ -121,7 +121,7 @@ def scan_tool_descriptor(tool: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(tool, dict):
         return _tool_result([], {}, error="tool descriptor is not a dict")
 
-    findings: List[Dict[str, Any]] = []
+    findings: list[dict[str, Any]] = []
     tool_name = str(tool.get("name") or "").strip()
     if not tool_name:
         findings.append(_finding(
@@ -138,10 +138,10 @@ def scan_tool_descriptor(tool: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def scan_server_tools(
-    tools: List[Any],
+    tools: list[Any],
     server_id: str = "",
-    previous_snapshot: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    previous_snapshot: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Scan all tools for an MCP server.
 
     Parameters
@@ -160,8 +160,8 @@ def scan_server_tools(
     Standardised evidence dict with ``status``, ``findings``, ``by_severity``,
     ``rug_pull_detected``, ``tool_changes``, ``snapshot``, and scan metadata.
     """
-    all_findings: List[Dict[str, Any]] = []
-    tool_hashes: Dict[str, str] = {}
+    all_findings: list[dict[str, Any]] = []
+    tool_hashes: dict[str, str] = {}
 
     if not isinstance(tools, (list, tuple)):
         tools = []
@@ -180,9 +180,9 @@ def scan_server_tools(
 
     # Rug-pull detection
     rug_pull_detected = False
-    tool_changes: List[Dict[str, Any]] = []
+    tool_changes: list[dict[str, Any]] = []
     if previous_snapshot and isinstance(previous_snapshot, dict):
-        prev_hashes: Dict[str, str] = (
+        prev_hashes: dict[str, str] = (
             previous_snapshot.get("tool_hashes")
             or previous_snapshot.get("snapshot", {}).get("tool_hashes")
             or {}
@@ -237,7 +237,7 @@ def scan_server_tools(
 # Descriptor hash (rug-pull detection)
 # ---------------------------------------------------------------------------
 
-def _tool_hash(tool: Dict[str, Any]) -> str:
+def _tool_hash(tool: dict[str, Any]) -> str:
     """Stable SHA-256 of security-relevant tool descriptor fields."""
     canonical = json.dumps(
         {
@@ -252,7 +252,7 @@ def _tool_hash(tool: Dict[str, Any]) -> str:
     return hashlib.sha256(canonical.encode()).hexdigest()
 
 
-def _snapshot_hash(tool_hashes: Dict[str, str]) -> str:
+def _snapshot_hash(tool_hashes: dict[str, str]) -> str:
     canonical = json.dumps(tool_hashes, sort_keys=True, ensure_ascii=True)
     return hashlib.sha256(canonical.encode()).hexdigest()
 
@@ -262,11 +262,11 @@ def _snapshot_hash(tool_hashes: Dict[str, str]) -> str:
 # ---------------------------------------------------------------------------
 
 def _diff_snapshots(
-    old_hashes: Dict[str, str],
-    new_hashes: Dict[str, str],
-) -> List[Dict[str, Any]]:
+    old_hashes: dict[str, str],
+    new_hashes: dict[str, str],
+) -> list[dict[str, Any]]:
     """Compare two tool-hash snapshots; return a list of change findings."""
-    changes: List[Dict[str, Any]] = []
+    changes: list[dict[str, Any]] = []
     all_names = set(old_hashes) | set(new_hashes)
 
     for name in sorted(all_names):
@@ -308,11 +308,11 @@ def _diff_snapshots(
 # Text-field injection scan
 # ---------------------------------------------------------------------------
 
-def _scan_text_fields(tool: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _scan_text_fields(tool: dict[str, Any]) -> list[dict[str, Any]]:
     """Scan all text fields of a tool descriptor for injection patterns."""
-    findings: List[Dict[str, Any]] = []
+    findings: list[dict[str, Any]] = []
     tool_name = str(tool.get("name") or "")
-    targets: List[Tuple[str, str]] = []  # (field_path, text)
+    targets: list[tuple[str, str]] = []  # (field_path, text)
 
     # Top-level description
     desc = tool.get("description")
@@ -360,9 +360,9 @@ def _scan_text_fields(tool: Dict[str, Any]) -> List[Dict[str, Any]]:
 # SSRF surface scan
 # ---------------------------------------------------------------------------
 
-def _scan_ssrf(tool: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _scan_ssrf(tool: dict[str, Any]) -> list[dict[str, Any]]:
     """Flag inputSchema parameters that could enable SSRF."""
-    findings: List[Dict[str, Any]] = []
+    findings: list[dict[str, Any]] = []
     tool_name = str(tool.get("name") or "")
     schema = tool.get("inputSchema")
     if not isinstance(schema, dict):
@@ -421,11 +421,11 @@ def _scan_ssrf(tool: Dict[str, Any]) -> List[Dict[str, Any]]:
 # Capability risk passthrough
 # ---------------------------------------------------------------------------
 
-def _scan_capability(tool: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _scan_capability(tool: dict[str, Any]) -> list[dict[str, Any]]:
     """Route tool through tool_invocation_risk; emit finding for HIGH/CRITICAL tier."""
     from ..analysis.tool_invocation_risk import (
-        assess_tool_invocation_risk,
         ToolRiskTier,
+        assess_tool_invocation_risk,
     )
 
     tool_name = str(tool.get("name") or "").strip()
@@ -434,7 +434,7 @@ def _scan_capability(tool: Dict[str, Any]) -> List[Dict[str, Any]]:
 
     # Build a minimal input_context from description
     desc = str(tool.get("description") or "")
-    ctx: Dict[str, Any] = {}
+    ctx: dict[str, Any] = {}
     if desc:
         ctx["action"] = desc[:512]
 
@@ -484,9 +484,9 @@ def _finding(
     field: str,
     description: str,
     *,
-    extra: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
-    f: Dict[str, Any] = {
+    extra: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    f: dict[str, Any] = {
         "type": type_,
         "severity": severity,
         "tool_name": tool_name,
@@ -499,8 +499,8 @@ def _finding(
     return f
 
 
-def _by_severity(findings: List[Dict[str, Any]]) -> Dict[str, int]:
-    counts: Dict[str, int] = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
+def _by_severity(findings: list[dict[str, Any]]) -> dict[str, int]:
+    counts: dict[str, int] = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
     for f in findings:
         sev = str(f.get("severity") or "LOW").upper()
         if sev in counts:
@@ -513,12 +513,12 @@ def _utc_now() -> str:
 
 
 def _tool_result(
-    findings: List[Dict[str, Any]],
-    extra: Optional[Dict[str, Any]] = None,
+    findings: list[dict[str, Any]],
+    extra: dict[str, Any] | None = None,
     *,
-    error: Optional[str] = None,
-) -> Dict[str, Any]:
-    r: Dict[str, Any] = {
+    error: str | None = None,
+) -> dict[str, Any]:
+    r: dict[str, Any] = {
         "scan_version": SCAN_VERSION,
         "findings": findings,
         "by_severity": _by_severity(findings),
@@ -535,14 +535,14 @@ def _tool_result(
 
 def _server_result(
     status: str,
-    findings: List[Dict[str, Any]],
-    tool_hashes: Dict[str, str],
-    snapshot: Dict[str, Any],
+    findings: list[dict[str, Any]],
+    tool_hashes: dict[str, str],
+    snapshot: dict[str, Any],
     *,
     server_id: str = "",
     rug_pull_detected: bool = False,
-    tool_changes: Optional[List[Dict[str, Any]]] = None,
-) -> Dict[str, Any]:
+    tool_changes: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     return {
         "scan_version": SCAN_VERSION,
         "server_id": server_id,

@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from .governance_engine import GovernanceEngine
 from .risk_engine import RiskEngine
@@ -16,11 +16,11 @@ class MonitoringEngine:
 
     def create_schedule(
         self,
-        artifact: Dict[str, Any],
+        artifact: dict[str, Any],
         interval_seconds: int = 3600,
         enabled: bool = True,
-        start_at: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        start_at: str | None = None,
+    ) -> dict[str, Any]:
         artifact_id = artifact.get("id")
         if not artifact_id:
             raise ValueError("Scheduled artifacts require a non-empty id")
@@ -46,11 +46,11 @@ class MonitoringEngine:
         self,
         schedule_id: str,
         *,
-        enabled: Optional[bool] = None,
-        interval_seconds: Optional[int] = None,
-        artifact: Optional[Dict[str, Any]] = None,
-        next_run_at: Optional[str] = None,
-    ) -> Optional[Dict[str, Any]]:
+        enabled: bool | None = None,
+        interval_seconds: int | None = None,
+        artifact: dict[str, Any] | None = None,
+        next_run_at: str | None = None,
+    ) -> dict[str, Any] | None:
         schedule = self.datastore.get_monitoring_schedule(schedule_id)
         if not schedule:
             return None
@@ -72,18 +72,18 @@ class MonitoringEngine:
         return schedule
 
     def list_schedules(
-        self, limit: int = 100, enabled: Optional[bool] = None
+        self, limit: int = 100, enabled: bool | None = None
     ):
         return self.datastore.list_monitoring_schedules(limit=limit, enabled=enabled)
 
-    def list_runs(self, limit: int = 100, schedule_id: Optional[str] = None):
+    def list_runs(self, limit: int = 100, schedule_id: str | None = None):
         return self.datastore.list_monitoring_runs(
             limit=limit, schedule_id=schedule_id
         )
 
     def run_due(
-        self, as_of: Optional[str] = None, limit: int = 100
-    ) -> Dict[str, Any]:
+        self, as_of: str | None = None, limit: int = 100
+    ) -> dict[str, Any]:
         evaluated_at = _parse_datetime(as_of) if as_of else _utc_now()
         due = self.datastore.list_due_monitoring_schedules(
             as_of=_iso(evaluated_at), limit=limit
@@ -98,8 +98,8 @@ class MonitoringEngine:
         }
 
     def run_schedule(
-        self, schedule_id: str, as_of: Optional[str] = None
-    ) -> Optional[Dict[str, Any]]:
+        self, schedule_id: str, as_of: str | None = None
+    ) -> dict[str, Any] | None:
         schedule = self.datastore.get_monitoring_schedule(schedule_id)
         if not schedule:
             return None
@@ -107,8 +107,8 @@ class MonitoringEngine:
         return self._execute(schedule, started_at)
 
     def _execute(
-        self, schedule: Dict[str, Any], started_at: datetime
-    ) -> Dict[str, Any]:
+        self, schedule: dict[str, Any], started_at: datetime
+    ) -> dict[str, Any]:
         started = _iso(started_at)
         schedule["last_run_at"] = started
         schedule["next_run_at"] = _iso(

@@ -19,7 +19,7 @@ Design notes
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 INVENTORY_VERSION = "1.0"
 
@@ -39,7 +39,7 @@ TRUST_LABELS = frozenset({
     TRUST_USER_GENERATED, TRUST_UNTRUSTED,
 })
 
-TRUST_RANK: Dict[str, int] = {
+TRUST_RANK: dict[str, int] = {
     TRUST_VERIFIED: 5,
     TRUST_INTERNAL: 4,
     TRUST_EXTERNAL: 3,
@@ -119,7 +119,7 @@ def _validate_store_type(store_type: str) -> str:
     return st if st in KNOWN_STORE_TYPES else "custom"
 
 
-def _validate_access_control_mode(mode: Optional[str]) -> str:
+def _validate_access_control_mode(mode: str | None) -> str:
     normalized = str(mode or ACCESS_CONTROL_UNKNOWN).upper().strip()
     if normalized not in ACCESS_CONTROL_MODES:
         raise RAGInventoryError(
@@ -137,18 +137,18 @@ def register_store(
     default_trust_label: str,
     store: Any,
     *,
-    endpoint: Optional[str] = None,
-    embedding_model: Optional[str] = None,
-    access_control_mode: Optional[str] = None,
-    tenant_isolation: Optional[bool] = None,
-    last_indexed_at: Optional[str] = None,
-    freshness_sla_hours: Optional[int] = None,
-    embedding_source_url: Optional[str] = None,
-    embedding_source_trust: Optional[str] = None,
-    embedding_verified: Optional[bool] = None,
-    pii_screening_enabled: Optional[bool] = None,
-    metadata: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    endpoint: str | None = None,
+    embedding_model: str | None = None,
+    access_control_mode: str | None = None,
+    tenant_isolation: bool | None = None,
+    last_indexed_at: str | None = None,
+    freshness_sla_hours: int | None = None,
+    embedding_source_url: str | None = None,
+    embedding_source_trust: str | None = None,
+    embedding_verified: bool | None = None,
+    pii_screening_enabled: bool | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Register a vector store in the inventory.
 
     Parameters
@@ -188,7 +188,7 @@ def register_store(
     existing = store.get_model(key) or {}
     existing_meta = existing.get("metadata") or {}
 
-    record: Dict[str, Any] = {
+    record: dict[str, Any] = {
         "model_id": key,
         "id": key,
         "metadata": {
@@ -220,7 +220,7 @@ def register_store(
     return _store_summary(record)
 
 
-def get_vector_store(store_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def get_vector_store(store_id: str, store: Any) -> dict[str, Any] | None:
     """Return the inventory record for ``store_id``, or ``None``."""
     record = store.get_model(_store_key(store_id))
     if not record:
@@ -228,7 +228,7 @@ def get_vector_store(store_id: str, store: Any) -> Optional[Dict[str, Any]]:
     return _store_summary(record)
 
 
-def list_vector_stores(store: Any, limit: int = 50) -> List[Dict[str, Any]]:
+def list_vector_stores(store: Any, limit: int = 50) -> list[dict[str, Any]]:
     """List registered vector stores, newest first."""
     all_models = store.list_models() if hasattr(store, "list_models") else []
     result = []
@@ -241,10 +241,10 @@ def list_vector_stores(store: Any, limit: int = 50) -> List[Dict[str, Any]]:
     return result[:limit]
 
 
-def _store_summary(record: Dict[str, Any]) -> Dict[str, Any]:
+def _store_summary(record: dict[str, Any]) -> dict[str, Any]:
     meta = record.get("metadata") or {}
     docs = meta.get("documents") or {}
-    trust_dist: Dict[str, int] = {}
+    trust_dist: dict[str, int] = {}
     for doc in docs.values():
         tl = doc.get("trust_label", "UNKNOWN")
         trust_dist[tl] = trust_dist.get(tl, 0) + 1
@@ -282,10 +282,10 @@ def register_document(
     source_type: str,
     store: Any,
     *,
-    source_url: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None,
-    scan_result: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    source_url: str | None = None,
+    metadata: dict[str, Any] | None = None,
+    scan_result: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Register a document (or batch-update its metadata) in the inventory.
 
     Parameters
@@ -318,7 +318,7 @@ def register_document(
         )
 
     meta = record.setdefault("metadata", {})
-    docs: Dict[str, Any] = meta.setdefault("documents", {})
+    docs: dict[str, Any] = meta.setdefault("documents", {})
 
     if len(docs) >= MAX_DOCS_PER_STORE and doc_id not in docs:
         raise RAGInventoryError(
@@ -327,7 +327,7 @@ def register_document(
 
     now = _utc_now()
     existing_doc = docs.get(doc_id) or {}
-    doc_record: Dict[str, Any] = {
+    doc_record: dict[str, Any] = {
         "doc_id": doc_id,
         "content_hash": str(content_hash).strip(),
         "trust_label": trust_label,
@@ -350,7 +350,7 @@ def register_document(
     return doc_record
 
 
-def get_document(store_id: str, doc_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def get_document(store_id: str, doc_id: str, store: Any) -> dict[str, Any] | None:
     """Return the inventory record for a document, or ``None``."""
     record = store.get_model(_store_key(store_id))
     if not record:
@@ -364,8 +364,8 @@ def list_documents(
     store: Any,
     offset: int = 0,
     limit: int = 100,
-    trust_label: Optional[str] = None,
-) -> Tuple[List[Dict[str, Any]], int]:
+    trust_label: str | None = None,
+) -> tuple[list[dict[str, Any]], int]:
     """Return a paginated list of documents in a store.
 
     Optionally filter by ``trust_label``.

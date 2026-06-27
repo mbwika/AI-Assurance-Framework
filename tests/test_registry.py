@@ -11,16 +11,16 @@ def ensure_src():
 
 def test_registry_flow(tmp_path):
     ensure_src()
+    from aiaf.data.store import DataStore
     from aiaf.registry import (
         ModelRecord,
         SourceTracker,
-        calculate_sha256,
-        verify_model,
         assess_provenance_v2,
+        calculate_sha256,
         determine_provenance_risk,
         generate_mbom,
+        verify_model,
     )
-    from aiaf.data.store import DataStore
 
     # create a small temp file to hash
     f = tmp_path / "model.bin"

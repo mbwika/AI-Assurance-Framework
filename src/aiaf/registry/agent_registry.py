@@ -18,7 +18,7 @@ Design notes
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 REGISTRY_VERSION = "1.0"
 
@@ -49,7 +49,7 @@ TRUST_LABELS = frozenset({
     TRUST_VERIFIED, TRUST_INTERNAL, TRUST_EXTERNAL, TRUST_USER, TRUST_UNTRUSTED,
 })
 
-TRUST_RANK: Dict[str, int] = {
+TRUST_RANK: dict[str, int] = {
     TRUST_VERIFIED: 5,
     TRUST_INTERNAL: 4,
     TRUST_EXTERNAL: 3,
@@ -80,7 +80,7 @@ CAPABILITY_FLAGS = frozenset({
 })
 
 # Risk rank: higher = riskier.  Used by permission graph for severity derivation.
-CAPABILITY_RISK_RANK: Dict[str, int] = {
+CAPABILITY_RISK_RANK: dict[str, int] = {
     CAPABILITY_DATA_READ: 1,
     CAPABILITY_FILE_READ: 1,
     CAPABILITY_MEMORY_READ: 1,
@@ -118,7 +118,7 @@ def _validate_trust_label(label: str) -> str:
     return label
 
 
-def _validate_capabilities(caps: List[str]) -> List[str]:
+def _validate_capabilities(caps: list[str]) -> list[str]:
     caps = [str(c).lower().strip() for c in (caps or [])]
     unknown = [c for c in caps if c not in CAPABILITY_FLAGS]
     if unknown:
@@ -133,16 +133,16 @@ def _validate_capabilities(caps: List[str]) -> List[str]:
 def register_agent(
     agent_id: str,
     name: str,
-    declared_tools: List[str],
+    declared_tools: list[str],
     trust_level: str,
-    capability_flags: List[str],
+    capability_flags: list[str],
     store: Any,
     *,
-    purpose: Optional[str] = None,
-    operational_constraints: Optional[Dict[str, Any]] = None,
-    manifest_id: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    purpose: str | None = None,
+    operational_constraints: dict[str, Any] | None = None,
+    manifest_id: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Register an agent in the AIAF agent registry.
 
     Parameters
@@ -188,7 +188,7 @@ def register_agent(
     existing_meta = existing.get("metadata") or {}
     now = _utc_now()
 
-    record: Dict[str, Any] = {
+    record: dict[str, Any] = {
         "model_id": key,
         "id": key,
         "metadata": {
@@ -215,7 +215,7 @@ def register_agent(
     return _agent_summary(record)
 
 
-def get_agent(agent_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def get_agent(agent_id: str, store: Any) -> dict[str, Any] | None:
     """Return the registry record for ``agent_id``, or ``None``."""
     record = store.get_model(_agent_key(agent_id))
     if not record:
@@ -226,8 +226,8 @@ def get_agent(agent_id: str, store: Any) -> Optional[Dict[str, Any]]:
 def list_agents(
     store: Any,
     limit: int = 50,
-    trust_level: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+    trust_level: str | None = None,
+) -> list[dict[str, Any]]:
     """List registered agents, newest first."""
     all_models = store.list_models() if hasattr(store, "list_models") else []
     result = []
@@ -260,7 +260,7 @@ def deregister_agent(agent_id: str, store: Any) -> bool:
     return True
 
 
-def link_manifest(agent_id: str, manifest_id: str, store: Any) -> Dict[str, Any]:
+def link_manifest(agent_id: str, manifest_id: str, store: Any) -> dict[str, Any]:
     """Link a signed tool manifest to a registered agent.
 
     Raises ``AgentRegistryError`` if the agent is not found.
@@ -282,8 +282,8 @@ def set_agent_status(
     status: str,
     store: Any,
     *,
-    reason: Optional[str] = None,
-) -> Dict[str, Any]:
+    reason: str | None = None,
+) -> dict[str, Any]:
     """Set the runtime containment status for an agent."""
     normalized = str(status).lower().strip()
     if normalized not in AGENT_STATUSES:
@@ -310,8 +310,8 @@ def set_tool_block(
     blocked: bool,
     store: Any,
     *,
-    reason: Optional[str] = None,
-) -> Dict[str, Any]:
+    reason: str | None = None,
+) -> dict[str, Any]:
     """Block or unblock one declared tool for an agent."""
     key = _agent_key(agent_id)
     record = store.get_model(key)
@@ -340,7 +340,7 @@ def set_tool_block(
     return _agent_summary(record)
 
 
-def _agent_summary(record: Dict[str, Any]) -> Dict[str, Any]:
+def _agent_summary(record: dict[str, Any]) -> dict[str, Any]:
     meta = record.get("metadata") or {}
     caps = meta.get("capability_flags") or []
     max_rank = max((CAPABILITY_RISK_RANK.get(c, 0) for c in caps), default=0)

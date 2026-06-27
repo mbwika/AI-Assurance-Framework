@@ -8,18 +8,18 @@ REST endpoints:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from .models import get_api_key, get_store
 from ..core.system_redteam import (
     ALL_LAYERS,
     SCENARIOS,
     SystemRedTeamError,
     run_system_redteam,
 )
+from .models import get_api_key, get_store
 
 router = APIRouter(prefix="/v1/system-redteam", tags=["system-redteam"])
 
@@ -28,10 +28,10 @@ router = APIRouter(prefix="/v1/system-redteam", tags=["system-redteam"])
 
 class SystemRedTeamRequest(BaseModel):
     system_id: str
-    layers: Optional[List[str]] = None
-    system_config: Optional[Dict[str, Any]] = None
-    model_ids: Optional[List[str]] = None
-    agent_ids: Optional[List[str]] = None
+    layers: list[str] | None = None
+    system_config: dict[str, Any] | None = None
+    model_ids: list[str] | None = None
+    agent_ids: list[str] | None = None
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────

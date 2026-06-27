@@ -2,12 +2,11 @@
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ..analysis import assess_agent_risk_v2
 from ..mapping.standards import map_finding_to_controls
 from .risk_register_engine import RiskRegisterEngine
-
 
 SESSION_STATUSES = {"ACTIVE", "REVOKED", "CLOSED"}
 DECISIONS = {"ALLOW", "REQUIRE_APPROVAL", "DENY"}
@@ -18,7 +17,7 @@ class AgentRuntimeEngine:
     def __init__(self, datastore: object):
         self.datastore = datastore
 
-    def create_session(self, artifact: Dict[str, Any]) -> Dict[str, Any]:
+    def create_session(self, artifact: dict[str, Any]) -> dict[str, Any]:
         artifact_id = str(artifact.get("id") or "").strip()
         if not artifact_id:
             raise ValueError("Agent runtime sessions require a non-empty artifact id")
@@ -79,15 +78,15 @@ class AgentRuntimeEngine:
         *,
         request_id: str,
         tool: str,
-        action: Optional[str] = None,
-        permissions: Optional[List[str]] = None,
-        workflow_step_id: Optional[str] = None,
-        input_source: Optional[str] = None,
-        input_validation: Optional[str] = None,
-        target: Optional[str] = None,
-        approval_id: Optional[str] = None,
-        approved_by: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        action: str | None = None,
+        permissions: list[str] | None = None,
+        workflow_step_id: str | None = None,
+        input_source: str | None = None,
+        input_validation: str | None = None,
+        target: str | None = None,
+        approval_id: str | None = None,
+        approved_by: str | None = None,
+    ) -> dict[str, Any]:
         session = self.datastore.get_agent_session(session_id)
         if not session:
             raise ValueError("Agent session not found")
@@ -255,9 +254,9 @@ class AgentRuntimeEngine:
     def list_sessions(
         self,
         limit: int = 100,
-        artifact_id: Optional[str] = None,
-        status: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        artifact_id: str | None = None,
+        status: str | None = None,
+    ) -> list[dict[str, Any]]:
         normalized = str(status).upper() if status else None
         if normalized and normalized not in SESSION_STATUSES:
             raise ValueError(f"Invalid session status: {status}")
@@ -270,9 +269,9 @@ class AgentRuntimeEngine:
     def list_invocations(
         self,
         limit: int = 100,
-        session_id: Optional[str] = None,
-        decision: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        session_id: str | None = None,
+        decision: str | None = None,
+    ) -> list[dict[str, Any]]:
         normalized = str(decision).upper() if decision else None
         if normalized and normalized not in DECISIONS:
             raise ValueError(f"Invalid authorization decision: {decision}")
@@ -284,7 +283,7 @@ class AgentRuntimeEngine:
 
     def update_session_status(
         self, session_id: str, status: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         normalized = str(status or "").upper()
         if normalized not in {"REVOKED", "CLOSED"}:
             raise ValueError("Session status can only transition to REVOKED or CLOSED")
@@ -306,7 +305,7 @@ class AgentRuntimeEngine:
         return updated
 
     def _record_decision(
-        self, session: Dict[str, Any], invocation: Dict[str, Any]
+        self, session: dict[str, Any], invocation: dict[str, Any]
     ) -> None:
         self.datastore.save_audit_log(
             {
@@ -344,7 +343,7 @@ class AgentRuntimeEngine:
             )
 
 
-def _workflow_steps(artifact: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _workflow_steps(artifact: dict[str, Any]) -> list[dict[str, Any]]:
     workflow = artifact.get("workflow_steps") or artifact.get("workflow") or []
     if isinstance(workflow, dict):
         workflow = workflow.get("steps", [])
@@ -352,8 +351,8 @@ def _workflow_steps(artifact: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 
 def _workflow_step(
-    artifact: Dict[str, Any], workflow_step_id: Optional[str]
-) -> Optional[Dict[str, Any]]:
+    artifact: dict[str, Any], workflow_step_id: str | None
+) -> dict[str, Any] | None:
     if not workflow_step_id:
         return None
     for index, step in enumerate(_workflow_steps(artifact)):
@@ -363,7 +362,7 @@ def _workflow_step(
     return None
 
 
-def _is_external(tool: str, action: str, input_source: Optional[str]) -> bool:
+def _is_external(tool: str, action: str, input_source: str | None) -> bool:
     return (
         tool in EXTERNAL_TOOLS
         or action == "external_call"
@@ -379,7 +378,7 @@ def _set(value: Any) -> set:
     return {str(item).lower() for item in value}
 
 
-def _reason(code: str, detail: str) -> Dict[str, str]:
+def _reason(code: str, detail: str) -> dict[str, str]:
     return {"code": code, "detail": detail}
 
 

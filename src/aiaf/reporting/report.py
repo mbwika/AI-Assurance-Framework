@@ -1,12 +1,12 @@
 """Reporting helpers that aggregate findings from the datastore."""
-from typing import Dict, Any
+from typing import Any
 
 
 class Reporter:
     def __init__(self, datastore):
         self.datastore = datastore
 
-    def aggregate(self, artifact_id=None) -> Dict[str, Any]:
+    def aggregate(self, artifact_id=None) -> dict[str, Any]:
         rows = self.datastore.list_findings(limit=1000, artifact_id=artifact_id)
         total = len(rows)
         avg_score = 0.0

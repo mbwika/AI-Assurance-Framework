@@ -59,7 +59,7 @@ import hashlib
 import json
 import re
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 SKILL_SCANNER_VERSION = "1.0"
 
@@ -89,7 +89,7 @@ RISK_CATEGORIES: frozenset = frozenset({
 })
 
 # ── Injection patterns ─────────────────────────────────────────────────────────
-_INJECTION_PATTERNS: List[Tuple[re.Pattern, str]] = [
+_INJECTION_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r"ignore\s+(all\s+)?(previous|prior)\s+instructions?", re.I), "CRITICAL"),
     (re.compile(r"(exfiltrate|leak|transmit)\s+(data|secrets?|tokens?|credentials?)", re.I), "CRITICAL"),
     (re.compile(r"<\|im_start\|>|<\|system\|>|<system-prompt>|<inject>", re.I), "CRITICAL"),
@@ -101,7 +101,7 @@ _INJECTION_PATTERNS: List[Tuple[re.Pattern, str]] = [
 ]
 
 # ── High-risk permission strings ───────────────────────────────────────────────
-_HIGH_RISK_PERMISSIONS: Set[str] = {
+_HIGH_RISK_PERMISSIONS: set[str] = {
     "filesystem:write", "filesystem:read_all", "filesystem:delete",
     "network:unrestricted", "network:egress", "process:execute",
     "clipboard:read", "clipboard:write", "keychain:read",
@@ -111,14 +111,14 @@ _HIGH_RISK_PERMISSIONS: Set[str] = {
     "audio:record", "screen:capture", "camera:access",
 }
 
-_LOW_RISK_PERMISSIONS: Set[str] = {
+_LOW_RISK_PERMISSIONS: set[str] = {
     "filesystem:read_local", "network:api_call", "clipboard:write_only",
     "ui:display", "notification:send",
 }
 
 # ── Typosquatting patterns ─────────────────────────────────────────────────────
 # Common legitimate skill/package names — lookalikes are suspicious
-_KNOWN_LEGIT_PATTERNS: List[re.Pattern] = [
+_KNOWN_LEGIT_PATTERNS: list[re.Pattern] = [
     re.compile(r"^(openai|open-ai|0penai|opena1)[\-_]", re.I),          # OpenAI lookalikes
     re.compile(r"^(anthropic|anthr0pic|anthroplc)[\-_]", re.I),          # Anthropic lookalikes
     re.compile(r"^(langchain|lang-chain|Iangchain)[\-_]", re.I),         # LangChain lookalikes
@@ -138,11 +138,11 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _worst_status(statuses: List[str]) -> str:
+def _worst_status(statuses: list[str]) -> str:
     return min(statuses, key=lambda s: _STATUS_RANK.get(s, 99), default=STATUS_CLEAN)
 
 
-def _status_from_severities(severities: List[str]) -> str:
+def _status_from_severities(severities: list[str]) -> str:
     if "CRITICAL" in severities:
         return STATUS_UNSAFE
     if "HIGH" in severities:
@@ -154,12 +154,12 @@ def _status_from_severities(severities: List[str]) -> str:
     return STATUS_CLEAN
 
 
-def _manifest_hash(manifest: Dict[str, Any]) -> str:
+def _manifest_hash(manifest: dict[str, Any]) -> str:
     canonical = json.dumps(manifest, sort_keys=True, ensure_ascii=True)
     return hashlib.sha256(canonical.encode()).hexdigest()
 
 
-def _scan_text_for_injection(text: str) -> List[Dict[str, Any]]:
+def _scan_text_for_injection(text: str) -> list[dict[str, Any]]:
     findings = []
     for pattern, severity in _INJECTION_PATTERNS:
         if pattern.search(text):
@@ -171,7 +171,7 @@ def _scan_text_for_injection(text: str) -> List[Dict[str, Any]]:
     return findings
 
 
-def _check_permissions(manifest: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _check_permissions(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     findings = []
     permissions = set(str(p).lower() for p in (manifest.get("permissions") or []))
     high_risk = permissions & _HIGH_RISK_PERMISSIONS
@@ -215,7 +215,7 @@ def _check_permissions(manifest: Dict[str, Any]) -> List[Dict[str, Any]]:
     return findings
 
 
-def _check_publisher(manifest: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _check_publisher(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     findings = []
     if not manifest.get("publisher_signed", False):
         findings.append({
@@ -226,7 +226,7 @@ def _check_publisher(manifest: Dict[str, Any]) -> List[Dict[str, Any]]:
     return findings
 
 
-def _check_dependencies(manifest: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _check_dependencies(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     findings = []
     deps = manifest.get("dependencies") or []
     for dep in deps:
@@ -243,7 +243,7 @@ def _check_dependencies(manifest: Dict[str, Any]) -> List[Dict[str, Any]]:
     return findings
 
 
-def _check_entry_point(manifest: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _check_entry_point(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     findings = []
     ep = str(manifest.get("entry_point") or "")
     if not ep:
@@ -252,7 +252,7 @@ def _check_entry_point(manifest: Dict[str, Any]) -> List[Dict[str, Any]]:
     # Check for base64 encoding
     if _BASE64_RE.match(ep):
         try:
-            decoded = base64.b64decode(ep).decode("utf-8", errors="replace")
+            base64.b64decode(ep).decode("utf-8", errors="replace")
             findings.append({
                 "risk_category": RISK_OBFUSCATED_ENTRY_POINT,
                 "severity": "HIGH",
@@ -280,7 +280,7 @@ def _check_entry_point(manifest: Dict[str, Any]) -> List[Dict[str, Any]]:
     return findings
 
 
-def _check_covert_capabilities(manifest: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _check_covert_capabilities(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     findings = []
     description = str(manifest.get("description") or "").lower()
     tags = [str(t).lower() for t in (manifest.get("tags") or [])]
@@ -323,7 +323,7 @@ def _check_covert_capabilities(manifest: Dict[str, Any]) -> List[Dict[str, Any]]
 
 # ── Public API ─────────────────────────────────────────────────────────────────
 
-def scan_skill_manifest(manifest: Dict[str, Any]) -> Dict[str, Any]:
+def scan_skill_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
     """Scan a single agent skill manifest for supply-chain risk signals.
 
     Parameters
@@ -340,7 +340,7 @@ def scan_skill_manifest(manifest: Dict[str, Any]) -> Dict[str, Any]:
     skill_id = str(manifest.get("skill_id") or manifest.get("name") or "unknown")
     try:
         manifest_hash = _manifest_hash(manifest)
-        findings: List[Dict[str, Any]] = []
+        findings: list[dict[str, Any]] = []
 
         # Gather all text fields for injection scanning
         text_fields = " ".join([
@@ -393,7 +393,7 @@ def scan_skill_manifest(manifest: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 
-def scan_skill_registry(manifests: List[Dict[str, Any]]) -> Dict[str, Any]:
+def scan_skill_registry(manifests: list[dict[str, Any]]) -> dict[str, Any]:
     """Scan a collection of skill manifests (a registry snapshot).
 
     Returns an aggregate report covering all skills, with per-skill results
@@ -427,7 +427,7 @@ def scan_skill_registry(manifests: List[Dict[str, Any]]) -> Dict[str, Any]:
     critical_skills = [r for r in results if r["critical_count"] > 0]
 
     # Aggregate risk categories
-    category_counts: Dict[str, int] = {}
+    category_counts: dict[str, int] = {}
     for r in results:
         for cat in r.get("risk_categories_detected") or []:
             category_counts[cat] = category_counts.get(cat, 0) + 1

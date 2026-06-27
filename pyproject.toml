@@ -63,10 +63,14 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B"]
-ignore = ["E501"]
+ignore = [
+    "E501",
+    "B008",  # FastAPI Depends/Form/Query as default args is the intended pattern
+    "B904",  # raise HTTPException inside except — chaining intentionally suppressed from HTTP clients
+]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S", "ANN"]
+"tests/*" = ["S", "ANN", "E402", "F401", "B007", "B017"]
 
 # ── Pytest ─────────────────────────────────────────────────────────────────────
 [tool.pytest.ini_options]

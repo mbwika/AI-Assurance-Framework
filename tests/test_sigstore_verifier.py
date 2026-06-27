@@ -1,22 +1,15 @@
 """Tests for src/aiaf/registry/sigstore_verifier.py (Phase 3)."""
 
-import os
-import tempfile
 from pathlib import Path
-
-import pytest
 
 from aiaf.registry.sigstore_verifier import (
     SIGSTORE_VERIFIER_VERSION,
     STATUS_BUNDLE_INVALID,
     STATUS_NOT_AVAILABLE,
     STATUS_NOT_SIGNED,
-    STATUS_VERIFIED,
-    STATUS_VERIFICATION_FAILED,
     find_bundle,
     verify_file,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

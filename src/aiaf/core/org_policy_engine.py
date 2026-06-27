@@ -29,15 +29,14 @@ Outputs are machine-readable so the adoption engine and UI can explain:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ..registry.evidence_origin import (
     EvidenceOrigin,
     coerce_origin,
-    ledger_from_list,
     is_verified_grade,
+    ledger_from_list,
 )
-
 
 ORG_POLICY_VERSION = "1.0"
 
@@ -141,15 +140,15 @@ _APPROVAL_SCOPE = {
 
 
 def evaluate_org_policy(
-    model_record: Dict[str, Any],
+    model_record: dict[str, Any],
     *,
-    policy_context: Optional[Dict[str, Any]] = None,
-    provenance_assessment: Optional[Dict[str, Any]] = None,
-    governance_summary: Optional[Dict[str, Any]] = None,
-    vulnerability_scan: Optional[Dict[str, Any]] = None,
-    serialization_scan: Optional[Dict[str, Any]] = None,
-    behavioral_probes: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    policy_context: dict[str, Any] | None = None,
+    provenance_assessment: dict[str, Any] | None = None,
+    governance_summary: dict[str, Any] | None = None,
+    vulnerability_scan: dict[str, Any] | None = None,
+    serialization_scan: dict[str, Any] | None = None,
+    behavioral_probes: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Apply organization policy to a model adoption decision."""
     model_record = model_record if isinstance(model_record, dict) else {}
     provenance_assessment = provenance_assessment or {}
@@ -172,9 +171,9 @@ def evaluate_org_policy(
     )
     missing = [req for req in requirements if req.get("required") and not req.get("met")]
 
-    caps: List[Dict[str, Any]] = []
-    conditions: List[str] = []
-    evidence_gaps: List[str] = []
+    caps: list[dict[str, Any]] = []
+    conditions: list[str] = []
+    evidence_gaps: list[str] = []
 
     for req in missing:
         evidence_gaps.append(req["gap"])
@@ -252,9 +251,9 @@ def evaluate_org_policy(
 
 
 def _resolve_policy_context(
-    model_record: Dict[str, Any],
-    policy_context: Optional[Dict[str, Any]],
-) -> Dict[str, str]:
+    model_record: dict[str, Any],
+    policy_context: dict[str, Any] | None,
+) -> dict[str, str]:
     metadata = model_record.get("metadata")
     metadata = metadata if isinstance(metadata, dict) else {}
     profile = metadata.get("model_risk_profile")
@@ -305,7 +304,7 @@ def _resolve_policy_context(
     }
 
 
-def _policy_posture(context: Dict[str, str]) -> Dict[str, Any]:
+def _policy_posture(context: dict[str, str]) -> dict[str, Any]:
     use_case_tier = _use_case_tier(context["use_case"])
     data_tier = _DATA_TIERS.get(context["data_classification"], 1)
     exposure_tier = _EXPOSURE_TIERS.get(context["deployment_exposure"], 0)
@@ -330,16 +329,16 @@ def _policy_posture(context: Dict[str, str]) -> Dict[str, Any]:
 
 
 def _build_requirements(
-    context: Dict[str, str],
+    context: dict[str, str],
     ledger,
-    provenance: Dict[str, Any],
-    governance: Dict[str, Any],
-    vuln: Dict[str, Any],
-    serialization_scan: Optional[Dict[str, Any]],
-    behavioral_probes: Optional[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
+    provenance: dict[str, Any],
+    governance: dict[str, Any],
+    vuln: dict[str, Any],
+    serialization_scan: dict[str, Any] | None,
+    behavioral_probes: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
     posture = _policy_posture(context)
-    requirements: List[Dict[str, Any]] = []
+    requirements: list[dict[str, Any]] = []
 
     def add(
         req_id: str,

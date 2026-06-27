@@ -1,22 +1,19 @@
 """Tests for the behavioral probe engine (Phase 2)."""
 
-import pytest
 
 from aiaf.core.probe_engine import (
-    PROBE_VERSION,
     PROBE_SET,
+    PROBE_VERSION,
     RESULT_FAILED,
-    RESULT_PASSED,
     RESULT_INDETERMINATE,
+    RESULT_PASSED,
     STATUS_COMPLETED,
-    STATUS_NO_ENDPOINT,
     STATUS_ENDPOINT_ERROR,
-    STATUS_PARTIAL,
+    STATUS_NO_ENDPOINT,
+    _evaluate,
     run_probes,
     run_probes_no_endpoint,
-    _evaluate,
 )
-
 
 # ---------------------------------------------------------------------------
 # Stub HTTP client for testing without network calls

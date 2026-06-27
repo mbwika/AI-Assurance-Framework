@@ -1,8 +1,8 @@
 """Model Bill of Materials (MBOM) generator."""
-from typing import Dict, Any, List
+from typing import Any
 
 
-def generate_mbom(model_record: Dict[str, Any], dependencies: List[str] = None) -> Dict[str, Any]:
+def generate_mbom(model_record: dict[str, Any], dependencies: list[str] = None) -> dict[str, Any]:
     metadata = model_record.get("metadata") or {}
     if dependencies is None:
         dependencies = model_record.get("dependencies") or metadata.get("dependencies") or []

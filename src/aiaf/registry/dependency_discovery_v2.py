@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
-from contextlib import contextmanager
-from dataclasses import dataclass
 import fnmatch
 import hashlib
 import json
 import os
-from pathlib import Path, PurePosixPath
 import re
 import stat
 import tarfile
-from typing import Any, Dict, List, Tuple
 import unicodedata
-from urllib.parse import urlsplit, urlunsplit
 import zipfile
+from contextlib import contextmanager
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
+from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
@@ -75,9 +75,9 @@ class _ScanState:
     inventory_complete: bool = True
 
 
-def discover_dependencies_v2(path: Any, artifact_name: str = "") -> Dict[str, Any]:
+def discover_dependencies_v2(path: Any, artifact_name: str = "") -> dict[str, Any]:
     """Discover dependency evidence with explicit completeness and resolution state."""
-    diagnostics: List[Dict[str, Any]] = []
+    diagnostics: list[dict[str, Any]] = []
     state = _ScanState()
     target = _validated_target(path, diagnostics)
     if target is None:
@@ -96,8 +96,8 @@ def discover_dependencies_v2(path: Any, artifact_name: str = "") -> Dict[str, An
         candidates = []
 
     candidates = _remove_ambiguous_candidates(candidates, state, diagnostics)
-    dependencies: List[Dict[str, Any]] = []
-    manifests: List[Dict[str, Any]] = []
+    dependencies: list[dict[str, Any]] = []
+    manifests: list[dict[str, Any]] = []
     for candidate in sorted(candidates, key=lambda item: item.path):
         manifest_type = _manifest_type(candidate.path)
         parsed, parse_complete = _parse_manifest(
@@ -246,7 +246,7 @@ def _collect_candidates(target, artifact_name, state, diagnostics):
 
 def _directory_candidates(root, root_metadata, state, diagnostics):
     candidates = []
-    stack: List[Tuple[Path, str, int, os.stat_result]] = [
+    stack: list[tuple[Path, str, int, os.stat_result]] = [
         (root, "", 0, root_metadata)
     ]
     while stack:
@@ -430,7 +430,7 @@ def _candidate_allowed(size, state, diagnostics, logical):
 
 
 def _remove_ambiguous_candidates(candidates, state, diagnostics):
-    grouped: Dict[str, List[_Candidate]] = {}
+    grouped: dict[str, list[_Candidate]] = {}
     for candidate in candidates:
         grouped.setdefault(candidate.path.casefold(), []).append(candidate)
     safe = []
@@ -862,7 +862,7 @@ def _deduplicate(dependencies):
 
 
 def _conflicts(dependencies):
-    versions: Dict[Tuple[str, str], set] = {}
+    versions: dict[tuple[str, str], set] = {}
     for item in dependencies:
         if item["resolution"] == "EXACT":
             versions.setdefault((item["ecosystem"], item["name"]), set()).add(item["version"])

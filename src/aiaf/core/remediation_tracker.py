@@ -18,7 +18,7 @@ makes no independent claim about whether the underlying issue is fixed.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 REMEDIATION_VERSION = "1.0"
 
@@ -72,7 +72,7 @@ def _remediation_key(remediation_id: str) -> str:
     return f"{_REMEDIATION_PREFIX}{remediation_id}"
 
 
-def _summary(record: Dict[str, Any]) -> Dict[str, Any]:
+def _summary(record: dict[str, Any]) -> dict[str, Any]:
     m = record.get("metadata") or {}
     return {
         "remediation_id": m.get("remediation_id"),
@@ -101,10 +101,10 @@ def create_remediation(
     description: str,
     store: Any,
     *,
-    model_id: Optional[str] = None,
-    assigned_to: Optional[str] = None,
-    due_date: Optional[str] = None,
-) -> Dict[str, Any]:
+    model_id: str | None = None,
+    assigned_to: str | None = None,
+    due_date: str | None = None,
+) -> dict[str, Any]:
     remediation_id = str(remediation_id).strip()
     if not remediation_id:
         raise RemediationError("remediation_id must be non-empty")
@@ -125,7 +125,7 @@ def create_remediation(
     existing = store.get_model(key)
     created_at = (existing or {}).get("metadata", {}).get("created_at") or now
 
-    record: Dict[str, Any] = {
+    record: dict[str, Any] = {
         "model_id": key,
         "id": key,
         "metadata": {
@@ -149,7 +149,7 @@ def create_remediation(
     return _summary(record)
 
 
-def get_remediation(remediation_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def get_remediation(remediation_id: str, store: Any) -> dict[str, Any] | None:
     record = store.get_model(_remediation_key(remediation_id))
     return _summary(record) if record else None
 
@@ -159,8 +159,8 @@ def update_remediation_status(
     new_status: str,
     store: Any,
     *,
-    resolution_note: Optional[str] = None,
-) -> Dict[str, Any]:
+    resolution_note: str | None = None,
+) -> dict[str, Any]:
     key = _remediation_key(remediation_id)
     record = store.get_model(key)
     if not record:
@@ -197,11 +197,11 @@ def update_remediation_status(
 def list_remediations(
     store: Any,
     *,
-    incident_id: Optional[str] = None,
-    model_id: Optional[str] = None,
-    status: Optional[str] = None,
+    incident_id: str | None = None,
+    model_id: str | None = None,
+    status: str | None = None,
     limit: int = 50,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     all_models = store.list_models() if hasattr(store, "list_models") else []
     result = []
     for m in all_models:
@@ -224,7 +224,7 @@ def link_to_incident(
     remediation_id: str,
     incident_id: str,
     store: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Re-link a remediation to a different incident."""
     key = _remediation_key(remediation_id)
     record = store.get_model(key)

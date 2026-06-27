@@ -10,8 +10,7 @@ import math
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
-
+from typing import Any
 
 HALLUCINATION_RISK_SCORING_VERSION = "2.0"
 
@@ -28,9 +27,9 @@ class HallucinationRiskFactor:
     factor: str
     risk_level: HallucinationRiskLevel
     detail: str
-    recommendation: Optional[str] = None
+    recommendation: str | None = None
     weight: float = 0.0
-    evidence: Dict[str, Any] = field(default_factory=dict)
+    evidence: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -38,14 +37,14 @@ class HallucinationRiskResult:
     model_id: str
     overall_risk: HallucinationRiskLevel
     risk_score: float
-    risk_factors: List[HallucinationRiskFactor] = field(default_factory=list)
-    recommendations: List[str] = field(default_factory=list)
-    owasp_refs: List[str] = field(default_factory=list)
-    nist_ai_rmf_refs: List[str] = field(default_factory=list)
+    risk_factors: list[HallucinationRiskFactor] = field(default_factory=list)
+    recommendations: list[str] = field(default_factory=list)
+    owasp_refs: list[str] = field(default_factory=list)
+    nist_ai_rmf_refs: list[str] = field(default_factory=list)
     scoring_version: str = HALLUCINATION_RISK_SCORING_VERSION
-    factuality_lower_bound: Optional[float] = None
+    factuality_lower_bound: float | None = None
     evidence_quality: str = "NONE"
-    evaluation_warnings: List[str] = field(default_factory=list)
+    evaluation_warnings: list[str] = field(default_factory=list)
 
 
 _HIGH_STAKES_DOMAIN_PHRASES = (
@@ -86,9 +85,9 @@ def assess_hallucination_risk(
     output_used_for_automated_decisions: bool = False,
     has_self_consistency_checking: bool = False,
     knowledge_cutoff_declared: bool = False,
-    factuality_evidence: Optional[Dict[str, Any]] = None,
-    retrieval_evidence: Optional[Dict[str, Any]] = None,
-    decision_context: Optional[Dict[str, Any]] = None,
+    factuality_evidence: dict[str, Any] | None = None,
+    retrieval_evidence: dict[str, Any] | None = None,
+    decision_context: dict[str, Any] | None = None,
 ) -> HallucinationRiskResult:
     """Assess factual-reliability risk without treating declared controls as proof.
 
@@ -112,9 +111,9 @@ def assess_hallucination_risk(
     output_used_for_automated_decisions = output_used_for_automated_decisions is True
     has_self_consistency_checking = has_self_consistency_checking is True
     knowledge_cutoff_declared = knowledge_cutoff_declared is True
-    factors: List[HallucinationRiskFactor] = []
-    recommendations: List[str] = []
-    warnings: List[str] = []
+    factors: list[HallucinationRiskFactor] = []
+    recommendations: list[str] = []
+    warnings: list[str] = []
 
     def add(
         factor: str,
@@ -122,7 +121,7 @@ def assess_hallucination_risk(
         weight: float,
         detail: str,
         recommendation: str = "",
-        evidence: Optional[Dict[str, Any]] = None,
+        evidence: dict[str, Any] | None = None,
     ) -> None:
         if any(item.factor == factor for item in factors):
             return
@@ -655,7 +654,7 @@ def _evaluate_review_quality(decision, high_stakes, automated_decisions, add, wa
         )
 
 
-def _factuality_observations(evidence: Dict[str, Any]) -> Optional[Tuple[int, int]]:
+def _factuality_observations(evidence: dict[str, Any]) -> tuple[int, int] | None:
     correct = _nonnegative_integer(evidence.get("correct_claims"))
     total = _positive_integer(evidence.get("total_claims"))
     count_fields_present = "correct_claims" in evidence or "total_claims" in evidence
@@ -692,7 +691,7 @@ def _wilson_lower_bound(successes: int, observations: int, z: float = 1.959964) 
 
 
 def _has_citation_measurement(
-    factuality: Dict[str, Any], retrieval: Dict[str, Any]
+    factuality: dict[str, Any], retrieval: dict[str, Any]
 ) -> bool:
     return all(
         any(field in evidence for evidence in (factuality, retrieval))
@@ -707,12 +706,12 @@ def _is_high_stakes_domain(domain: str) -> bool:
     )
 
 
-def _tokenize(value: Any) -> Tuple[str, ...]:
+def _tokenize(value: Any) -> tuple[str, ...]:
     expanded = _CAMEL_BOUNDARY.sub(" ", str(value or ""))
     return tuple(_TOKEN.findall(expanded.lower()))
 
 
-def _contains_phrase(tokens: Tuple[str, ...], phrase: Tuple[str, ...]) -> bool:
+def _contains_phrase(tokens: tuple[str, ...], phrase: tuple[str, ...]) -> bool:
     width = len(phrase)
     return any(
         tokens[index : index + width] == phrase
@@ -724,18 +723,18 @@ def _normalized_value(value: Any) -> str:
     return "_".join(_tokenize(value))
 
 
-def _control_bool(context: Dict[str, Any], key: str) -> bool:
+def _control_bool(context: dict[str, Any], key: str) -> bool:
     return context.get(key) is True
 
 
-def _hazard_bool(context: Dict[str, Any], key: str) -> bool:
+def _hazard_bool(context: dict[str, Any], key: str) -> bool:
     value = context.get(key)
     if isinstance(value, bool):
         return value
     return str(value or "").strip().lower() in {"1", "true", "yes", "enabled"}
 
 
-def _unit_interval(value: Any) -> Optional[float]:
+def _unit_interval(value: Any) -> float | None:
     if isinstance(value, bool):
         return None
     try:
@@ -745,7 +744,7 @@ def _unit_interval(value: Any) -> Optional[float]:
     return parsed if math.isfinite(parsed) and 0.0 <= parsed <= 1.0 else None
 
 
-def _nonnegative_number(value: Any) -> Optional[float]:
+def _nonnegative_number(value: Any) -> float | None:
     if isinstance(value, bool):
         return None
     try:
@@ -755,12 +754,12 @@ def _nonnegative_number(value: Any) -> Optional[float]:
     return parsed if math.isfinite(parsed) and parsed >= 0.0 else None
 
 
-def _positive_integer(value: Any) -> Optional[int]:
+def _positive_integer(value: Any) -> int | None:
     parsed = _nonnegative_integer(value)
     return parsed if parsed is not None and parsed > 0 else None
 
 
-def _nonnegative_integer(value: Any) -> Optional[int]:
+def _nonnegative_integer(value: Any) -> int | None:
     if isinstance(value, bool):
         return None
     try:

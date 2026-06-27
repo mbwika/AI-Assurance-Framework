@@ -2,8 +2,7 @@
 
 import json
 
-import pytest
-
+from aiaf.registry.evidence_origin import EvidenceOrigin, FactLedger
 from aiaf.registry.hf_model_card import (
     HF_MODEL_CARD_VERSION,
     STATUS_FETCH_FAILED,
@@ -13,8 +12,6 @@ from aiaf.registry.hf_model_card import (
     enrich_ledger,
     parse_snapshot_dir,
 )
-from aiaf.registry.evidence_origin import EvidenceOrigin, FactLedger
-
 
 # ---------------------------------------------------------------------------
 # Helpers

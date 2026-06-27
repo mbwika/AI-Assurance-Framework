@@ -5,25 +5,24 @@ import pytest
 from aiaf.registry.rag_inventory import (
     INVENTORY_VERSION,
     MAX_DOCS_PER_STORE,
+    TRUST_EXTERNAL,
+    TRUST_INTERNAL,
     TRUST_LABELS,
     TRUST_RANK,
-    TRUST_VERIFIED,
-    TRUST_INTERNAL,
-    TRUST_EXTERNAL,
-    TRUST_USER_GENERATED,
     TRUST_UNTRUSTED,
+    TRUST_USER_GENERATED,
+    TRUST_VERIFIED,
     RAGInventoryError,
-    _validate_trust_label,
     _validate_source_type,
     _validate_store_type,
-    register_store,
+    _validate_trust_label,
+    get_document,
     get_vector_store,
+    list_documents,
     list_vector_stores,
     register_document,
-    get_document,
-    list_documents,
+    register_store,
 )
-
 
 # ── Fake store ────────────────────────────────────────────────────────────────
 

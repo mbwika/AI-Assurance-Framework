@@ -1,20 +1,37 @@
 """Tests for src/aiaf/registry/ai_threat_intel.py"""
 
 import pytest
+
 from aiaf.registry.ai_threat_intel import (
-    THREAT_INTEL_VERSION,
-    ASSET_MODEL, ASSET_AGENT, ASSET_TOOL, ASSET_DATASET, ASSET_RAG_STORE, ASSET_MCP_SERVER,
-    ASSET_TYPES,
-    CATEGORY_PROMPT_ATTACKS, CATEGORY_SUPPLY_CHAIN, CATEGORY_MODEL_INTEGRITY,
-    CATEGORY_AVAILABILITY, CATEGORY_EXFILTRATION, CATEGORY_DATA_ATTACKS,
-    CATEGORY_IDENTITY_ATTACKS,
-    SEVERITY_CRITICAL, SEVERITY_HIGH, SEVERITY_MEDIUM, SEVERITY_LOW,
-    SOURCE_OWASP_LLM, SOURCE_MITRE_ATLAS, SOURCE_OWASP_AGENTIC, SOURCE_CUSTOM,
+    _BUILTIN_INDEX,
+    _BUILTIN_THREATS,
+    ASSET_AGENT,
+    ASSET_DATASET,
+    ASSET_MODEL,
+    ASSET_RAG_STORE,
+    ASSET_TOOL,
+    CATEGORY_AVAILABILITY,
+    CATEGORY_DATA_ATTACKS,
+    CATEGORY_EXFILTRATION,
+    CATEGORY_MODEL_INTEGRITY,
+    CATEGORY_PROMPT_ATTACKS,
+    CATEGORY_SUPPLY_CHAIN,
+    SEVERITY_CRITICAL,
+    SEVERITY_HIGH,
+    SEVERITY_LOW,
+    SEVERITY_MEDIUM,
+    SOURCE_CUSTOM,
+    SOURCE_MITRE_ATLAS,
+    SOURCE_OWASP_AGENTIC,
+    SOURCE_OWASP_LLM,
     ThreatIntelError,
-    ingest_threat, get_threat, list_threats,
-    correlate_model, correlate_agent, correlate_tool,
     build_threat_landscape,
-    _BUILTIN_THREATS, _BUILTIN_INDEX,
+    correlate_agent,
+    correlate_model,
+    correlate_tool,
+    get_threat,
+    ingest_threat,
+    list_threats,
 )
 
 

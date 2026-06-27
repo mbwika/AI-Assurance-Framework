@@ -6,9 +6,8 @@ import html
 import re
 import unicodedata
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from urllib.parse import unquote
-
 
 JAILBREAK_SCORING_VERSION = "2.0"
 _MAX_INPUT_CHARS = 100_000
@@ -23,14 +22,14 @@ class _Rule:
     category: str
     severity: str
     weight: float
-    patterns: Tuple[str, ...]
+    patterns: tuple[str, ...]
 
 
 @dataclass(frozen=True)
 class _TextView:
     text: str
     source: str
-    transformations: Tuple[str, ...] = ()
+    transformations: tuple[str, ...] = ()
 
 
 _RULES = (
@@ -189,8 +188,8 @@ _NEGATION_PREFIX = re.compile(
 
 
 def detect_jailbreak(
-    text: str, analysis_context: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+    text: str, analysis_context: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Detect explicit and obfuscated policy-evasion intent."""
     context = analysis_context if isinstance(analysis_context, dict) else {}
     raw = _coerce_text(text)
@@ -203,7 +202,7 @@ def detect_jailbreak(
     views = [_TextView(normalized, "normalized", transformations)]
     views.extend(_decoded_views(normalized))
 
-    matches: List[Dict[str, Any]] = []
+    matches: list[dict[str, Any]] = []
     seen = set()
     decoded_indicators = set()
     for view in views:
@@ -366,7 +365,7 @@ def _add_compound_matches(matches, seen):
         )
 
 
-def _normalize_text(value: str) -> Tuple[str, Tuple[str, ...]]:
+def _normalize_text(value: str) -> tuple[str, tuple[str, ...]]:
     transformations = []
     normalized = unicodedata.normalize("NFKC", value)
     if normalized != value:
@@ -406,7 +405,7 @@ def _normalize_text(value: str) -> Tuple[str, Tuple[str, ...]]:
     return normalized[:_MAX_INPUT_CHARS], tuple(transformations)
 
 
-def _decoded_views(text: str) -> List[_TextView]:
+def _decoded_views(text: str) -> list[_TextView]:
     views = []
     seen_text = {text}
     percent_decoded = text
@@ -455,7 +454,7 @@ def _append_decoded_view(views, seen_text, decoded, source):
     views.append(_TextView(normalized, source, transformations))
 
 
-def _decode_base64(candidate: str) -> Optional[str]:
+def _decode_base64(candidate: str) -> str | None:
     padded = candidate + "=" * (-len(candidate) % 4)
     decoders = (
         lambda value: base64.b64decode(value, validate=True),
@@ -472,7 +471,7 @@ def _decode_base64(candidate: str) -> Optional[str]:
     return None
 
 
-def _printable_text(value: bytes) -> Optional[str]:
+def _printable_text(value: bytes) -> str | None:
     if not value or len(value) > _MAX_DECODED_CHARS * 4:
         return None
     try:

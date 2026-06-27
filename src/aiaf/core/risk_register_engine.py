@@ -3,8 +3,7 @@
 import hashlib
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
-
+from typing import Any
 
 RISK_STATUSES = {"OPEN", "IN_PROGRESS", "ACCEPTED", "RESOLVED"}
 RISK_SEVERITIES = {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
@@ -17,11 +16,11 @@ class RiskRegisterEngine:
 
     def observe_findings(
         self,
-        artifact_id: Optional[str],
-        findings: List[Dict[str, Any]],
-        observed_at: Optional[str] = None,
-        remediation_sla: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
+        artifact_id: str | None,
+        findings: list[dict[str, Any]],
+        observed_at: str | None = None,
+        remediation_sla: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         if not artifact_id:
             raise ValueError("Risk observations require a non-empty artifact_id")
         timestamp = _normalize_datetime(observed_at) if observed_at else _utc_now()
@@ -56,16 +55,16 @@ class RiskRegisterEngine:
                 observed.append(self.datastore.upsert_risk_observation(risk))
         return observed
 
-    def get(self, risk_id: str) -> Optional[Dict[str, Any]]:
+    def get(self, risk_id: str) -> dict[str, Any] | None:
         return self.datastore.get_risk(risk_id)
 
     def list(
         self,
         limit: int = 100,
-        status: Optional[str] = None,
-        artifact_id: Optional[str] = None,
-        severity: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        status: str | None = None,
+        artifact_id: str | None = None,
+        severity: str | None = None,
+    ) -> list[dict[str, Any]]:
         normalized_status = _choice(status, RISK_STATUSES, "status")
         normalized_severity = _choice(severity, RISK_SEVERITIES, "severity")
         return self.datastore.list_risks(
@@ -75,7 +74,7 @@ class RiskRegisterEngine:
             severity=normalized_severity,
         )
 
-    def update(self, risk_id: str, changes: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def update(self, risk_id: str, changes: dict[str, Any]) -> dict[str, Any] | None:
         current = self.datastore.get_risk(risk_id)
         if not current:
             return None
@@ -137,7 +136,7 @@ class RiskRegisterEngine:
         )
         return updated
 
-    def summary(self, as_of: Optional[str] = None) -> Dict[str, Any]:
+    def summary(self, as_of: str | None = None) -> dict[str, Any]:
         evaluated_at = _normalize_datetime(as_of) if as_of else _utc_now()
         risks = self.datastore.list_risks(limit=10000)
         actionable = [risk for risk in risks if risk.get("status") in ACTIONABLE_STATUSES]
@@ -169,13 +168,13 @@ class RiskRegisterEngine:
 
 
 def _fingerprint(
-    artifact_id: Optional[str], finding_type: str, indicator: str
+    artifact_id: str | None, finding_type: str, indicator: str
 ) -> str:
     identity = f"{artifact_id or 'unidentified'}|{finding_type}|{indicator}".lower()
     return hashlib.sha256(identity.encode("utf-8")).hexdigest()
 
 
-def _choice(value: Any, choices: set, field: str) -> Optional[str]:
+def _choice(value: Any, choices: set, field: str) -> str | None:
     if value in (None, ""):
         return None
     normalized = str(value).upper()
@@ -201,8 +200,8 @@ def _normalize_datetime(value: Any) -> str:
 def _sla_due_at(
     observed_at: str,
     severity: str,
-    remediation_sla: Optional[Dict[str, Any]],
-) -> Optional[str]:
+    remediation_sla: dict[str, Any] | None,
+) -> str | None:
     if not isinstance(remediation_sla, dict):
         return None
     value = remediation_sla.get(f"{severity.lower()}_hours")
@@ -224,8 +223,8 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _count_by(items: List[Dict[str, Any]], field: str) -> Dict[str, int]:
-    counts: Dict[str, int] = {}
+def _count_by(items: list[dict[str, Any]], field: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
     for item in items:
         value = str(item.get(field) or "UNKNOWN")
         counts[value] = counts.get(value, 0) + 1

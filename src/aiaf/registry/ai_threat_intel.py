@@ -23,7 +23,7 @@ build_threat_landscape — aggregate view of the threat landscape
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 THREAT_INTEL_VERSION = "1.0"
 
@@ -60,7 +60,7 @@ SEVERITY_HIGH = "HIGH"
 SEVERITY_MEDIUM = "MEDIUM"
 SEVERITY_LOW = "LOW"
 
-_SEVERITY_RANK: Dict[str, int] = {
+_SEVERITY_RANK: dict[str, int] = {
     SEVERITY_CRITICAL: 3, SEVERITY_HIGH: 2, SEVERITY_MEDIUM: 1, SEVERITY_LOW: 0,
 }
 
@@ -80,7 +80,7 @@ class ThreatIntelError(ValueError):
 # ── Built-in knowledge base ────────────────────────────────────────────────────
 # 20 techniques: 10 OWASP LLM 2025, 7 MITRE ATLAS, 3 OWASP Agentic
 
-_BUILTIN_THREATS: List[Dict[str, Any]] = [
+_BUILTIN_THREATS: list[dict[str, Any]] = [
     # ── OWASP LLM 2025 ────────────────────────────────────────────────────────
     {
         "technique_id": "LLM01",
@@ -408,7 +408,7 @@ _BUILTIN_THREATS: List[Dict[str, Any]] = [
 ]
 
 # Index built-ins by technique_id for fast lookup
-_BUILTIN_INDEX: Dict[str, Dict[str, Any]] = {t["technique_id"]: t for t in _BUILTIN_THREATS}
+_BUILTIN_INDEX: dict[str, dict[str, Any]] = {t["technique_id"]: t for t in _BUILTIN_THREATS}
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -421,12 +421,12 @@ def _threat_key(technique_id: str) -> str:
     return f"{_THREAT_PREFIX}{technique_id}"
 
 
-def _from_store(record: Dict[str, Any]) -> Dict[str, Any]:
+def _from_store(record: dict[str, Any]) -> dict[str, Any]:
     """Extract threat dict from a store record (metadata dict)."""
     return record.get("metadata") or {}
 
 
-def _to_store_record(threat: Dict[str, Any]) -> Dict[str, Any]:
+def _to_store_record(threat: dict[str, Any]) -> dict[str, Any]:
     technique_id = threat["technique_id"]
     return {
         "model_id": _threat_key(technique_id),
@@ -435,7 +435,7 @@ def _to_store_record(threat: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _resolve_threat(technique_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def _resolve_threat(technique_id: str, store: Any) -> dict[str, Any] | None:
     """Custom store entry takes precedence over built-in."""
     stored = store.get_model(_threat_key(technique_id))
     if stored:
@@ -443,7 +443,7 @@ def _resolve_threat(technique_id: str, store: Any) -> Optional[Dict[str, Any]]:
     return _BUILTIN_INDEX.get(technique_id)
 
 
-def _all_threats(store: Any) -> Dict[str, Dict[str, Any]]:
+def _all_threats(store: Any) -> dict[str, dict[str, Any]]:
     """Return merged dict of all threats (custom overrides built-ins)."""
     merged = dict(_BUILTIN_INDEX)
     all_records = store.list_models() if hasattr(store, "list_models") else []
@@ -457,7 +457,7 @@ def _all_threats(store: Any) -> Dict[str, Dict[str, Any]]:
     return merged
 
 
-def _relevance(threat: Dict[str, Any], capability_strings: List[str]) -> int:
+def _relevance(threat: dict[str, Any], capability_strings: list[str]) -> int:
     """Count how many capability triggers match the given capability strings."""
     caps_lower = " ".join(capability_strings).lower()
     return sum(1 for t in (threat.get("capability_triggers") or []) if t.lower() in caps_lower)
@@ -470,16 +470,16 @@ def ingest_threat(
     name: str,
     category: str,
     description: str,
-    affected_asset_types: List[str],
+    affected_asset_types: list[str],
     severity: str,
     store: Any,
     *,
-    owasp_llm_id: Optional[str] = None,
-    mitre_atlas_id: Optional[str] = None,
-    capability_triggers: Optional[List[str]] = None,
-    recommended_controls: Optional[List[str]] = None,
+    owasp_llm_id: str | None = None,
+    mitre_atlas_id: str | None = None,
+    capability_triggers: list[str] | None = None,
+    recommended_controls: list[str] | None = None,
     source: str = SOURCE_CUSTOM,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Add or update a threat technique in the store."""
     technique_id = str(technique_id).strip().upper()
     if not technique_id:
@@ -492,7 +492,7 @@ def ingest_threat(
     if unknown_assets:
         raise ThreatIntelError(f"Unknown asset types: {unknown_assets}")
 
-    threat: Dict[str, Any] = {
+    threat: dict[str, Any] = {
         "technique_id": technique_id,
         "name": name,
         "category": category,
@@ -510,7 +510,7 @@ def ingest_threat(
     return threat
 
 
-def get_threat(technique_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def get_threat(technique_id: str, store: Any) -> dict[str, Any] | None:
     """Return threat by technique_id (custom store entry overrides built-in)."""
     return _resolve_threat(str(technique_id).strip().upper(), store)
 
@@ -518,11 +518,11 @@ def get_threat(technique_id: str, store: Any) -> Optional[Dict[str, Any]]:
 def list_threats(
     store: Any,
     *,
-    category: Optional[str] = None,
-    severity: Optional[str] = None,
-    asset_type: Optional[str] = None,
-    source: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+    category: str | None = None,
+    severity: str | None = None,
+    asset_type: str | None = None,
+    source: str | None = None,
+) -> list[dict[str, Any]]:
     """List all threats with optional filters."""
     threats = list(_all_threats(store).values())
     if category:
@@ -540,11 +540,11 @@ def list_threats(
 
 
 def correlate_model(
-    model_record: Dict[str, Any],
+    model_record: dict[str, Any],
     store: Any,
     *,
-    top_n: Optional[int] = None,
-) -> Dict[str, Any]:
+    top_n: int | None = None,
+) -> dict[str, Any]:
     """Return threats applicable to a model asset, ranked by relevance."""
     meta = model_record.get("metadata") or {}
     mid = model_record.get("model_id") or model_record.get("id") or "unknown"
@@ -576,11 +576,11 @@ def correlate_model(
 
 
 def correlate_agent(
-    agent_record: Dict[str, Any],
+    agent_record: dict[str, Any],
     store: Any,
     *,
-    top_n: Optional[int] = None,
-) -> Dict[str, Any]:
+    top_n: int | None = None,
+) -> dict[str, Any]:
     """Return threats applicable to an agent asset."""
     meta = agent_record.get("metadata") or {}
     aid = agent_record.get("model_id") or agent_record.get("id") or "unknown"
@@ -608,11 +608,11 @@ def correlate_agent(
 
 
 def correlate_tool(
-    tool_record: Dict[str, Any],
+    tool_record: dict[str, Any],
     store: Any,
     *,
-    top_n: Optional[int] = None,
-) -> Dict[str, Any]:
+    top_n: int | None = None,
+) -> dict[str, Any]:
     """Return threats applicable to a tool / MCP server asset."""
     meta = tool_record.get("metadata") or {}
     tid = tool_record.get("model_id") or tool_record.get("id") or "unknown"
@@ -637,15 +637,15 @@ def correlate_tool(
     }
 
 
-def build_threat_landscape(store: Any) -> Dict[str, Any]:
+def build_threat_landscape(store: Any) -> dict[str, Any]:
     """Return an aggregate view of the current threat landscape."""
     all_t = list(_all_threats(store).values())
 
-    by_severity: Dict[str, int] = {
+    by_severity: dict[str, int] = {
         SEVERITY_CRITICAL: 0, SEVERITY_HIGH: 0, SEVERITY_MEDIUM: 0, SEVERITY_LOW: 0,
     }
-    by_category: Dict[str, int] = {}
-    by_source: Dict[str, int] = {}
+    by_category: dict[str, int] = {}
+    by_source: dict[str, int] = {}
 
     for t in all_t:
         sev = t.get("severity", SEVERITY_LOW)

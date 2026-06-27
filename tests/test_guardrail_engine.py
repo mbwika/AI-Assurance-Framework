@@ -1,6 +1,5 @@
 """Tests for aiaf.core.guardrail_engine."""
 
-import pytest
 
 from aiaf.core.guardrail_engine import (
     CHECK_VERSION,
@@ -12,12 +11,10 @@ from aiaf.core.guardrail_engine import (
     _boost_severity,
     _by_severity,
     _compute_verdict,
-    _scan_patterns,
     _sha256,
     batch_check,
     check_content,
 )
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

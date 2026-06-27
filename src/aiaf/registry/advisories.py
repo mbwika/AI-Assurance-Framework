@@ -8,13 +8,12 @@ package-specific advisory records the matcher consumes.
 import hashlib
 import re
 from datetime import datetime, timezone
-from typing import Any, Dict, List
-
+from typing import Any
 
 SEVERITIES = {"LOW", "MEDIUM", "HIGH", "CRITICAL", "UNKNOWN"}
 
 
-def normalize_advisory(document: Dict[str, Any]) -> List[Dict[str, Any]]:
+def normalize_advisory(document: dict[str, Any]) -> list[dict[str, Any]]:
     """Normalize one OSV-style document into package-specific records."""
     advisory_id = str(document.get("id") or "").strip()
     if not advisory_id:
@@ -62,7 +61,7 @@ def normalize_advisory(document: Dict[str, Any]) -> List[Dict[str, Any]]:
     return records
 
 
-def _ranges(value: Any) -> List[Dict[str, Any]]:
+def _ranges(value: Any) -> list[dict[str, Any]]:
     ranges = []
     for item in value or []:
         if not isinstance(item, dict):
@@ -77,7 +76,7 @@ def _ranges(value: Any) -> List[Dict[str, Any]]:
     return ranges
 
 
-def _advisory_severity(document: Dict[str, Any], affected: Dict[str, Any]) -> str:
+def _advisory_severity(document: dict[str, Any], affected: dict[str, Any]) -> str:
     candidates = (
         affected.get("database_specific", {}).get("severity"),
         document.get("database_specific", {}).get("severity"),
@@ -90,7 +89,7 @@ def _advisory_severity(document: Dict[str, Any], affected: Dict[str, Any]) -> st
     return "UNKNOWN"
 
 
-def _references(value: Any) -> List[Dict[str, str]]:
+def _references(value: Any) -> list[dict[str, str]]:
     references = []
     for item in value or []:
         if isinstance(item, dict) and item.get("url"):
@@ -102,7 +101,7 @@ def _references(value: Any) -> List[Dict[str, str]]:
     return references
 
 
-def _strings(value: Any) -> List[str]:
+def _strings(value: Any) -> list[str]:
     if value in (None, ""):
         return []
     if isinstance(value, str):

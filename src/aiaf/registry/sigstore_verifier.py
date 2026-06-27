@@ -36,7 +36,7 @@ import hashlib
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -62,10 +62,10 @@ _BUNDLE_SUFFIXES = (".sigstore.json", ".sigstore", ".bundle")
 def verify_file(
     artifact_path: str,
     *,
-    bundle_path: Optional[str] = None,
-    expected_identity: Optional[str] = None,
-    expected_issuer: Optional[str] = None,
-) -> Dict[str, Any]:
+    bundle_path: str | None = None,
+    expected_identity: str | None = None,
+    expected_issuer: str | None = None,
+) -> dict[str, Any]:
     """Compatibility wrapper that accepts string paths."""
     return verify_resolved_file(
         Path(artifact_path),
@@ -78,10 +78,10 @@ def verify_file(
 def verify_resolved_file(
     artifact_path: Path,
     *,
-    bundle_path: Optional[Path] = None,
-    expected_identity: Optional[str] = None,
-    expected_issuer: Optional[str] = None,
-) -> Dict[str, Any]:
+    bundle_path: Path | None = None,
+    expected_identity: str | None = None,
+    expected_issuer: str | None = None,
+) -> dict[str, Any]:
     """Verify a Sigstore signature bundle for ``artifact_path``.
 
     Parameters
@@ -142,7 +142,7 @@ def verify_resolved_file(
     )
 
 
-def find_bundle(artifact_path: str) -> Optional[str]:
+def find_bundle(artifact_path: str) -> str | None:
     """Return the path to a Sigstore bundle beside ``artifact_path``, or None."""
     bundle = _find_bundle_path(Path(artifact_path))
     return str(bundle) if bundle is not None else None
@@ -157,9 +157,9 @@ def _verify_with_sigstore(
     artifact_path: str,
     bundle_path: str,
     *,
-    expected_identity: Optional[str],
-    expected_issuer: Optional[str],
-) -> Dict[str, Any]:
+    expected_identity: str | None,
+    expected_issuer: str | None,
+) -> dict[str, Any]:
     """Attempt verification using the ``sigstore`` Python package."""
     try:
         import sigstore  # noqa: F401
@@ -210,12 +210,12 @@ def _sigstore_verify(
     bundle_path: str,
     artifact_digest: str,
     *,
-    expected_identity: Optional[str],
-    expected_issuer: Optional[str],
-) -> Dict[str, Any]:
+    expected_identity: str | None,
+    expected_issuer: str | None,
+) -> dict[str, Any]:
     """Inner sigstore verification — called only when sigstore is installed."""
-    from sigstore.verify import Verifier  # type: ignore[import]
     from sigstore.models import Bundle  # type: ignore[import]
+    from sigstore.verify import Verifier  # type: ignore[import]
 
     with open(bundle_path) as fh:
         bundle_json = fh.read()
@@ -251,9 +251,9 @@ def _sigstore_verify(
     verifier = Verifier.production()
     try:
         if policy is not None:
-            result_obj = verifier.verify_artifact(artifact_bytes, bundle, policy)
+            verifier.verify_artifact(artifact_bytes, bundle, policy)
         else:
-            result_obj = verifier.verify_artifact(artifact_bytes, bundle)
+            verifier.verify_artifact(artifact_bytes, bundle)
 
         signer = _extract_signer(bundle)
         issuer = _extract_issuer(bundle)
@@ -287,7 +287,7 @@ def _sigstore_verify(
 # ---------------------------------------------------------------------------
 
 
-def _find_bundle_path(artifact_path: Path) -> Optional[Path]:
+def _find_bundle_path(artifact_path: Path) -> Path | None:
     """Discover a Sigstore bundle file beside the artifact."""
     base = str(artifact_path)
     for suffix in _BUNDLE_SUFFIXES:
@@ -306,7 +306,7 @@ def _sha256_file(path: str) -> str:
     return h.hexdigest()
 
 
-def _extract_signer(bundle: Any) -> Optional[str]:
+def _extract_signer(bundle: Any) -> str | None:
     """Best-effort signer identity extraction from a Sigstore bundle."""
     try:
         cert = bundle.signing_certificate  # type: ignore[attr-defined]
@@ -320,7 +320,7 @@ def _extract_signer(bundle: Any) -> Optional[str]:
         return None
 
 
-def _extract_issuer(bundle: Any) -> Optional[str]:
+def _extract_issuer(bundle: Any) -> str | None:
     """Best-effort issuer extraction."""
     try:
         for ext in bundle.signing_certificate.extensions or []:  # type: ignore[attr-defined]
@@ -331,7 +331,7 @@ def _extract_issuer(bundle: Any) -> Optional[str]:
     return None
 
 
-def _extract_log_url(bundle: Any) -> Optional[str]:
+def _extract_log_url(bundle: Any) -> str | None:
     """Best-effort Rekor log entry URL."""
     try:
         tlog = bundle.log_entry  # type: ignore[attr-defined]
@@ -347,13 +347,13 @@ def _result(
     *,
     verified: bool,
     artifact_path: str = "",
-    bundle_path: Optional[str] = None,
-    artifact_digest: Optional[str] = None,
-    signer_identity: Optional[str] = None,
-    issuer: Optional[str] = None,
-    transparency_log_url: Optional[str] = None,
-    note: Optional[str] = None,
-) -> Dict[str, Any]:
+    bundle_path: str | None = None,
+    artifact_digest: str | None = None,
+    signer_identity: str | None = None,
+    issuer: str | None = None,
+    transparency_log_url: str | None = None,
+    note: str | None = None,
+) -> dict[str, Any]:
     return {
         "verifier_version": SIGSTORE_VERIFIER_VERSION,
         "status": status,

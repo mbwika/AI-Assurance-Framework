@@ -12,10 +12,10 @@ signals AIAF already computes into one focused view for unknown-model review.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, Optional
+from collections.abc import Iterable
+from typing import Any
 
 from ..registry.evidence_origin import EvidenceOrigin, coerce_origin, ledger_from_list
-
 
 UNKNOWN_MODEL_ASSURANCE_VERSION = "1.0"
 
@@ -47,18 +47,18 @@ _RESTRICTIVE_LICENSE_MARKERS = (
 
 
 def build_unknown_model_assurance(
-    model_record: Dict[str, Any],
+    model_record: dict[str, Any],
     *,
-    recommendation: Optional[Dict[str, Any]] = None,
-    provenance_assessment: Optional[Dict[str, Any]] = None,
-    serialization_scan: Optional[Dict[str, Any]] = None,
-    weight_inspection: Optional[Dict[str, Any]] = None,
-    lineage: Optional[Dict[str, Any]] = None,
-    fact_reconciliation: Optional[Dict[str, Any]] = None,
-    vulnerability_scan: Optional[Dict[str, Any]] = None,
-    backdoor_heuristics: Optional[Dict[str, Any]] = None,
-    unknown_model_probe: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    recommendation: dict[str, Any] | None = None,
+    provenance_assessment: dict[str, Any] | None = None,
+    serialization_scan: dict[str, Any] | None = None,
+    weight_inspection: dict[str, Any] | None = None,
+    lineage: dict[str, Any] | None = None,
+    fact_reconciliation: dict[str, Any] | None = None,
+    vulnerability_scan: dict[str, Any] | None = None,
+    backdoor_heuristics: dict[str, Any] | None = None,
+    unknown_model_probe: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Assemble a first-class assurance view for an unknown external model."""
     model_record = model_record if isinstance(model_record, dict) else {}
     recommendation = recommendation or {}
@@ -188,11 +188,11 @@ def build_unknown_model_assurance(
 
 
 def _identity_posture(
-    ledger_entries: List[Dict[str, Any]],
+    ledger_entries: list[dict[str, Any]],
     *,
-    provenance_assessment: Dict[str, Any],
+    provenance_assessment: dict[str, Any],
     pir: float,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     verified_names = {"provenance_attestation", "sigstore_verification"}
     verified_identity = any(
         entry.get("name") in verified_names
@@ -224,9 +224,9 @@ def _identity_posture(
 
 
 def _artifact_inspection(
-    serialization_scan: Dict[str, Any],
-    weight_inspection: Dict[str, Any],
-) -> Dict[str, Any]:
+    serialization_scan: dict[str, Any],
+    weight_inspection: dict[str, Any],
+) -> dict[str, Any]:
     derived = weight_inspection.get("derived_facts") or {}
     return {
         "artifact_present": bool(serialization_scan or weight_inspection),
@@ -249,12 +249,12 @@ def _artifact_inspection(
 
 
 def _model_card_consistency(
-    hf_card: Dict[str, Any],
+    hf_card: dict[str, Any],
     *,
-    contradictions: List[Dict[str, Any]],
-    confirmations: List[Dict[str, Any]],
-    unverifiable: List[str],
-) -> Dict[str, Any]:
+    contradictions: list[dict[str, Any]],
+    confirmations: list[dict[str, Any]],
+    unverifiable: list[str],
+) -> dict[str, Any]:
     if contradictions:
         status = "CONTRADICTIONS_FOUND"
     elif confirmations:
@@ -292,11 +292,11 @@ def _model_card_consistency(
 
 
 def _license_posture(
-    model_record: Dict[str, Any],
+    model_record: dict[str, Any],
     *,
-    hf_card: Dict[str, Any],
-    ledger_entries: List[Dict[str, Any]],
-) -> Dict[str, Any]:
+    hf_card: dict[str, Any],
+    ledger_entries: list[dict[str, Any]],
+) -> dict[str, Any]:
     declared_license = (
         model_record.get("license")
         or hf_card.get("license")
@@ -333,13 +333,13 @@ def _license_posture(
 
 def _security_flags(
     *,
-    recommendation: Dict[str, Any],
-    serialization_scan: Dict[str, Any],
-    vulnerability_scan: Dict[str, Any],
-    backdoor_heuristics: Dict[str, Any],
-    contradictions: List[Dict[str, Any]],
-    unknown_model_probe: Dict[str, Any],
-) -> Dict[str, Any]:
+    recommendation: dict[str, Any],
+    serialization_scan: dict[str, Any],
+    vulnerability_scan: dict[str, Any],
+    backdoor_heuristics: dict[str, Any],
+    contradictions: list[dict[str, Any]],
+    unknown_model_probe: dict[str, Any],
+) -> dict[str, Any]:
     contradiction_flags = [
         item for item in contradictions if str(item.get("severity") or "").upper() in _HIGH_SEVERITIES
     ]
@@ -373,12 +373,12 @@ def _security_flags(
 
 def _evidence_gaps(
     *,
-    recommendation: Dict[str, Any],
-    weight_inspection: Dict[str, Any],
-    serialization_scan: Dict[str, Any],
-    provenance_assessment: Dict[str, Any],
-    hf_card: Dict[str, Any],
-) -> List[str]:
+    recommendation: dict[str, Any],
+    weight_inspection: dict[str, Any],
+    serialization_scan: dict[str, Any],
+    provenance_assessment: dict[str, Any],
+    hf_card: dict[str, Any],
+) -> list[str]:
     gaps = list(recommendation.get("evidence_gaps") or [])
     if not serialization_scan:
         gaps.append("Artifact serialization scan has not been recorded.")
@@ -393,13 +393,13 @@ def _evidence_gaps(
 
 def _next_steps(
     *,
-    identity: Dict[str, str],
-    model_card_consistency: Dict[str, Any],
-    security_flags: Dict[str, Any],
-    evidence_gaps: List[str],
-    artifact_inspection: Dict[str, Any],
-) -> List[str]:
-    steps: List[str] = []
+    identity: dict[str, str],
+    model_card_consistency: dict[str, Any],
+    security_flags: dict[str, Any],
+    evidence_gaps: list[str],
+    artifact_inspection: dict[str, Any],
+) -> list[str]:
+    steps: list[str] = []
 
     if security_flags.get("dangerous_serialization"):
         steps.append("Block adoption until the unsafe serialization pattern is removed or a safer artifact format is provided.")
@@ -420,11 +420,11 @@ def _next_steps(
 
 def _overall_posture(
     *,
-    identity: Dict[str, str],
-    artifact_inspection: Dict[str, Any],
-    model_card_consistency: Dict[str, Any],
-    security_flags: Dict[str, Any],
-    provenance_score: Optional[float],
+    identity: dict[str, str],
+    artifact_inspection: dict[str, Any],
+    model_card_consistency: dict[str, Any],
+    security_flags: dict[str, Any],
+    provenance_score: float | None,
 ) -> str:
     if (
         security_flags.get("dangerous_serialization")
@@ -457,9 +457,9 @@ def _overall_posture(
 def _summary(
     posture: str,
     *,
-    identity: Dict[str, str],
-    security_flags: Dict[str, Any],
-    artifact_inspection: Dict[str, Any],
+    identity: dict[str, str],
+    security_flags: dict[str, Any],
+    artifact_inspection: dict[str, Any],
 ) -> str:
     if posture == "DO_NOT_TRUST":
         return "AIAF found blocking security or identity issues. This model should not be trusted for adoption until those issues are resolved."
@@ -476,8 +476,8 @@ def _summary(
     return "AIAF currently relies mostly on operator or publisher declarations for this model."
 
 
-def _fact_origin(name: str, ledger_entries: Iterable[Dict[str, Any]]) -> Optional[str]:
-    strongest: Optional[EvidenceOrigin] = None
+def _fact_origin(name: str, ledger_entries: Iterable[dict[str, Any]]) -> str | None:
+    strongest: EvidenceOrigin | None = None
     for entry in ledger_entries:
         if entry.get("name") != name:
             continue
@@ -514,7 +514,7 @@ def _sum_counts(raw: Any, severities: Iterable[str]) -> int:
     return total
 
 
-def _safe_number(value: Any) -> Optional[float]:
+def _safe_number(value: Any) -> float | None:
     try:
         if value is None:
             return None
@@ -523,8 +523,8 @@ def _safe_number(value: Any) -> Optional[float]:
         return None
 
 
-def _dedupe(items: Iterable[Any]) -> List[Any]:
-    out: List[Any] = []
+def _dedupe(items: Iterable[Any]) -> list[Any]:
+    out: list[Any] = []
     seen = set()
     for item in items:
         key = repr(item)

@@ -1,12 +1,6 @@
 """Tests for src/aiaf/core/redteam_engine.py (Phase 4)."""
 
 import json
-import sys
-from pathlib import Path
-from typing import Any, Dict
-from unittest.mock import MagicMock, patch
-
-import pytest
 
 from aiaf.core.redteam_engine import (
     BACKEND_GARAK,
@@ -15,10 +9,8 @@ from aiaf.core.redteam_engine import (
     PROBE_FAMILIES_QUICK,
     REDTEAM_ENGINE_VERSION,
     STATUS_COMPLETED,
-    STATUS_ENDPOINT_ERROR,
     STATUS_ERROR,
     STATUS_NO_ENDPOINT,
-    STATUS_PARTIAL,
     STATUS_TOOL_NOT_INSTALLED,
     _aggregate,
     _build_findings,
@@ -27,7 +19,6 @@ from aiaf.core.redteam_engine import (
     _parse_garak_output,
     run_redteam,
 )
-
 
 # ---------------------------------------------------------------------------
 # Constants

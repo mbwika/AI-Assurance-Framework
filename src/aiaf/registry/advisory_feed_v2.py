@@ -1,12 +1,11 @@
 """Hardened, deterministic advisory-feed envelope verification."""
 
-from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
 import json
 import re
-from typing import Any, Dict, List, Optional
-
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
 ADVISORY_FEED_V2_SCHEMA_VERSION = "2.0"
 ADVISORY_FEED_V2_ALGORITHM = "HMAC-SHA256"
@@ -94,10 +93,10 @@ def create_advisory_feed_v2(
     *,
     feed_id: str,
     sequence: int,
-    previous_feed_sha256: Optional[str],
+    previous_feed_sha256: str | None,
     generated_at: str,
     expires_at: str,
-    advisories: List[Dict[str, Any]],
+    advisories: list[dict[str, Any]],
     signing_key: Any,
     key_id: str,
     source: str,
@@ -105,7 +104,7 @@ def create_advisory_feed_v2(
     max_lifetime_seconds: int = _DEFAULT_MAX_LIFETIME_SECONDS,
     max_feed_age_seconds: int = _DEFAULT_MAX_FEED_AGE_SECONDS,
     max_future_skew_seconds: int = _DEFAULT_MAX_FUTURE_SKEW_SECONDS,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a schema-2 feed and verify it against its explicit trust policy."""
     feed = {
         "schema_version": ADVISORY_FEED_V2_SCHEMA_VERSION,
@@ -149,8 +148,8 @@ def create_advisory_feed_v2(
 def verify_advisory_feed_v2(
     feed: Any,
     signing_key: Any,
-    verification_context: Optional[Dict[str, Any]],
-) -> Dict[str, Any]:
+    verification_context: dict[str, Any] | None,
+) -> dict[str, Any]:
     """Verify cryptographic integrity, feed policy, freshness, and hash-chain state.
 
     The caller must provide expected feed, source, key, sequence, previous
@@ -159,7 +158,7 @@ def verify_advisory_feed_v2(
     as sufficient trust.
     """
     checks = {name: False for name in _CHECK_NAMES}
-    diagnostics: List[Dict[str, Any]] = []
+    diagnostics: list[dict[str, Any]] = []
     feed_object = feed if isinstance(feed, dict) else {}
     checks["feed_is_object"] = isinstance(feed, dict)
     checks["strict_envelope_fields"] = checks["feed_is_object"] and set(feed_object) == _ALLOWED_FIELDS
@@ -357,7 +356,7 @@ def _verification_policy(value, diagnostics):
 
 
 def _validate_advisories(value):
-    diagnostics: List[Dict[str, Any]] = []
+    diagnostics: list[dict[str, Any]] = []
     if not isinstance(value, list) or not value:
         return {
             "valid": False,

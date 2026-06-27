@@ -1,11 +1,11 @@
 """Robust, deterministic drift analysis for historical assurance metrics."""
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import math
 import statistics
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
-
+from collections.abc import Sequence
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Any
 
 RISK_DRIFT_SCORING_VERSION = "2.0"
 
@@ -19,15 +19,15 @@ _DIRECTIONS = frozenset({"higher_is_worse", "higher_is_better"})
 class _Observation:
     value: float
     harm: float
-    timestamp: Optional[datetime]
+    timestamp: datetime | None
     source_index: int
     scoring_version: str
 
 
 def analyze_risk_drift(
     observations: Any,
-    assessment_context: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    assessment_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Detect sustained deterioration, trends, spikes, and volatility changes.
 
     Observations may be numbers or metric dictionaries containing
@@ -38,9 +38,9 @@ def analyze_risk_drift(
     ``direction`` from the assessment context. Defaults target a 0-10 risk
     score where higher values are worse. No current time is read implicitly.
     """
-    diagnostics: List[Dict[str, Any]] = []
-    indicators: List[Dict[str, Any]] = []
-    recommendations: List[str] = []
+    diagnostics: list[dict[str, Any]] = []
+    indicators: list[dict[str, Any]] = []
+    recommendations: list[str] = []
     assessment_complete = True
 
     context, context_complete = _context(assessment_context, diagnostics)
@@ -56,7 +56,7 @@ def analyze_risk_drift(
             {"supplied_observation_count": supplied_count},
         )
 
-    parsed: List[_Observation] = []
+    parsed: list[_Observation] = []
     invalid_count = 0
     timestamp_supplied = 0
     timestamp_valid = 0
@@ -628,7 +628,7 @@ def _cadence(observations, context, diagnostics):
         return result
     intervals = [
         (right.timestamp - left.timestamp).total_seconds()
-        for left, right in zip(observations, observations[1:])
+        for left, right in zip(observations, observations[1:], strict=False)
     ]
     positive = [value for value in intervals if value > 0]
     if not positive:

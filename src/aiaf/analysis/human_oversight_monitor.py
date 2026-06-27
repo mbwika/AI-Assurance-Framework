@@ -60,7 +60,7 @@ from __future__ import annotations
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 HUMAN_OVERSIGHT_VERSION = "1.0"
 
@@ -88,7 +88,7 @@ RISK_ELEVATED = "ELEVATED"
 RISK_HIGH = "HIGH"
 RISK_CRITICAL = "CRITICAL"
 
-_RISK_RANK: Dict[str, int] = {
+_RISK_RANK: dict[str, int] = {
     RISK_SAFE: 0, RISK_ELEVATED: 1, RISK_HIGH: 2, RISK_CRITICAL: 3,
 }
 
@@ -107,7 +107,7 @@ class HumanOversightError(ValueError):
 
 # ── Text-pattern detectors ─────────────────────────────────────────────────────
 
-_SUPPRESSION_PATTERNS: List[Tuple[re.Pattern, str]] = [
+_SUPPRESSION_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r"no\s+need\s+to\s+(review|check|verify|approve|confirm)", re.I), "HIGH"),
     (re.compile(r"(routine|standard|normal|automatic)\s+(operation|procedure|step|process|task)", re.I), "MEDIUM"),
     (re.compile(r"(already|previously)\s+(approved|authorized|confirmed|reviewed)", re.I), "HIGH"),
@@ -119,7 +119,7 @@ _SUPPRESSION_PATTERNS: List[Tuple[re.Pattern, str]] = [
     (re.compile(r"(no|zero)\s+(risk|concern|issue|problem)\s+here", re.I), "MEDIUM"),
 ]
 
-_URGENCY_PATTERNS: List[Tuple[re.Pattern, str]] = [
+_URGENCY_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r"\b(immediately|instant(ly)?|right\s+now|at\s+once)\b", re.I), "HIGH"),
     (re.compile(r"\b(asap|a\.s\.a\.p\.?|urgent(ly)?|critical(ly)?)\b", re.I), "MEDIUM"),
     (re.compile(r"\b(time.sensitive|time.critical|time-critical)\b", re.I), "MEDIUM"),
@@ -129,7 +129,7 @@ _URGENCY_PATTERNS: List[Tuple[re.Pattern, str]] = [
     (re.compile(r"(opportunity|window)\s+(is\s+)?(closing|about\s+to\s+(close|expire))", re.I), "HIGH"),
 ]
 
-_CONFIDENCE_PATTERNS: List[Tuple[re.Pattern, str]] = [
+_CONFIDENCE_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r"\b(definitely|certainly|absolutely|undoubtedly)\b", re.I), "MEDIUM"),
     (re.compile(r"\b(guaranteed?|confirmed?|verified?)\b", re.I), "HIGH"),
     (re.compile(r"\b(without\s+(a\s+)?doubt|100\s*%\s*(sure|certain|confident|accurate))\b", re.I), "HIGH"),
@@ -138,7 +138,7 @@ _CONFIDENCE_PATTERNS: List[Tuple[re.Pattern, str]] = [
     (re.compile(r"\b(this\s+is|it\s+is)\s+(definitely|certainly|absolutely)\s+(correct|right|safe)\b", re.I), "MEDIUM"),
 ]
 
-_AUTHORITY_PATTERNS: List[Tuple[re.Pattern, str]] = [
+_AUTHORITY_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r"(as\s+per|per|according\s+to)\s+\w[\w\s]{1,30}.s?\s+instructions?", re.I), "HIGH"),
     (re.compile(r"\w[\w\s]{0,20}\s+(approved|authorized|sanctioned|confirmed)\s+(this|it|the\s+\w+)", re.I), "HIGH"),
     (re.compile(r"(authorized|approved|cleared)\s+by\s+\w+", re.I), "HIGH"),
@@ -174,8 +174,8 @@ _SINGLE_ENTITY_RE = re.compile(
 def _detect_consent_mismatch(
     described_intent: str,
     tool_name: str,
-    tool_params: Dict[str, Any],
-) -> List[Dict[str, Any]]:
+    tool_params: dict[str, Any],
+) -> list[dict[str, Any]]:
     """Heuristic comparison of what the agent described vs what it actually called."""
     findings = []
     params_str = str(tool_params)
@@ -235,15 +235,15 @@ def _event_key(session_id: str, event_id: str) -> str:
     return f"{_EVENT_PREFIX}{session_id}:{event_id}"
 
 
-def _load_meta(record: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def _load_meta(record: dict[str, Any] | None) -> dict[str, Any]:
     return (record or {}).get("metadata") or {}
 
 
 def _scan_text(
     text: str,
-    patterns: List[Tuple[re.Pattern, str]],
+    patterns: list[tuple[re.Pattern, str]],
     signal_type: str,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     findings = []
     seen: set = set()
     for pattern, severity in patterns:
@@ -270,10 +270,10 @@ def create_oversight_session(
     agent_id: str,
     store: Any,
     *,
-    principal_id: Optional[str] = None,
-    known_principals: Optional[List[str]] = None,
-    context: Optional[str] = None,
-) -> Dict[str, Any]:
+    principal_id: str | None = None,
+    known_principals: list[str] | None = None,
+    context: str | None = None,
+) -> dict[str, Any]:
     """Create a new oversight session for an agent interaction window.
 
     Parameters
@@ -293,7 +293,7 @@ def create_oversight_session(
     if store.get_model(_session_key(session_id)):
         raise HumanOversightError(f"Oversight session {session_id!r} already exists.")
 
-    record: Dict[str, Any] = {
+    record: dict[str, Any] = {
         "model_id": _session_key(session_id),
         "id": _session_key(session_id),
         "metadata": {
@@ -315,7 +315,7 @@ def create_oversight_session(
     return _load_meta(store.get_model(_session_key(session_id)))
 
 
-def get_oversight_session(session_id: str, store: Any) -> Optional[Dict[str, Any]]:
+def get_oversight_session(session_id: str, store: Any) -> dict[str, Any] | None:
     rec = store.get_model(_session_key(session_id))
     return _load_meta(rec) if rec else None
 
@@ -325,9 +325,9 @@ def record_agent_output(
     text: str,
     store: Any,
     *,
-    turn_id: Optional[str] = None,
-    occurred_at: Optional[str] = None,
-) -> Dict[str, Any]:
+    turn_id: str | None = None,
+    occurred_at: str | None = None,
+) -> dict[str, Any]:
     """Record an agent output turn and scan it for text-pattern signals.
 
     Parameters
@@ -349,7 +349,7 @@ def record_agent_output(
     ts = occurred_at or _utc_now()
 
     # Run text-pattern detectors
-    signals: List[Dict[str, Any]] = []
+    signals: list[dict[str, Any]] = []
     signals.extend(_scan_text(text, _SUPPRESSION_PATTERNS, SIGNAL_OVERSIGHT_SUPPRESSION))
     signals.extend(_scan_text(text, _URGENCY_PATTERNS, SIGNAL_URGENCY_MANUFACTURE))
     signals.extend(_scan_text(text, _CONFIDENCE_PATTERNS, SIGNAL_CONFIDENCE_INFLATION))
@@ -368,7 +368,7 @@ def record_agent_output(
                 finding["severity"] = "MEDIUM"  # legitimate principal mentioned
         signals.append(finding)
 
-    event_record: Dict[str, Any] = {
+    event_record: dict[str, Any] = {
         "model_id": _event_key(session_id, event_id),
         "id": _event_key(session_id, event_id),
         "metadata": {
@@ -398,13 +398,13 @@ def record_agent_output(
 def record_tool_call(
     session_id: str,
     tool_name: str,
-    tool_params: Dict[str, Any],
+    tool_params: dict[str, Any],
     store: Any,
     *,
-    turn_id: Optional[str] = None,
-    described_intent: Optional[str] = None,
-    occurred_at: Optional[str] = None,
-) -> Dict[str, Any]:
+    turn_id: str | None = None,
+    described_intent: str | None = None,
+    occurred_at: str | None = None,
+) -> dict[str, Any]:
     """Record a tool call and optionally check for CONSENT_MISMATCH.
 
     Parameters
@@ -428,7 +428,7 @@ def record_tool_call(
     event_id = str(uuid.uuid4())[:12]
     ts = occurred_at or _utc_now()
 
-    signals: List[Dict[str, Any]] = []
+    signals: list[dict[str, Any]] = []
 
     # Consent mismatch if described_intent was provided
     if described_intent:
@@ -441,7 +441,7 @@ def record_tool_call(
                 "detail": f["detail"],
             })
 
-    event_record: Dict[str, Any] = {
+    event_record: dict[str, Any] = {
         "model_id": _event_key(session_id, event_id),
         "id": _event_key(session_id, event_id),
         "metadata": {
@@ -470,7 +470,7 @@ def record_tool_call(
     return _load_meta(store.get_model(_event_key(session_id, event_id)))
 
 
-def assess_session(session_id: str, store: Any) -> Dict[str, Any]:
+def assess_session(session_id: str, store: Any) -> dict[str, Any]:
     """Run a full trust-exploitation assessment across all events in a session.
 
     Returns
@@ -488,7 +488,7 @@ def assess_session(session_id: str, store: Any) -> Dict[str, Any]:
     prefix = _event_key(session_id, "")
     all_records = store.list_models() if hasattr(store, "list_models") else []
 
-    all_signals: List[Dict[str, Any]] = []
+    all_signals: list[dict[str, Any]] = []
     event_count = 0
 
     for rec in all_records:
@@ -505,7 +505,7 @@ def assess_session(session_id: str, store: Any) -> Dict[str, Any]:
             all_signals.append(enriched)
 
     # Aggregate by signal type
-    signals_by_type: Dict[str, List[Dict[str, Any]]] = {}
+    signals_by_type: dict[str, list[dict[str, Any]]] = {}
     for s in all_signals:
         sig = s.get("signal", "UNKNOWN")
         signals_by_type.setdefault(sig, []).append(s)
@@ -553,7 +553,7 @@ def assess_session(session_id: str, store: Any) -> Dict[str, Any]:
     }
 
 
-def close_session(session_id: str, store: Any) -> Dict[str, Any]:
+def close_session(session_id: str, store: Any) -> dict[str, Any]:
     """Mark a session as closed (no further events accepted)."""
     session_rec = store.get_model(_session_key(session_id))
     if not session_rec:
@@ -572,7 +572,7 @@ def list_at_risk_sessions(
     *,
     min_risk: str = RISK_ELEVATED,
     limit: int = 50,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Return sessions at or above min_risk, sorted by risk descending."""
     min_rank = _RISK_RANK.get(min_risk, 1)
     all_records = store.list_models() if hasattr(store, "list_models") else []

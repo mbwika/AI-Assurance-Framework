@@ -12,21 +12,23 @@ REST endpoints:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from .models import get_api_key, get_store
 from ..registry.ai_threat_intel import (
-    ASSET_TYPES,
-    CATEGORIES,
     SOURCE_CUSTOM,
     ThreatIntelError,
-    ingest_threat, get_threat, list_threats,
-    correlate_model, correlate_agent, correlate_tool,
     build_threat_landscape,
+    correlate_agent,
+    correlate_model,
+    correlate_tool,
+    get_threat,
+    ingest_threat,
+    list_threats,
 )
+from .models import get_api_key, get_store
 
 router = APIRouter(prefix="/v1/threat-intel", tags=["threat-intelligence"])
 
@@ -38,41 +40,41 @@ class IngestThreatRequest(BaseModel):
     name: str
     category: str
     description: str
-    affected_asset_types: List[str]
+    affected_asset_types: list[str]
     severity: str
-    owasp_llm_id: Optional[str] = None
-    mitre_atlas_id: Optional[str] = None
-    capability_triggers: Optional[List[str]] = None
-    recommended_controls: Optional[List[str]] = None
+    owasp_llm_id: str | None = None
+    mitre_atlas_id: str | None = None
+    capability_triggers: list[str] | None = None
+    recommended_controls: list[str] | None = None
     source: str = SOURCE_CUSTOM
 
 
 class CorrelateModelRequest(BaseModel):
     model_id: str
-    metadata: Optional[Dict[str, Any]] = None
-    top_n: Optional[int] = None
+    metadata: dict[str, Any] | None = None
+    top_n: int | None = None
 
 
 class CorrelateAgentRequest(BaseModel):
     agent_id: str
-    metadata: Optional[Dict[str, Any]] = None
-    top_n: Optional[int] = None
+    metadata: dict[str, Any] | None = None
+    top_n: int | None = None
 
 
 class CorrelateToolRequest(BaseModel):
     tool_id: str
-    metadata: Optional[Dict[str, Any]] = None
-    top_n: Optional[int] = None
+    metadata: dict[str, Any] | None = None
+    top_n: int | None = None
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
 @router.get("/techniques")
 def list_threat_techniques(
-    category: Optional[str] = None,
-    severity: Optional[str] = None,
-    asset_type: Optional[str] = None,
-    source: Optional[str] = None,
+    category: str | None = None,
+    severity: str | None = None,
+    asset_type: str | None = None,
+    source: str | None = None,
     _: str = Depends(get_api_key),
     store: Any = Depends(get_store),
 ):

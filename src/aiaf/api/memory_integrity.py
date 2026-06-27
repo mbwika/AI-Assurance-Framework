@@ -11,19 +11,22 @@ REST endpoints:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from .models import get_api_key, get_store
 from ..analysis.memory_integrity import (
     ATTACK_VECTORS,
     MemoryIntegrityError,
-    register_memory_store, get_memory_store,
-    write_memory, get_memory_entry, list_memory_entries,
-    assess_memory_integrity, scan_for_poisoning,
+    assess_memory_integrity,
+    get_memory_store,
+    list_memory_entries,
+    register_memory_store,
+    scan_for_poisoning,
+    write_memory,
 )
+from .models import get_api_key, get_store
 
 router = APIRouter(prefix="/v1/memory-integrity", tags=["memory-integrity"])
 
@@ -33,7 +36,7 @@ router = APIRouter(prefix="/v1/memory-integrity", tags=["memory-integrity"])
 class RegisterStoreRequest(BaseModel):
     store_id: str
     agent_id: str
-    description: Optional[str] = None
+    description: str | None = None
     max_entries: int = 10_000
 
 
@@ -41,8 +44,8 @@ class WriteMemoryRequest(BaseModel):
     key: str
     value: str
     origin: str
-    writing_agent_id: Optional[str] = None
-    tags: Optional[List[str]] = None
+    writing_agent_id: str | None = None
+    tags: list[str] | None = None
 
 
 class ScanRequest(BaseModel):
@@ -99,7 +102,7 @@ def write_memory_route(
 def list_memory_entries_route(
     store_id: str,
     anomalous_only: bool = False,
-    attack_vector: Optional[str] = None,
+    attack_vector: str | None = None,
     limit: int = 200,
     _: str = Depends(get_api_key),
     store: Any = Depends(get_store),

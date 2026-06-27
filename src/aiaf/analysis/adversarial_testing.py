@@ -5,8 +5,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from statistics import NormalDist
-from typing import Any, Dict, List, Optional, Tuple
-
+from typing import Any
 
 ADVERSARIAL_TESTING_SCORING_VERSION = "2.0"
 _MAX_TEST_RECORDS = 1_000
@@ -19,15 +18,15 @@ _DEFAULT_CONFIDENCE_LEVEL = 0.95
 
 @dataclass(frozen=True)
 class _Profile:
-    required_categories: Tuple[str, ...]
+    required_categories: tuple[str, ...]
     minimum_attempts: int
     maximum_attack_success_rate: float
     confidence_level: float
     z_score: float
-    category_thresholds: Dict[str, float]
-    maximum_evidence_age_days: Optional[float]
+    category_thresholds: dict[str, float]
+    maximum_evidence_age_days: float | None
     require_independent_review: bool
-    assessment_as_of: Optional[datetime]
+    assessment_as_of: datetime | None
 
 
 @dataclass(frozen=True)
@@ -37,15 +36,15 @@ class _TestEvidence:
     category: str
     severity: str
     status: str
-    passed: Optional[bool]
-    attempts: Optional[int]
-    successful_attacks: Optional[int]
-    attack_success_rate: Optional[float]
-    upper_confidence_bound: Optional[float]
+    passed: bool | None
+    attempts: int | None
+    successful_attacks: int | None
+    attack_success_rate: float | None
+    upper_confidence_bound: float | None
     threshold: float
-    evidence_age_days: Optional[float]
+    evidence_age_days: float | None
     independently_reviewed: bool
-    warnings: Tuple[str, ...]
+    warnings: tuple[str, ...]
 
     @property
     def quantitative(self) -> bool:
@@ -61,9 +60,9 @@ class _Factor:
     indicator: str
     severity: str
     weight: float
-    evidence: Dict[str, Any]
+    evidence: dict[str, Any]
     recommendation: str
-    test_reference: Optional[str] = None
+    test_reference: str | None = None
 
 
 _CATEGORY_ALIASES = {
@@ -134,12 +133,12 @@ _HIGH_STAKES_DOMAINS = {
 }
 
 
-def assess_adversarial_exposure(artifact: Dict[str, Any]) -> Dict[str, Any]:
+def assess_adversarial_exposure(artifact: dict[str, Any]) -> dict[str, Any]:
     """Assess adversarial evidence, uncertainty, coverage, and review quality."""
     artifact = artifact if isinstance(artifact, dict) else {}
     profile, profile_errors = _parse_profile(artifact)
-    factors: List[_Factor] = []
-    warnings: List[str] = []
+    factors: list[_Factor] = []
+    warnings: list[str] = []
     if profile_errors:
         _add_factor(
             factors,
@@ -152,7 +151,7 @@ def assess_adversarial_exposure(artifact: Dict[str, Any]) -> Dict[str, Any]:
 
     raw_tests = artifact.get("adversarial_tests")
     if raw_tests is None:
-        tests: List[Any] = []
+        tests: list[Any] = []
         original_test_count = 0
     elif isinstance(raw_tests, list):
         tests = raw_tests[:_MAX_TEST_RECORDS]
@@ -192,7 +191,7 @@ def assess_adversarial_exposure(artifact: Dict[str, Any]) -> Dict[str, Any]:
             "Execute adversarial tests that reflect the model's deployment threats.",
         )
 
-    parsed_tests: List[_TestEvidence] = []
+    parsed_tests: list[_TestEvidence] = []
     invalid_tests = 0
     duplicate_tests = 0
     seen_references = set()

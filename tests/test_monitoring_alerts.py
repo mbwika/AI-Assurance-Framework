@@ -61,8 +61,8 @@ def test_monitoring_alerts_prioritize_report_risk_signals():
 
 def test_reporting_alerts_api_exposes_prioritized_alerts(tmp_path, monkeypatch):
     ensure_src()
-    from aiaf.api.app import app
     from aiaf.api import reporting as reporting_api
+    from aiaf.api.app import app
     from aiaf.core import RiskEngine
     from aiaf.data.store import DataStore
 

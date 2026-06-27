@@ -1,6 +1,5 @@
 """Tests for src/aiaf/registry/cyclonedx_bom.py (Phase 3)."""
 
-import pytest
 
 from aiaf.registry.cyclonedx_bom import (
     AIAF_TOOL_VERSION,
@@ -9,7 +8,6 @@ from aiaf.registry.cyclonedx_bom import (
     export_bom,
     import_bom,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

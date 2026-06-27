@@ -5,13 +5,12 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from urllib.parse import quote, urlsplit, urlunsplit
 
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
-
 
 AI_BOM_SPEC_VERSION = "2.0"
 AI_BOM_FORMAT = "AIAF AI-BOM"
@@ -63,10 +62,10 @@ _ATTESTATION_DERIVED_FIELDS = frozenset(
 
 def generate_ai_bom_v2(
     model_record: Any,
-    generation_context: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    generation_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Generate a deterministic AI-BOM without trusting embedded assurance claims."""
-    diagnostics: List[Dict[str, Any]] = []
+    diagnostics: list[dict[str, Any]] = []
     record = model_record if isinstance(model_record, dict) else {}
     if not isinstance(model_record, dict):
         _diagnostic(diagnostics, "invalid_model_record", "CRITICAL", "Model record must be an object.")
@@ -163,7 +162,7 @@ def generate_ai_bom_v2(
     return document
 
 
-def generate_attestable_ai_bom_v2(model_record: Any) -> Dict[str, Any]:
+def generate_attestable_ai_bom_v2(model_record: Any) -> dict[str, Any]:
     """Generate the stable pre-attestation AI-BOM used by signed statements."""
     if not isinstance(model_record, dict):
         return generate_ai_bom_v2(model_record)
@@ -179,7 +178,7 @@ def generate_attestable_ai_bom_v2(model_record: Any) -> Dict[str, Any]:
     return generate_ai_bom_v2(projection)
 
 
-def verify_ai_bom_v2(document: Any) -> Dict[str, Any]:
+def verify_ai_bom_v2(document: Any) -> dict[str, Any]:
     """Verify document integrity and internal component/lineage invariants."""
     checks = {
         "document_is_object": isinstance(document, dict),
@@ -292,7 +291,7 @@ def verify_ai_bom_v2(document: Any) -> Dict[str, Any]:
     }
 
 
-def _model_component(record: Dict[str, Any], diagnostics: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _model_component(record: dict[str, Any], diagnostics: list[dict[str, Any]]) -> dict[str, Any]:
     model_id = _text(record.get("model_id"), 256)
     name = _text(record.get("model_name"), 512)
     version = _text(record.get("version"), 256)
@@ -323,7 +322,7 @@ def _model_component(record: Dict[str, Any], diagnostics: List[Dict[str, Any]]) 
     }
 
 
-def _dependencies(value: Any, diagnostics: List[Dict[str, Any]]):
+def _dependencies(value: Any, diagnostics: list[dict[str, Any]]):
     items, bounded = _bounded_list(value, _MAX_DEPENDENCIES)
     if not bounded:
         _diagnostic(diagnostics, "dependency_inventory_invalid_or_bounded", "HIGH", "Dependency inventory is malformed or exceeds the component bound.")
@@ -337,7 +336,7 @@ def _dependencies(value: Any, diagnostics: List[Dict[str, Any]]):
             components.append(component)
     unique = {item["bom_ref"]: item for item in components}
     components = sorted(unique.values(), key=lambda item: item["bom_ref"])
-    versions: Dict[Tuple[str, str], set] = {}
+    versions: dict[tuple[str, str], set] = {}
     for item in components:
         versions.setdefault((item["ecosystem"], item["name"]), set()).add(item["version"])
     conflicts = [
@@ -406,7 +405,7 @@ def _dependency_component(ecosystem, name, version, manifest, scope):
     }
 
 
-def _exact_python_version(requirement: Requirement) -> Optional[str]:
+def _exact_python_version(requirement: Requirement) -> str | None:
     specifiers = list(requirement.specifier)
     if len(specifiers) != 1 or specifiers[0].operator not in {"==", "==="} or "*" in specifiers[0].version:
         return None
@@ -416,7 +415,7 @@ def _exact_python_version(requirement: Requirement) -> Optional[str]:
         return None
 
 
-def _training_artifacts(value: Any, diagnostics: List[Dict[str, Any]]):
+def _training_artifacts(value: Any, diagnostics: list[dict[str, Any]]):
     items, bounded = _bounded_list(value, _MAX_TRAINING_ARTIFACTS)
     if not bounded:
         _diagnostic(diagnostics, "training_inventory_invalid_or_bounded", "HIGH", "Training artifact inventory is malformed or exceeds the component bound.")
@@ -453,7 +452,7 @@ def _training_artifacts(value: Any, diagnostics: List[Dict[str, Any]]):
     return sorted(unique.values(), key=lambda item: item["bom_ref"]), bounded
 
 
-def _deployment_component(value: Any, model_hash: Optional[str], diagnostics):
+def _deployment_component(value: Any, model_hash: str | None, diagnostics):
     if value in (None, {}):
         return None
     if not isinstance(value, dict):

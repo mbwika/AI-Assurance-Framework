@@ -45,7 +45,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 ANALYSIS_VERSION = "1.0"
 
@@ -75,9 +75,9 @@ def _finding(
     severity: str,
     confidence: float,
     description: str,
-    refs: Optional[List[str]] = None,
-    detail: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    refs: list[str] | None = None,
+    detail: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     return {
         "heuristic_id": heuristic_id,
         "severity": severity,
@@ -92,9 +92,9 @@ def _finding(
 # ── Individual heuristics ─────────────────────────────────────────────────────
 
 def _h1_finetuned_unverified(
-    lineage: Dict[str, Any],
-    provenance_assessment: Dict[str, Any],
-) -> Optional[Dict[str, Any]]:
+    lineage: dict[str, Any],
+    provenance_assessment: dict[str, Any],
+) -> dict[str, Any] | None:
     """H1: fine-tuned from a component with unverifiable/low-provenance origin."""
     flags = lineage.get("flags") or []
     lineage_source = str(lineage.get("lineage_source") or "").upper()
@@ -121,7 +121,7 @@ def _h1_finetuned_unverified(
     return None
 
 
-def _h2_merge_component_unverified(lineage: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _h2_merge_component_unverified(lineage: dict[str, Any]) -> dict[str, Any] | None:
     """H2: MergeKit/TIES merge where ≥1 component has unverified provenance."""
     flags = lineage.get("flags") or []
     if "merge_detected" not in flags:
@@ -147,9 +147,9 @@ def _h2_merge_component_unverified(lineage: Dict[str, Any]) -> Optional[Dict[str
 
 
 def _h3_provenance_critically_low(
-    provenance_assessment: Dict[str, Any],
-    weight_inspection: Optional[Dict[str, Any]],
-) -> Optional[Dict[str, Any]]:
+    provenance_assessment: dict[str, Any],
+    weight_inspection: dict[str, Any] | None,
+) -> dict[str, Any] | None:
     """H3: provenance_score < PROV_CRITICALLY_LOW with weights locally available."""
     prov_score = _safe_float(provenance_assessment.get("provenance_score"))
     weights_present = (
@@ -174,8 +174,8 @@ def _h3_provenance_critically_low(
 
 
 def _h4_parameter_count_contradiction(
-    fact_reconciliation: Optional[Dict[str, Any]],
-) -> Optional[Dict[str, Any]]:
+    fact_reconciliation: dict[str, Any] | None,
+) -> dict[str, Any] | None:
     """H4: fact_reconciliation found a parameter-count contradiction."""
     if not fact_reconciliation:
         return None
@@ -201,7 +201,7 @@ def _h4_parameter_count_contradiction(
     return None
 
 
-def _h5_dtype_anomaly(weight_inspection: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+def _h5_dtype_anomaly(weight_inspection: dict[str, Any] | None) -> dict[str, Any] | None:
     """H5: unexpected dtype mix inconsistent with any known quantisation scheme."""
     if not weight_inspection:
         return None
@@ -241,7 +241,7 @@ def _h5_dtype_anomaly(weight_inspection: Optional[Dict[str, Any]]) -> Optional[D
     return None
 
 
-def _h6_lineage_unverifiable(lineage: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+def _h6_lineage_unverifiable(lineage: dict[str, Any] | None) -> dict[str, Any] | None:
     """H6: lineage_graph could not determine the base model."""
     if not lineage:
         return None
@@ -266,9 +266,9 @@ def _h6_lineage_unverifiable(lineage: Optional[Dict[str, Any]]) -> Optional[Dict
 
 
 def _h7_low_provenance_with_artifact(
-    provenance_assessment: Dict[str, Any],
-    weight_inspection: Optional[Dict[str, Any]],
-) -> Optional[Dict[str, Any]]:
+    provenance_assessment: dict[str, Any],
+    weight_inspection: dict[str, Any] | None,
+) -> dict[str, Any] | None:
     """H7: weights present but provenance_score < PROV_LOW (lower severity than H3)."""
     prov_score = _safe_float(provenance_assessment.get("provenance_score"))
     weights_present = (
@@ -300,7 +300,7 @@ def _h7_low_provenance_with_artifact(
 _SEVERITY_RANK = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
 
 
-def _aggregate_status(findings: List[Dict[str, Any]]) -> str:
+def _aggregate_status(findings: list[dict[str, Any]]) -> str:
     if not findings:
         return STATUS_CLEAN
     worst = max(findings, key=lambda f: _SEVERITY_RANK.get(f["severity"], 0))
@@ -312,8 +312,8 @@ def _aggregate_status(findings: List[Dict[str, Any]]) -> str:
     return STATUS_CLEAN  # LOW only → CLEAN (just a gap, not a finding)
 
 
-def _by_severity(findings: List[Dict[str, Any]]) -> Dict[str, int]:
-    result: Dict[str, int] = {"HIGH": 0, "MEDIUM": 0, "LOW": 0}
+def _by_severity(findings: list[dict[str, Any]]) -> dict[str, int]:
+    result: dict[str, int] = {"HIGH": 0, "MEDIUM": 0, "LOW": 0}
     for f in findings:
         sev = f["severity"]
         result[sev] = result.get(sev, 0) + 1
@@ -323,13 +323,13 @@ def _by_severity(findings: List[Dict[str, Any]]) -> Dict[str, int]:
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def analyse(
-    model_record: Dict[str, Any],
+    model_record: dict[str, Any],
     *,
-    weight_inspection: Optional[Dict[str, Any]] = None,
-    lineage: Optional[Dict[str, Any]] = None,
-    provenance_assessment: Optional[Dict[str, Any]] = None,
-    fact_reconciliation: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    weight_inspection: dict[str, Any] | None = None,
+    lineage: dict[str, Any] | None = None,
+    provenance_assessment: dict[str, Any] | None = None,
+    fact_reconciliation: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Run backdoor/trojan heuristic analysis and return a structured report.
 
     All inputs are optional; the analysis degrades gracefully when upstream
@@ -353,7 +353,7 @@ def analyse(
     provenance_assessment = provenance_assessment or {}
     lineage = lineage or {}
 
-    findings: List[Dict[str, Any]] = []
+    findings: list[dict[str, Any]] = []
     assessment_complete = True
 
     # Determine how much evidence we actually have
@@ -417,7 +417,7 @@ def analyse(
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
-def _safe_float(v: Any) -> Optional[float]:
+def _safe_float(v: Any) -> float | None:
     try:
         return float(v)
     except (TypeError, ValueError):

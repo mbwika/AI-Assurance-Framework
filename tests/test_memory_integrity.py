@@ -2,16 +2,27 @@
 import unittest
 
 from aiaf.analysis.memory_integrity import (
-    MEMORY_INTEGRITY_VERSION,
-    ATTACK_DIRECT_WRITE, ATTACK_PROMPT_INJECTION, ATTACK_CROSS_AGENT_CONTAMINATION,
-    ATTACK_TIME_BOMB, ATTACK_OVERRIDE,
+    ATTACK_CROSS_AGENT_CONTAMINATION,
+    ATTACK_DIRECT_WRITE,
+    ATTACK_OVERRIDE,
+    ATTACK_PROMPT_INJECTION,
+    ATTACK_TIME_BOMB,
     ATTACK_VECTORS,
-    ORIGIN_LOCAL, ORIGIN_USER, ORIGIN_EXTERNAL_AGENT, ORIGIN_TOOL, ORIGIN_PROVIDER,
-    STATUS_CLEAN, STATUS_SUSPICIOUS, STATUS_COMPROMISED,
+    MEMORY_INTEGRITY_VERSION,
+    ORIGIN_EXTERNAL_AGENT,
+    ORIGIN_LOCAL,
+    ORIGIN_USER,
+    STATUS_CLEAN,
+    STATUS_COMPROMISED,
+    STATUS_SUSPICIOUS,
     MemoryIntegrityError,
-    register_memory_store, get_memory_store,
-    write_memory, get_memory_entry, list_memory_entries,
-    assess_memory_integrity, scan_for_poisoning,
+    assess_memory_integrity,
+    get_memory_entry,
+    get_memory_store,
+    list_memory_entries,
+    register_memory_store,
+    scan_for_poisoning,
+    write_memory,
 )
 
 

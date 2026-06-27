@@ -1,21 +1,19 @@
 """Tests for aiaf.registry.tool_manifest."""
 
-import hashlib
-import json
 import pytest
 
 from aiaf.registry.tool_manifest import (
     MANIFEST_VERSION,
     ManifestError,
     _canonical_json,
-    _sha256,
     _hmac_sign,
     _hmac_verify,
+    _sha256,
     create_manifest,
-    verify_manifest,
-    register_manifest,
     get_manifest,
     list_manifests,
+    register_manifest,
+    verify_manifest,
 )
 
 _KEY = b"test-signing-key-at-least-32-bytes-!!"
