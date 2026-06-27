@@ -1,0 +1,64 @@
+version: "3.9"
+
+services:
+
+  # ── API server ───────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      AIAF_PG_DSN: "postgresql://aiaf:${AIAF_DB_PASSWORD:-aiaf}@db:5432/aiaf"
+      AIAF_API_KEY: "${AIAF_API_KEY:-changeme}"
+      AIAF_LOG_FORMAT: "json"
+      AIAF_LOG_LEVEL: "${AIAF_LOG_LEVEL:-INFO}"
+      AIAF_METRICS_ENABLED: "${AIAF_METRICS_ENABLED:-false}"
+      AIAF_ATTESTATION_KEY: "${AIAF_ATTESTATION_KEY:-}"
+      AIAF_REPORT_SIGNING_KEY: "${AIAF_REPORT_SIGNING_KEY:-}"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Continuous monitoring worker ─────────────────────────────────────────────
+  worker:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    command: ["python", "-m", "aiaf.cli", "monitor", "--poll-seconds", "60"]
+    environment:
+      AIAF_PG_DSN: "postgresql://aiaf:${AIAF_DB_PASSWORD:-aiaf}@db:5432/aiaf"
+      AIAF_API_KEY: "${AIAF_API_KEY:-changeme}"
+      AIAF_LOG_FORMAT: "json"
+      AIAF_LOG_LEVEL: "${AIAF_LOG_LEVEL:-INFO}"
+      AIAF_ATTESTATION_KEY: "${AIAF_ATTESTATION_KEY:-}"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: aiaf
+      POSTGRES_USER: aiaf
+      POSTGRES_PASSWORD: "${AIAF_DB_PASSWORD:-aiaf}"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiaf -d aiaf"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

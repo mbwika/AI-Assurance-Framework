@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html, body, #root {
+  min-height: 100%;
+}
+
+body {
+  @apply font-sans text-ink antialiased;
+  background:
+    radial-gradient(circle at top left, rgba(191, 228, 220, 0.58), transparent 28%),
+    radial-gradient(circle at right 18%, rgba(255, 232, 196, 0.46), transparent 22%),
+    linear-gradient(180deg, #f5f1e8 0%, #f4f7f4 48%, #edf2f6 100%);
+}
+
+::selection {
+  background: rgba(15, 118, 110, 0.18);
+}
+
+#root {
+  isolation: isolate;
+}
