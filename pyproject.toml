@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "aiaf"
+version = "0.2.0"
+description = "AI Assurance Framework — continuous security assurance for AI systems"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+keywords = [
+    "ai-security", "ai-assurance", "llm-security", "ai-governance",
+    "model-registry", "ai-risk", "supply-chain", "agentic-ai",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Information Technology",
+    "Topic :: Security",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "fastapi>=0.95.0",
+    "uvicorn[standard]>=0.22.0",
+    "starlette>=0.27.0",
+    "pydantic>=2.0.0",
+    "psycopg2-binary>=2.9.6",
+    "huggingface_hub>=0.16.4",
+    "packaging>=23.0",
+    "tomli>=2.0.0; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "httpx>=0.24.0",
+    "ruff>=0.4.0",
+    "mypy>=1.8.0",
+    "pytest-cov>=4.0.0",
+]
+pdf = ["reportlab>=4.0.0"]
+tracing = ["opentelemetry-sdk>=1.20.0", "opentelemetry-exporter-otlp-proto-grpc>=1.20.0"]
+
+[project.scripts]
+aiaf = "aiaf.cli:main"
+
+[project.urls]
+Repository = "https://github.com/collinsmbwika/AI-Assurance-Framework"
+Issues = "https://github.com/collinsmbwika/AI-Assurance-Framework/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# ── Ruff linter ───────────────────────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "ANN"]
+
+# ── Pytest ─────────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q --tb=short"
+
+# ── Mypy ──────────────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+strict = false

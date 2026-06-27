@@ -1,3 +1,29 @@
+.env
+DOCUMENTATION.md
 
-data/outputs/
-.gitignoreZone
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+
+# Node / frontend
+# The dashboard's compiled output (src/aiaf/web/) is committed so the installed
+# package serves the UI without a Node toolchain; only build inputs are ignored.
+frontend/node_modules/
+frontend/.vite/
+npm-debug.log*
+
+# SQLite database files — generated at runtime, not source artifacts
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# HuggingFace model download cache — can be very large
+data/hf_cache/
+
+# Claude Code memory — local AI assistant context, not project source
+memory/
+
+# Editor / IDE
+.vscode/

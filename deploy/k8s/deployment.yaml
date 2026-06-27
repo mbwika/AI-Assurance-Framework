@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aiaf-api
+  labels:
+    app: aiaf
+    component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: aiaf
+      component: api
+  template:
+    metadata:
+      labels:
+        app: aiaf
+        component: api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+      containers:
+        - name: api
+          image: aiaf:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: AIAF_PG_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: aiaf-secrets
+                  key: pg-dsn
+            - name: AIAF_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aiaf-secrets
+                  key: api-key
+            - name: AIAF_LOG_FORMAT
+              value: "json"
+            - name: AIAF_METRICS_ENABLED
+              value: "true"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aiaf-worker
+  labels:
+    app: aiaf
+    component: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aiaf
+      component: worker
+  template:
+    metadata:
+      labels:
+        app: aiaf
+        component: worker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+      containers:
+        - name: worker
+          image: aiaf:latest
+          command: ["python", "-m", "aiaf.cli", "monitor", "--poll-seconds", "60"]
+          env:
+            - name: AIAF_PG_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: aiaf-secrets
+                  key: pg-dsn
+            - name: AIAF_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aiaf-secrets
+                  key: api-key
+            - name: AIAF_LOG_FORMAT
+              value: "json"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
