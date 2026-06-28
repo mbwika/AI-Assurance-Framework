@@ -7,6 +7,7 @@ from . import agent_topology as agent_topology_router
 from . import agentic as agentic_router
 from . import architecture as architecture_router
 from . import assurance as assurance_router
+from . import deployment_verify as deployment_verify_router
 from . import frontier_eval as frontier_eval_router
 from . import governance as governance_router
 from . import guardrail as guardrail_router
@@ -69,6 +70,7 @@ app.include_router(frontier_eval_router.router)
 app.include_router(human_oversight_router.router)
 app.include_router(governance_router.router)
 app.include_router(reporting_router.router)
+app.include_router(deployment_verify_router.router)
 app.include_router(architecture_router.router)
 
 # Serve the compiled dashboard's static assets (JS/CSS) when a build exists.

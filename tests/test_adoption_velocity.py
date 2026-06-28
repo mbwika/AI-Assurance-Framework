@@ -22,6 +22,7 @@ from aiaf.analysis.adoption_velocity import (
     list_at_risk_artifacts,
     record_adoption_event,
     set_velocity_baseline,
+    summarize_velocity_risk,
 )
 
 # ── Minimal fake store ────────────────────────────────────────────────────────
@@ -267,6 +268,26 @@ class TestDetectVelocityAnomaly:
         for a in result["anomalies"]:
             if a["signal"] == SIGNAL_DORMANCY_REACTIVATION:
                 assert a["severity"] == "HIGH"
+
+
+class TestSummarizeVelocityRisk:
+    def test_detected_anomalies_map_to_critical_risk(self):
+        summary = summarize_velocity_risk(
+            {
+                "risk_level": VELOCITY_RISK_CRITICAL,
+                "anomalies": [{"signal": SIGNAL_COLD_START_SURGE, "severity": "CRITICAL"}],
+                "velocity_profile": {"current_velocity_per_hour": 200.0},
+            }
+        )
+        assert summary["assessment_complete"] is True
+        assert summary["risk_score"] == 9.5
+        assert SIGNAL_COLD_START_SURGE in summary["signals"]
+
+    def test_missing_evidence_returns_incomplete_summary(self):
+        summary = summarize_velocity_risk(None)
+        assert summary["assessment_complete"] is False
+        assert summary["risk_score"] == 4.5
+        assert summary["evidence_present"] is False
 
 
 # ── list_at_risk_artifacts ────────────────────────────────────────────────────

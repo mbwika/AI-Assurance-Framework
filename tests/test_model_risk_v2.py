@@ -9,6 +9,8 @@ if SRC not in sys.path:
 
 from aiaf.analysis.model_risk_v2 import (  # noqa: E402
     MODEL_RISK_SCORING_VERSION,
+    PROVIDER_RISK_INTELLIGENCE_VERSION,
+    assess_provider_risk_intelligence,
     estimate_model_risk_v2,
 )
 
@@ -67,6 +69,7 @@ def test_result_is_versioned_deterministic_bounded_and_json_safe():
     assert 0 <= first["lower_confidence_bound"] <= first["residual_risk_score"]
     assert first["residual_risk_score"] <= first["upper_confidence_bound"] <= 10
     assert json.loads(json.dumps(first, sort_keys=True)) == first
+    assert first["provider_risk_intelligence"]["assessment_version"] == PROVIDER_RISK_INTELLIGENCE_VERSION
 
 
 def test_malformed_artifact_and_profile_fail_closed():
@@ -372,3 +375,118 @@ def test_malformed_custom_taxonomy_fails_closed():
 
     assert result["assessment_complete"] is False
     assert "malformed_model_risk_context" in _indicators(result)
+
+
+def test_provider_risk_intelligence_is_additive_for_existing_model_risk_assessments():
+    result = estimate_model_risk_v2(_artifact())
+    assert result["assessment_complete"] is True
+    assert "provider_risk_intelligence" in result
+    assert result["provider_risk_intelligence"]["overall_risk_score"] >= 0
+
+
+def test_provider_risk_intelligence_rewards_disclosed_stable_provider_evidence():
+    artifact = _artifact()
+    artifact.update(
+        {
+            "source": "huggingface",
+            "source_url": "https://huggingface.co/acme-labs/secure-model",
+            "publisher": "acme-labs",
+            "license": "apache-2.0",
+            "attestations": [{"statement": {"attestation_id": "att-1"}}],
+            "metadata": {
+                "provider": "huggingface",
+                "hf_model_card": {
+                    "status": "SUCCESS",
+                    "publisher": "acme-labs",
+                    "license": "apache-2.0",
+                    "model_type": "llama",
+                    "pipeline_tag": "text-generation",
+                    "architectures": ["LlamaForCausalLM"],
+                    "model_card_signals": {
+                        "sections_present": [
+                            "intended use",
+                            "training data",
+                            "evaluation",
+                            "limitations",
+                            "safety",
+                            "privacy",
+                        ],
+                        "dataset_disclosure_present": True,
+                        "evaluation_disclosure_present": True,
+                        "limitations_disclosure_present": True,
+                        "intended_use_present": True,
+                        "safety_disclosure_present": True,
+                        "privacy_disclosure_present": True,
+                    },
+                },
+                "adoption_velocity_assessment": {
+                    "risk_level": "NORMAL",
+                    "anomalies": [],
+                    "velocity_profile": {"current_velocity_per_hour": 3.0},
+                },
+                "provenance_assessment": {
+                    "provenance_score": 92,
+                    "assessment_complete": True,
+                    "confidence": 0.95,
+                },
+            },
+        }
+    )
+
+    result = assess_provider_risk_intelligence(artifact)
+
+    assert result["assessment_version"] == PROVIDER_RISK_INTELLIGENCE_VERSION
+    assert result["overall_risk_score"] < 4.5
+    assert result["severity"] in {"LOW", "MEDIUM"}
+    assert result["assessment_complete"] is True
+
+
+def test_provider_risk_intelligence_flags_conflicts_and_adoption_anomalies():
+    artifact = _artifact()
+    artifact.update(
+        {
+            "source": "github",
+            "source_url": "https://huggingface.co/acme-labs/volatile-model",
+            "publisher": "registry-publisher",
+            "license": "mit",
+            "metadata": {
+                "provider": "github",
+                "hf_model_card": {
+                    "status": "SUCCESS",
+                    "publisher": "different-publisher",
+                    "license": "llama3",
+                    "model_card_signals": {
+                        "sections_present": ["overview"],
+                        "dataset_disclosure_present": False,
+                        "evaluation_disclosure_present": False,
+                        "limitations_disclosure_present": False,
+                        "intended_use_present": False,
+                        "safety_disclosure_present": False,
+                        "privacy_disclosure_present": False,
+                    },
+                },
+                "adoption_velocity_assessment": {
+                    "risk_level": "CRITICAL",
+                    "anomalies": [{"signal": "COLD_START_SURGE", "severity": "CRITICAL"}],
+                    "velocity_profile": {"current_velocity_per_hour": 400.0},
+                },
+                "provenance_assessment": {
+                    "provenance_score": 10,
+                    "assessment_complete": False,
+                    "confidence": 0.2,
+                },
+            },
+        }
+    )
+
+    provider = assess_provider_risk_intelligence(artifact)
+    full = estimate_model_risk_v2(artifact)
+
+    assert {
+        "provider_identity_conflict",
+        "publisher_identity_conflict",
+        "license_identity_conflict",
+        "adoption_velocity_anomaly",
+    }.issubset(set(provider["indicators"]))
+    assert provider["overall_risk_score"] >= 7.5
+    assert "provider_supply_chain_risk" in _indicators(full)

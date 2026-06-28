@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from typing import Any
 
 MODEL_RISK_SCORING_VERSION = "2.0"
+PROVIDER_RISK_INTELLIGENCE_VERSION = "1.0"
 _MAX_CAPABILITIES = 100
 _MAX_CONNECTED_SYSTEMS = 1_000
 _MAX_CONTEXT_ENTRIES = 100
@@ -140,6 +141,45 @@ _TOOL_CAPABILITIES = {
     "cloud_admin": {"tool_use", "autonomous_actions"},
 }
 _SEVERITY_ORDER = {"LOW": 1, "MEDIUM": 2, "HIGH": 3, "CRITICAL": 4}
+_LOW_RISK_LICENSES = frozenset(
+    {
+        "apache-2.0",
+        "mit",
+        "bsd-2-clause",
+        "bsd-3-clause",
+        "mpl-2.0",
+        "cc-by-4.0",
+    }
+)
+_MEDIUM_RISK_LICENSES = frozenset(
+    {
+        "openrail",
+        "openrail++",
+        "cc-by-sa-4.0",
+        "cc-by-nc-4.0",
+        "gpl-3.0",
+        "lgpl-3.0",
+    }
+)
+_HIGH_RISK_LICENSES = frozenset(
+    {
+        "unknown",
+        "proprietary",
+        "custom",
+        "llama2",
+        "llama3",
+        "gemma",
+    }
+)
+_KNOWN_PROVIDER_HOST_RISK = {
+    "huggingface.co": 2.5,
+    "github.com": 3.5,
+    "hf.co": 2.5,
+    "modelscope.cn": 3.5,
+    "openai.com": 3.0,
+    "azure.com": 3.0,
+    "amazonaws.com": 3.0,
+}
 
 
 def estimate_model_risk_v2(
@@ -231,6 +271,7 @@ def estimate_model_risk_v2(
     normalized, normalization_complete = _normalize_profile(
         raw, domain_scores, capability_scores, factors
     )
+    provider_intelligence = assess_provider_risk_intelligence(artifact, assessment_context)
     assessment_complete = assessment_complete and normalization_complete
     inferred_capabilities, inference_complete = _infer_capabilities(artifact)
     if not inference_complete:
@@ -356,6 +397,24 @@ def estimate_model_risk_v2(
     if any(raw[field] is None for field in essential_fields):
         assessment_complete = False
 
+    if provider_intelligence["overall_risk_score"] >= 7.0:
+        _append_factor(
+            factors,
+            "provider_supply_chain_risk",
+            "supply_chain",
+            0.0,
+            provider_intelligence["severity"],
+            "Provider, maintainer, license, or adoption evidence indicates elevated third-party risk.",
+            "Review provider provenance, publisher identity, disclosure quality, and adoption anomalies before deployment.",
+            evidence={
+                "provider_risk_score": provider_intelligence["overall_risk_score"],
+                "provider_indicators": provider_intelligence["indicators"][:10],
+            },
+        )
+    for recommendation in provider_intelligence["recommendations"]:
+        if recommendation not in recommendations:
+            recommendations.append(recommendation)
+
     return {
         "assessment_version": MODEL_RISK_SCORING_VERSION,
         "scoring_version": MODEL_RISK_SCORING_VERSION,
@@ -392,7 +451,192 @@ def estimate_model_risk_v2(
             "inferred_capabilities": sorted(inferred_capabilities),
             "vulnerable_populations": normalized["vulnerable_populations"],
         },
+        "provider_risk_intelligence": provider_intelligence,
         "recommendations": recommendations,
+    }
+
+
+def assess_provider_risk_intelligence(
+    artifact: dict[str, Any], assessment_context: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """Assess provider, maintainer, license, and adoption evidence on a 0-10 risk scale."""
+    from ..registry.hf_model_card import summarize_disclosure_posture
+    from .adoption_velocity import summarize_velocity_risk
+
+    assessment_context = assessment_context if isinstance(assessment_context, dict) else {}
+    artifact = artifact if isinstance(artifact, dict) else {}
+    metadata = artifact.get("metadata") if isinstance(artifact.get("metadata"), dict) else {}
+    card_data = metadata.get("hf_model_card") if isinstance(metadata.get("hf_model_card"), dict) else {}
+    provider_factors: list[dict[str, Any]] = []
+    recommendations: list[str] = []
+
+    source = _normalize(metadata.get("provider") or artifact.get("source"))
+    source_url = _bounded_text(artifact.get("source_url") or metadata.get("source_url"))
+    host, namespace = _source_host_and_namespace(source_url)
+    provider_name = source or _normalize(metadata.get("runtime_provider")) or (host.split(".")[0] if host else None)
+
+    provider_score = 8.0
+    provider_detail = "Provider origin is missing or cannot be corroborated from source evidence."
+    if host and provider_name and provider_name in host.replace(".", "_"):
+        provider_score = _KNOWN_PROVIDER_HOST_RISK.get(host, 3.5)
+        provider_detail = "Provider identity is corroborated by the artifact source host."
+    elif host:
+        provider_score = _KNOWN_PROVIDER_HOST_RISK.get(host, 5.5)
+        provider_detail = "Artifact source host provides some provider identity evidence."
+    elif provider_name:
+        provider_score = 5.0
+        provider_detail = "Provider identity is declared but not corroborated by a source URL."
+    if host and provider_name and provider_name not in host.replace(".", "_") and source:
+        provider_score = max(provider_score, 8.5)
+        _append_factor(
+            provider_factors,
+            "provider_identity_conflict",
+            "provider",
+            0.0,
+            "HIGH",
+            "Declared provider conflicts with the artifact source host.",
+            "Align the declared provider with the effective registry or hosting source.",
+            evidence={"provider": provider_name, "host": host},
+        )
+        recommendations.append("Reconcile provider identity with the artifact source URL and registry host.")
+
+    publisher_claims = _publisher_claims(artifact, metadata, card_data, namespace)
+    publisher_score = 7.5
+    publisher_detail = "Publisher identity is missing."
+    if len(publisher_claims) >= 2:
+        publisher_score = 8.5
+        publisher_detail = "Publisher identity conflicts across registry, model card, or source namespace evidence."
+        _append_factor(
+            provider_factors,
+            "publisher_identity_conflict",
+            "publisher",
+            0.0,
+            "HIGH",
+            publisher_detail,
+            "Align publisher identity across registry, model card, and source namespace evidence.",
+            evidence=sorted(publisher_claims),
+        )
+        recommendations.append("Resolve conflicting publisher or namespace claims before relying on the artifact.")
+    elif publisher_claims:
+        publisher_score = 2.0 if namespace else 4.0
+        publisher_detail = (
+            "Publisher identity is corroborated by repository namespace evidence."
+            if namespace
+            else "Publisher identity is declared but not corroborated by namespace evidence."
+        )
+
+    maintainer_score = 7.0
+    maintainer_detail = "Maintainer attribution is sparse."
+    if card_data.get("publisher") and (card_data.get("model_card_signals") or {}).get("sections_present"):
+        maintainer_score = 2.5
+        maintainer_detail = "Maintainer attribution is supported by a structured model card."
+    elif artifact.get("publisher") or metadata.get("publisher"):
+        maintainer_score = 4.5
+        maintainer_detail = "Maintainer attribution is declared but has limited supporting metadata."
+    else:
+        _append_factor(
+            provider_factors,
+            "maintainer_attribution_missing",
+            "maintainer",
+            0.0,
+            "MEDIUM",
+            "Maintainer attribution is missing from provider metadata.",
+            "Record accountable publisher or maintainer identity for the artifact.",
+        )
+        recommendations.append("Capture accountable maintainer identity and publication ownership.")
+
+    license_score, license_detail = _license_posture(artifact, metadata, card_data, provider_factors, recommendations)
+    disclosure = summarize_disclosure_posture(card_data)
+    disclosure_score = float(disclosure["risk_score"])
+    if disclosure_score >= 6.5:
+        _append_factor(
+            provider_factors,
+            "model_card_disclosure_gap",
+            "disclosure",
+            0.0,
+            "MEDIUM" if disclosure_score < 8.0 else "HIGH",
+            "Model-card disclosures are incomplete for provider due diligence.",
+            "Publish intended use, training-data, evaluation, limitation, safety, and privacy disclosures.",
+            evidence={"missing_disclosures": disclosure["missing_disclosures"]},
+        )
+        recommendations.append("Improve model-card disclosures for safety, privacy, evaluation, and intended use.")
+
+    adoption_summary = summarize_velocity_risk(
+        metadata.get("adoption_velocity_assessment")
+        or metadata.get("adoption_velocity")
+        or metadata.get("adoption_velocity_profile")
+        or artifact.get("adoption_velocity_assessment")
+        or artifact.get("adoption_velocity")
+    )
+    adoption_score = float(adoption_summary["risk_score"])
+    if adoption_summary["risk_level"] in {"HIGH", "CRITICAL"}:
+        _append_factor(
+            provider_factors,
+            "adoption_velocity_anomaly",
+            "adoption",
+            0.0,
+            adoption_summary["risk_level"],
+            "Adoption velocity evidence suggests coordinated promotion, spike abuse, or anomalous uptake.",
+            "Require heightened provider review and validate legitimacy before deployment.",
+            evidence={"signals": adoption_summary["signals"]},
+        )
+        recommendations.append("Investigate abnormal adoption velocity before trusting the artifact supply chain.")
+    elif not adoption_summary["evidence_present"]:
+        recommendations.append("Collect adoption-velocity evidence to detect sudden provider or artifact popularity anomalies.")
+
+    provenance_score, provenance_detail = _provenance_posture(artifact, metadata, provider_factors, recommendations)
+
+    dimensions = OrderedDict(
+        (
+            ("provider_identity", _provider_dimension(provider_score, provider_detail, {"provider": provider_name, "host": host})),
+            ("publisher_consistency", _provider_dimension(publisher_score, publisher_detail, {"claims": sorted(publisher_claims)})),
+            ("maintainer_attribution", _provider_dimension(maintainer_score, maintainer_detail, {"publisher": card_data.get("publisher") or artifact.get("publisher")})),
+            ("license_posture", _provider_dimension(license_score, license_detail, {"license": _bounded_text(card_data.get("license") or artifact.get("license") or metadata.get("license"))})),
+            ("disclosure_posture", _provider_dimension(disclosure_score, "Model-card disclosure completeness affects provider due diligence confidence.", {"coverage": disclosure["coverage"], "missing_disclosures": disclosure["missing_disclosures"]})),
+            ("adoption_posture", _provider_dimension(adoption_score, "Adoption-velocity evidence helps detect coordinated or bot-driven trust manipulation.", {"signals": adoption_summary["signals"], "risk_level": adoption_summary["risk_level"]})),
+            ("provenance_posture", _provider_dimension(provenance_score, provenance_detail, {"attestation_count": _attestation_count(artifact, metadata)})),
+        )
+    )
+    scores = [dimension["score"] for dimension in dimensions.values()]
+    average_score = sum(scores) / len(scores)
+    overall_risk_score = round(min(10.0, average_score * 0.6 + max(scores) * 0.4), 3)
+    confidence = round(
+        min(
+            1.0,
+            max(
+                0.0,
+                0.35
+                + 0.25 * disclosure["confidence"]
+                + 0.2 * adoption_summary["confidence"]
+                + 0.2 * (1.0 if provider_name or host else 0.0),
+            ),
+        ),
+        3,
+    )
+    assessment_complete = bool(provider_name or host or publisher_claims or card_data or source_url)
+    severity = _severity(overall_risk_score)
+
+    return {
+        "assessment_version": PROVIDER_RISK_INTELLIGENCE_VERSION,
+        "overall_risk_score": overall_risk_score,
+        "severity": severity,
+        "confidence": confidence,
+        "assessment_complete": assessment_complete,
+        "provider": provider_name,
+        "publisher": next(iter(sorted(publisher_claims)), None),
+        "dimensions": dimensions,
+        "indicators": _unique(factor["indicator"] for factor in provider_factors),
+        "factors": provider_factors,
+        "recommendations": recommendations,
+        "evidence": {
+            "source": source,
+            "source_url_host": host,
+            "source_namespace": namespace,
+            "publisher_claims": sorted(publisher_claims),
+            "disclosure_posture": disclosure,
+            "adoption_posture": adoption_summary,
+            "license": _bounded_text(card_data.get("license") or artifact.get("license") or metadata.get("license")),
+        },
     }
 
 
@@ -1118,6 +1362,110 @@ def _effective_flag_or_collection(value):
     if isinstance(value, (list, tuple, set, dict)):
         return bool(value)
     return value is True
+
+
+def _publisher_claims(artifact, metadata, card_data, namespace):
+    claims = set()
+    for value in (
+        artifact.get("publisher"),
+        metadata.get("publisher"),
+        card_data.get("publisher") if isinstance(card_data, dict) else None,
+        namespace,
+    ):
+        normalized = _normalize(value)
+        if normalized:
+            claims.add(normalized)
+    return claims
+
+
+def _license_posture(artifact, metadata, card_data, factors, recommendations):
+    declared = _normalize(artifact.get("license") or metadata.get("license"))
+    card_license = _normalize(card_data.get("license") if isinstance(card_data, dict) else None)
+    license_name = card_license or declared
+    if declared and card_license and declared != card_license:
+        _append_factor(
+            factors,
+            "license_identity_conflict",
+            "license",
+            0.0,
+            "HIGH",
+            "Registry license claim conflicts with provider-declared model-card license evidence.",
+            "Align license declarations with the upstream provider artifact metadata.",
+            evidence={"registry": declared, "provider": card_license},
+        )
+        recommendations.append("Resolve conflicting license declarations before adoption or redistribution.")
+        return 8.0, "License evidence conflicts across registry and provider metadata."
+    if not license_name:
+        recommendations.append("Record a concrete license so downstream adopters can assess usage and redistribution risk.")
+        return 8.5, "License information is missing."
+    if license_name in _LOW_RISK_LICENSES:
+        return 2.0, "License is common and clearly classifiable."
+    if license_name in _MEDIUM_RISK_LICENSES:
+        recommendations.append("Review license restrictions and policy compatibility before deployment.")
+        return 5.5, "License imposes conditions or reciprocity that may constrain downstream use."
+    if license_name in _HIGH_RISK_LICENSES:
+        recommendations.append("Perform explicit legal and supply-chain review for custom or restrictive licensing.")
+        return 8.0, "License is custom, restrictive, or poorly standardized."
+    recommendations.append("Normalize the license to a well-understood SPDX-style identifier where possible.")
+    return 6.5, "License is present but not recognized as a standard low-risk identifier."
+
+
+def _provenance_posture(artifact, metadata, factors, recommendations):
+    provenance = metadata.get("provenance_assessment") if isinstance(metadata.get("provenance_assessment"), dict) else {}
+    score = _nonnegative_number(provenance.get("provenance_score") or artifact.get("provenance_score"))
+    complete = provenance.get("assessment_complete") is True
+    confidence = _nonnegative_number(provenance.get("confidence"))
+    attestation_count = _attestation_count(artifact, metadata)
+    if score is not None and score >= 80 and complete:
+        return 2.0, "Provider provenance evidence is complete and strong."
+    if score is not None and score >= 50:
+        return 4.5, "Provider provenance evidence is present but not fully complete."
+    if attestation_count > 0:
+        return 5.5 if confidence is None or confidence < 0.8 else 4.5, "Attestation evidence exists but provider provenance posture remains only partially verified."
+    _append_factor(
+        factors,
+        "provider_provenance_gap",
+        "provenance",
+        0.0,
+        "HIGH",
+        "Provider provenance evidence is missing or incomplete.",
+        "Require signed provenance, attestation verification, or equivalent provider integrity evidence.",
+    )
+    recommendations.append("Collect signed provenance or attestation evidence for the provider artifact.")
+    return 8.5, "Provider provenance evidence is missing."
+
+
+def _attestation_count(artifact, metadata):
+    for value in (
+        artifact.get("attestations"),
+        artifact.get("provenance_attestations"),
+        metadata.get("attestations"),
+        metadata.get("provenance_attestations"),
+    ):
+        if isinstance(value, (list, tuple)):
+            return len(value)
+    return 0
+
+
+def _source_host_and_namespace(source_url):
+    if not source_url or "://" not in source_url:
+        return None, None
+    remainder = source_url.split("://", 1)[1]
+    host, _, path = remainder.partition("/")
+    namespace = None
+    segments = [segment for segment in path.split("/") if segment]
+    if segments:
+        namespace = _normalize(segments[0])
+    return host.lower() if host else None, namespace
+
+
+def _provider_dimension(score, detail, evidence):
+    return {
+        "score": round(min(10.0, max(0.0, float(score))), 3),
+        "severity": _severity(score),
+        "detail": detail,
+        "evidence": evidence,
+    }
 
 
 def _population_scale_score(value):

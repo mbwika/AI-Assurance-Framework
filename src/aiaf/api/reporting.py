@@ -285,6 +285,62 @@ def _validate_report_format(fmt: str) -> str:
     return normalized
 
 
+@router.get("/evidence-pack/{framework}")
+def evidence_pack(
+    framework: str,
+    fmt: str = "json",
+    model_id: str | None = None,
+    artifact_id: str | None = None,
+    registered_by: str | None = None,
+    api_key: str = Depends(get_api_key),
+):
+    """Build and return a per-framework compliance evidence pack.
+
+    ``framework`` must be one of: ``NIST_AI_RMF``, ``ISO_42001``,
+    ``EU_AI_ACT_HIGH_RISK``, ``OWASP_LLM_TOP10``, ``OWASP_AGENTIC``.
+
+    ``?format=json`` (default) returns the full pack dict.
+    ``?format=oscal`` returns an OSCAL 1.1.2 SSP.
+    ``?format=html`` returns an HTML document.
+    ``?format=markdown`` returns a Markdown string.
+    """
+    from ..reporting.evidence_pack import (
+        EXPORT_FORMATS as PACK_FORMATS,
+    )
+    from ..reporting.evidence_pack import (
+        EvidencePackError,
+        export_pack,
+    )
+
+    fmt_normalized = str(fmt).lower().strip()
+    if fmt_normalized not in PACK_FORMATS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid format {fmt!r}. Allowed: {', '.join(sorted(PACK_FORMATS))}.",
+        )
+
+    scope: dict[str, str | None] = {}
+    if model_id:
+        scope["model_id"] = str(model_id)[:512]
+    if artifact_id:
+        scope["artifact_id"] = str(artifact_id)[:512]
+    if registered_by:
+        scope["registered_by"] = str(registered_by)[:512]
+
+    store = get_store()
+    try:
+        result = export_pack(framework.upper(), scope, store, fmt=fmt_normalized)
+    except EvidencePackError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    if fmt_normalized == "html":
+        return HTMLResponse(content=result, headers=_HTML_SECURITY_HEADERS)
+    if fmt_normalized == "markdown":
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse(result, media_type="text/markdown")
+    return result
+
+
 def _validate_scope_id(value: str | None, field: str) -> str | None:
     """Reject scope ID values that contain HTML-special characters.
 

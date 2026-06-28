@@ -19,6 +19,7 @@ from .adoption_velocity import (
     list_at_risk_artifacts,
     record_adoption_event,
     set_velocity_baseline,
+    summarize_velocity_risk,
 )
 from .adoption_velocity import (
     ANOMALY_SIGNALS as ADOPTION_ANOMALY_SIGNALS,
@@ -134,6 +135,43 @@ from .bias_fairness import (
     assess_bias_fairness,
 )
 from .data_leakage import DATA_LEAKAGE_SCORING_VERSION, detect_data_leakage
+from .context_provenance import (
+    NODE_EVALUATION_RESULT,
+    NODE_GUARDRAIL_DECISION,
+    NODE_MCP_RESOURCE,
+    NODE_MODEL_RESPONSE,
+    NODE_POLICY_DECISION,
+    NODE_PROMPT_TEMPLATE,
+    NODE_PROVIDER_CONTEXT,
+    NODE_RAG_DOCUMENT,
+    NODE_SYSTEM_PROMPT,
+    NODE_TOOL_OUTPUT,
+    NODE_USER_INPUT,
+    PROVENANCE_GRAPH_VERSION,
+    ContextProvenanceError,
+    add_influence_edge,
+    add_provenance_node,
+    find_influenced_by,
+    get_provenance_graph,
+    list_provenance_edges,
+    list_provenance_nodes,
+    register_provenance_graph,
+)
+from .context_provenance import (
+    NODE_TYPES as PROVENANCE_NODE_TYPES,
+)
+from .context_provenance import (
+    RELATIONSHIP_TYPES as PROVENANCE_RELATIONSHIP_TYPES,
+)
+from .context_provenance import (
+    REL_EVALUATED_BY,
+)
+from .context_provenance import (
+    REL_FILTERED_BY,
+)
+from .context_provenance import (
+    REL_INFLUENCES,
+)
 from .extraction_tests import (
     EXTRACTION_VERSION,
     ExtractionTestError,
@@ -177,6 +215,20 @@ from .frontier_eval import (
 )
 from .frontier_eval import (
     VERDICT_UNSAFE as FRONTIER_VERDICT_UNSAFE,
+)
+from .frontier_eval_harness import (
+    EVAL_EVIDENCE_VERSION,
+    EvidenceStrength,
+    Finding,
+    Job,
+    JobState,
+    Probe,
+    RubricScorer,
+    compare_eval_runs,
+    execute_harness_job,
+    get_eval_run,
+    list_eval_runs,
+    register_eval_run,
 )
 from .hallucination_risk import (
     HALLUCINATION_RISK_SCORING_VERSION,
@@ -280,7 +332,12 @@ from .memory_integrity import (
 from .memory_integrity import (
     STATUS_SUSPICIOUS as MEMORY_STATUS_SUSPICIOUS,
 )
-from .model_risk_v2 import MODEL_RISK_SCORING_VERSION, estimate_model_risk_v2
+from .model_risk_v2 import (
+    MODEL_RISK_SCORING_VERSION,
+    PROVIDER_RISK_INTELLIGENCE_VERSION,
+    assess_provider_risk_intelligence,
+    estimate_model_risk_v2,
+)
 from .permission_graph import (
     GRAPH_VERSION as PERMISSION_GRAPH_VERSION,
 )
@@ -333,10 +390,29 @@ from .rag_security import (
 )
 from .rag_security import (
     assess_store_security,
+    label_rag_taint,
     scan_document_for_ingestion,
 )
 from .rag_security import (
     scan_chunks as scan_rag_chunks,
+)
+from .rag_security import (
+    TAINT_CRITICAL as RAG_TAINT_CRITICAL,
+)
+from .rag_security import (
+    TAINT_HIGH as RAG_TAINT_HIGH,
+)
+from .rag_security import (
+    TAINT_LOW as RAG_TAINT_LOW,
+)
+from .rag_security import (
+    TAINT_MEDIUM as RAG_TAINT_MEDIUM,
+)
+from .rag_security import (
+    TAINT_NONE as RAG_TAINT_NONE,
+)
+from .rag_security import (
+    TAINT_VERSION as RAG_TAINT_VERSION,
 )
 from .resource_monitor import (
     DEFAULT_BUDGET,
@@ -485,6 +561,8 @@ __all__ = [
     "TRUSTWORTHINESS_SCORING_VERSION",
     "estimate_model_risk_v2",
     "MODEL_RISK_SCORING_VERSION",
+    "assess_provider_risk_intelligence",
+    "PROVIDER_RISK_INTELLIGENCE_VERSION",
     "assess_agent_risk_v2",
     "AGENT_RISK_SCORING_VERSION",
     "WORKFLOW_GRAPH_SCORING_VERSION",
@@ -503,6 +581,19 @@ __all__ = [
     "UNKNOWN_MODEL_PROBE_HIGH_RISK",
     "UNKNOWN_MODEL_PROBE_INSUFFICIENT_DATA",
     "probe_unknown_model",
+    # Phase J — Eval evidence registry
+    "EVAL_EVIDENCE_VERSION",
+    "JobState",
+    "EvidenceStrength",
+    "Probe",
+    "Finding",
+    "Job",
+    "RubricScorer",
+    "execute_harness_job",
+    "register_eval_run",
+    "get_eval_run",
+    "list_eval_runs",
+    "compare_eval_runs",
     # Phase C — Permission graph
     "PERMISSION_GRAPH_VERSION",
     "PERM_STATUS_CLEAN",
@@ -517,7 +608,14 @@ __all__ = [
     "RAG_STATUS_INJECTION_DETECTED",
     "RAG_STATUS_LEAKAGE_DETECTED",
     "RAG_STATUS_TRUST_VIOLATION",
+    "RAG_TAINT_VERSION",
+    "RAG_TAINT_NONE",
+    "RAG_TAINT_LOW",
+    "RAG_TAINT_MEDIUM",
+    "RAG_TAINT_HIGH",
+    "RAG_TAINT_CRITICAL",
     "scan_rag_chunks",
+    "label_rag_taint",
     "scan_document_for_ingestion",
     "assess_store_security",
     # Phase D — Telemetry ingestion and anomaly detection
@@ -575,6 +673,20 @@ __all__ = [
     "register_topology", "get_topology",
     "add_agent_node", "add_communication_edge",
     "analyze_topology",
+    # Phase I — Runtime context provenance DAG
+    "PROVENANCE_GRAPH_VERSION",
+    "NODE_USER_INPUT", "NODE_SYSTEM_PROMPT", "NODE_PROMPT_TEMPLATE",
+    "NODE_RAG_DOCUMENT", "NODE_TOOL_OUTPUT", "NODE_MCP_RESOURCE",
+    "NODE_POLICY_DECISION", "NODE_GUARDRAIL_DECISION", "NODE_EVALUATION_RESULT",
+    "NODE_MODEL_RESPONSE", "NODE_PROVIDER_CONTEXT",
+    "PROVENANCE_NODE_TYPES",
+    "REL_INFLUENCES", "REL_FILTERED_BY", "REL_EVALUATED_BY",
+    "PROVENANCE_RELATIONSHIP_TYPES",
+    "ContextProvenanceError",
+    "register_provenance_graph", "get_provenance_graph",
+    "add_provenance_node", "add_influence_edge",
+    "list_provenance_nodes", "list_provenance_edges",
+    "find_influenced_by",
     # Phase G — Adoption velocity anomaly detection
     "ADOPTION_VELOCITY_VERSION",
     "EVENT_DOWNLOAD", "EVENT_INSTALL", "EVENT_DEPLOY", "EVENT_FORK", "EVENT_STAR",
@@ -588,6 +700,7 @@ __all__ = [
     "record_adoption_event",
     "set_velocity_baseline",
     "get_velocity_profile",
+    "summarize_velocity_risk",
     "detect_velocity_anomaly",
     "list_at_risk_artifacts",
     # Phase G — Sandbox posture assessment

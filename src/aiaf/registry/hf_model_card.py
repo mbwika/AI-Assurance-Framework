@@ -198,6 +198,60 @@ def enrich_ledger(card_data: dict[str, Any], ledger) -> None:
         )
 
 
+def summarize_disclosure_posture(card_data: dict[str, Any] | None) -> dict[str, Any]:
+    """Summarize model-card disclosure completeness on a bounded 0-10 risk scale."""
+    data = card_data if isinstance(card_data, dict) else {}
+    signals = data.get("model_card_signals") if isinstance(data.get("model_card_signals"), dict) else {}
+    status = _str_or_none(data.get("status")) or STATUS_NO_CARD
+
+    disclosure_fields = (
+        "dataset_disclosure_present",
+        "evaluation_disclosure_present",
+        "limitations_disclosure_present",
+        "intended_use_present",
+        "safety_disclosure_present",
+        "privacy_disclosure_present",
+    )
+    metadata_fields = (
+        "license",
+        "pipeline_tag",
+        "publisher",
+        "model_type",
+        "architectures",
+    )
+
+    present_disclosures = [field for field in disclosure_fields if signals.get(field) is True]
+    present_metadata = [field for field in metadata_fields if data.get(field) not in (None, [], "")]
+    evidence_present = bool(data)
+    disclosure_ratio = len(present_disclosures) / len(disclosure_fields)
+    metadata_ratio = len(present_metadata) / len(metadata_fields)
+    coverage = round(0.7 * disclosure_ratio + 0.3 * metadata_ratio, 3)
+
+    if status == STATUS_FETCH_FAILED:
+        risk_score = 8.5
+        confidence = 0.2
+    elif status == STATUS_NO_CARD:
+        risk_score = 8.0
+        confidence = 0.5 if evidence_present else 0.0
+    else:
+        risk_score = round(max(1.0, 9.5 - coverage * 8.5), 3)
+        confidence = 0.9 if status == STATUS_SUCCESS else 0.75
+
+    missing_disclosures = sorted(field for field in disclosure_fields if field not in present_disclosures)
+    return {
+        "status": status,
+        "risk_score": risk_score,
+        "coverage": coverage,
+        "confidence": confidence,
+        "assessment_complete": status in {STATUS_SUCCESS, STATUS_PARTIAL},
+        "evidence_present": evidence_present,
+        "present_disclosures": present_disclosures,
+        "missing_disclosures": missing_disclosures,
+        "present_metadata_fields": sorted(present_metadata),
+        "section_count": len(signals.get("sections_present") or []),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Internal parsers
 # ---------------------------------------------------------------------------

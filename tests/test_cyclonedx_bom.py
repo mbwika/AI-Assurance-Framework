@@ -52,6 +52,23 @@ def _record_with_hf_card():
     return rec
 
 
+def _record_with_runtime_components():
+    rec = _minimal_record()
+    rec["tools"] = ["browser"]
+    rec["metadata"] = {
+        "prompt_templates": [{"name": "baseline-prompt", "content": "Summarize the report."}],
+        "system_prompt": "System-only policy text",
+        "mcp_servers": [{"server_id": "mcp-1", "name": "ACME MCP", "endpoint": "https://mcp.example.test"}],
+        "rag_indexes": [{"store_id": "rag-1", "collection_name": "policies", "store_type": "pgvector"}],
+        "embedding_model": {"name": "text-embedding-3-small", "provider": "openai"},
+        "runtime_provider": {"name": "OpenAI", "service": "responses-api"},
+        "guardrails": [{"name": "baseline-guardrail", "provider": "aiaf", "mode": "block"}],
+        "agent_policy_profile": "restricted",
+        "evaluators": [{"name": "frontier-harness", "version": "2.0", "scope": "dangerous-capability"}],
+    }
+    return rec
+
+
 # ---------------------------------------------------------------------------
 # export_bom — top-level structure
 # ---------------------------------------------------------------------------
@@ -159,6 +176,35 @@ def test_dependency_components_have_purl():
             assert comp["purl"].startswith("pkg:pypi/")
 
 
+def test_runtime_components_are_exported_as_cyclonedx_components():
+    bom = export_bom(_record_with_runtime_components())
+    runtime_types = {
+        prop["value"]
+        for component in bom["components"]
+        for prop in component.get("properties", [])
+        if prop.get("name") == "aiaf:runtime_type"
+    }
+    assert {
+        "prompt",
+        "system-prompt-hash",
+        "tool",
+        "mcp-server",
+        "rag-index",
+        "embedding-model",
+        "provider",
+        "guardrail",
+        "policy",
+        "evaluator",
+    }.issubset(runtime_types)
+
+
+def test_runtime_component_hashes_do_not_embed_raw_prompt_content():
+    bom = export_bom(_record_with_runtime_components())
+    serialized = str(bom)
+    assert "Summarize the report." not in serialized
+    assert "System-only policy text" not in serialized
+
+
 # ---------------------------------------------------------------------------
 # export_bom — modelCard block
 # ---------------------------------------------------------------------------
@@ -219,6 +265,55 @@ def test_import_bom_extracts_dependencies():
     names = {d["name"] for d in imported["dependencies"]}
     assert "torch" in names
     assert "transformers" in names
+
+
+def test_import_bom_reconstructs_runtime_component_inventory():
+    bom = export_bom(_record_with_runtime_components())
+    imported = import_bom(bom)
+
+    runtime_types = {component["type"] for component in imported["runtime_components"]}
+    assert {
+        "prompt",
+        "system-prompt-hash",
+        "tool",
+        "mcp-server",
+        "rag-index",
+        "embedding-model",
+        "provider",
+        "guardrail",
+        "policy",
+        "evaluator",
+    }.issubset(runtime_types)
+    assert imported["metadata"]["system_prompt_hash"] is not None
+    assert imported["metadata"]["runtime_provider"]["name"] == "OpenAI"
+    assert imported["metadata"]["embedding_model"]["name"] == "text-embedding-3-small"
+    assert imported["tools"][0]["name"] == "browser"
+    assert imported["evidence_origin_hints"]["runtime_components"] == "provider_declared"
+
+
+def test_import_bom_prefers_primary_model_over_runtime_embedding_model():
+    bom = export_bom(_record_with_runtime_components())
+    model_component = bom["components"][0]
+    embedding_component = next(
+        component
+        for component in bom["components"]
+        if any(
+            prop.get("name") == "aiaf:runtime_type" and prop.get("value") == "embedding-model"
+            for prop in component.get("properties", [])
+        )
+    )
+    remaining = [
+        component
+        for component in bom["components"]
+        if component is not embedding_component and component is not model_component
+    ]
+    bom["components"] = [embedding_component, model_component] + remaining
+
+    imported = import_bom(bom)
+
+    assert imported["model_name"] == "test-model"
+    assert imported["version"] == "1.0.0"
+    assert imported["metadata"]["embedding_model"]["name"] == "text-embedding-3-small"
 
 
 def test_import_bom_round_trip_spec_version():

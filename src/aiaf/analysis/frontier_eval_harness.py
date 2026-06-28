@@ -35,6 +35,7 @@ Public surface
 
 import json
 import logging
+import math
 import re
 import threading
 import time
@@ -50,6 +51,9 @@ from typing import (
 )
 
 logger = logging.getLogger(__name__)
+
+EVAL_EVIDENCE_VERSION = "1.0"
+_EVAL_RUN_PREFIX = "eval_run:"
 
 
 # ---------------------------------------------------------------------------
@@ -443,6 +447,214 @@ def _summarize(job: Job) -> dict[str, Any]:
     }
 
 
+def _eval_run_key(run_id: str) -> str:
+    return f"{_EVAL_RUN_PREFIX}{run_id}"
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, ensure_ascii=True, default=str)
+
+
+def _finding_score(finding: Finding | dict[str, Any]) -> float:
+    if isinstance(finding, Finding):
+        strength = finding.strength
+    else:
+        raw = str(finding.get("strength") or EvidenceStrength.NOT_EVALUATED.value)
+        strength = EvidenceStrength(raw)
+    return strength.rank / max(len(EvidenceStrength) - 1, 1)
+
+
+def _ci(values: Sequence[float]) -> dict[str, float]:
+    if not values:
+        return {"mean": 0.0, "lower": 0.0, "upper": 0.0, "margin": 0.0}
+    mean = sum(values) / len(values)
+    if len(values) == 1:
+        return {
+            "mean": round(mean, 6),
+            "lower": round(mean, 6),
+            "upper": round(mean, 6),
+            "margin": 0.0,
+        }
+    variance = sum((value - mean) ** 2 for value in values) / (len(values) - 1)
+    margin = 1.96 * math.sqrt(variance / len(values))
+    return {
+        "mean": round(mean, 6),
+        "lower": round(max(0.0, mean - margin), 6),
+        "upper": round(min(1.0, mean + margin), 6),
+        "margin": round(margin, 6),
+    }
+
+
+def _job_payload(
+    job: Job,
+    *,
+    target_id: str | None,
+    scorer_version: str,
+    random_seed: int | None,
+    catalog_digest: str | None,
+    metadata: dict[str, Any] | None,
+) -> dict[str, Any]:
+    findings = [
+        {
+            "probe_id": finding.probe_id,
+            "category": finding.category,
+            "strength": finding.strength.value,
+            "matched_indicators": sorted(finding.matched_indicators),
+            "latency_ms": round(float(finding.latency_ms), 6),
+            "error": finding.error,
+        }
+        for finding in job.findings
+    ]
+    return {
+        "job": job.to_dict(),
+        "target_id": target_id,
+        "scorer_version": scorer_version,
+        "random_seed": random_seed,
+        "catalog_digest": catalog_digest,
+        "metadata": metadata or {},
+        "findings": findings,
+    }
+
+
+def register_eval_run(
+    job: Job,
+    store: Any,
+    *,
+    target_id: str | None = None,
+    scorer_version: str = "regex-rubric/1.0",
+    random_seed: int | None = None,
+    catalog_digest: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Persist a content-addressed evaluation run under the generic model store."""
+    payload = _job_payload(
+        job,
+        target_id=target_id,
+        scorer_version=scorer_version,
+        random_seed=random_seed,
+        catalog_digest=catalog_digest,
+        metadata=metadata,
+    )
+    run_id = uuid.uuid5(uuid.NAMESPACE_URL, _canonical_json(payload)).hex
+    scores = [_finding_score(finding) for finding in job.findings]
+    ci = _ci(scores)
+    summary = _summarize(job)
+    record = {
+        "model_id": _eval_run_key(run_id),
+        "id": _eval_run_key(run_id),
+        "metadata": {
+            "run_id": run_id,
+            "eval_evidence_version": EVAL_EVIDENCE_VERSION,
+            "job_id": job.job_id,
+            "job_state": job.state.value,
+            "target_id": target_id,
+            "scorer_version": scorer_version,
+            "random_seed": random_seed,
+            "catalog_digest": catalog_digest,
+            "probe_count": len(job.findings),
+            "score_mean": ci["mean"],
+            "score_ci_lower": ci["lower"],
+            "score_ci_upper": ci["upper"],
+            "score_ci_margin": ci["margin"],
+            "summary": summary,
+            "findings": [finding.to_dict() for finding in job.findings],
+            "metadata": metadata or {},
+            "registered_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        },
+    }
+    store.save_model(record)
+    return record["metadata"]
+
+
+def get_eval_run(run_id: str, store: Any) -> dict[str, Any] | None:
+    record = store.get_model(_eval_run_key(run_id))
+    return (record or {}).get("metadata") or None
+
+
+def list_eval_runs(
+    store: Any,
+    *,
+    target_id: str | None = None,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    records = store.list_models() if hasattr(store, "list_models") else []
+    results = []
+    for record in records:
+        model_id = str(record.get("model_id") or record.get("id") or "")
+        if not model_id.startswith(_EVAL_RUN_PREFIX):
+            continue
+        meta = record.get("metadata") or {}
+        if target_id and meta.get("target_id") != target_id:
+            continue
+        results.append(meta)
+    results.sort(key=lambda item: item.get("registered_at") or "", reverse=True)
+    return results[:limit]
+
+
+def compare_eval_runs(
+    baseline_run_id: str,
+    candidate_run_id: str,
+    store: Any,
+) -> dict[str, Any]:
+    """Compare two eval runs using overlapping probes and CI overlap."""
+    baseline = get_eval_run(baseline_run_id, store)
+    candidate = get_eval_run(candidate_run_id, store)
+    if baseline is None or candidate is None:
+        missing = baseline_run_id if baseline is None else candidate_run_id
+        raise ValueError(f"Eval run not found: {missing}")
+
+    baseline_scores = {
+        finding["probe_id"]: _finding_score(finding)
+        for finding in baseline.get("findings") or []
+    }
+    candidate_scores = {
+        finding["probe_id"]: _finding_score(finding)
+        for finding in candidate.get("findings") or []
+    }
+    overlap = sorted(set(baseline_scores) & set(candidate_scores))
+    if not overlap:
+        return {
+            "baseline_run_id": baseline_run_id,
+            "candidate_run_id": candidate_run_id,
+            "overlap_probe_count": 0,
+            "status": "INSUFFICIENT_OVERLAP",
+            "regressed": False,
+            "improved": False,
+        }
+
+    baseline_values = [baseline_scores[probe_id] for probe_id in overlap]
+    candidate_values = [candidate_scores[probe_id] for probe_id in overlap]
+    baseline_ci = _ci(baseline_values)
+    candidate_ci = _ci(candidate_values)
+    intervals_overlap = not (
+        candidate_ci["lower"] > baseline_ci["upper"]
+        or candidate_ci["upper"] < baseline_ci["lower"]
+    )
+    regressed = candidate_ci["lower"] > baseline_ci["upper"]
+    improved = candidate_ci["upper"] < baseline_ci["lower"]
+    status = "NO_SIGNIFICANT_CHANGE"
+    if regressed:
+        status = "REGRESSION"
+    elif improved:
+        status = "IMPROVEMENT"
+    elif not intervals_overlap:
+        status = "SEPARATED"
+
+    return {
+        "baseline_run_id": baseline_run_id,
+        "candidate_run_id": candidate_run_id,
+        "overlap_probe_count": len(overlap),
+        "overlap_probe_ids": overlap,
+        "baseline_ci": baseline_ci,
+        "candidate_ci": candidate_ci,
+        "score_delta": round(candidate_ci["mean"] - baseline_ci["mean"], 6),
+        "ci_overlap": intervals_overlap,
+        "regressed": regressed,
+        "improved": improved,
+        "status": status,
+    }
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -489,5 +701,4 @@ def _cli() -> None:
 
 if __name__ == "__main__":
     _cli()
-
 

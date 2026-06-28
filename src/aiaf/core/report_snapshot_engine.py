@@ -39,6 +39,7 @@ class AssuranceReportSnapshotEngine:
         artifact_id: str | None = None,
         model_id: str | None = None,
         registered_by: str | None = None,
+        eval_run_ids: list[str] | None = None,
         sign: bool = False,
     ) -> dict[str, Any]:
         creator = str(created_by or "").strip()
@@ -71,6 +72,7 @@ class AssuranceReportSnapshotEngine:
             model_id=normalized_model,
             registered_by=normalized_registrant,
         )
+        report = _attach_eval_evidence(report, eval_run_ids, self.datastore)
         created_at = _utc_now()
         report_scope = report.get("scope") or {}
         snapshot_artifact = (
@@ -109,6 +111,7 @@ class AssuranceReportSnapshotEngine:
                     "scope": report_scope,
                     "report_version": snapshot["report_version"],
                     "sha256": snapshot["sha256"],
+                    "eval_run_count": len((report.get("eval_evidence") or {}).get("runs") or []),
                     "signed": bool(snapshot["signature"]),
                     "key_id": snapshot["key_id"],
                     "created_by": creator,
@@ -123,6 +126,7 @@ class AssuranceReportSnapshotEngine:
                 "scope_type": snapshot["scope_type"],
                 "model_id": normalized_model,
                 "registered_by": normalized_registrant,
+                "eval_run_count": len((report.get("eval_evidence") or {}).get("runs") or []),
                 "signed": bool(snapshot["signature"]),
                 "report_version": snapshot["report_version"],
             },
@@ -267,6 +271,48 @@ def _signature_envelope(snapshot: dict[str, Any]) -> dict[str, Any]:
         "created_at": snapshot["created_at"],
         "key_id": snapshot.get("key_id"),
     }
+
+
+def _attach_eval_evidence(
+    report: dict[str, Any],
+    eval_run_ids: list[str] | None,
+    datastore: Any,
+) -> dict[str, Any]:
+    if not eval_run_ids:
+        return report
+    get_model = getattr(datastore, "get_model", None)
+    if not callable(get_model):
+        return report
+
+    runs = []
+    missing = []
+    for run_id in list(dict.fromkeys(str(item).strip() for item in eval_run_ids if str(item).strip())):
+        record = get_model(f"eval_run:{run_id}")
+        if not record:
+            missing.append(run_id)
+            continue
+        meta = record.get("metadata") or {}
+        runs.append(
+            {
+                "run_id": meta.get("run_id"),
+                "job_id": meta.get("job_id"),
+                "target_id": meta.get("target_id"),
+                "scorer_version": meta.get("scorer_version"),
+                "random_seed": meta.get("random_seed"),
+                "probe_count": meta.get("probe_count"),
+                "score_mean": meta.get("score_mean"),
+                "score_ci_lower": meta.get("score_ci_lower"),
+                "score_ci_upper": meta.get("score_ci_upper"),
+            }
+        )
+
+    enriched = dict(report)
+    enriched["eval_evidence"] = {
+        "run_count": len(runs),
+        "runs": runs,
+        "missing_run_ids": missing,
+    }
+    return enriched
 
 
 def _sign_hmac(value: dict[str, Any], signing_key: str) -> str:

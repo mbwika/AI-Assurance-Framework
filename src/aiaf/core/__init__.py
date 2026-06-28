@@ -16,6 +16,18 @@ from .agent_action_ledger import (
 )
 from .agent_runtime_engine import AgentRuntimeEngine
 from .agentic_engine import AgenticAssuranceEngine
+from .egress_firewall import (
+    CHANNEL_DATA,
+    CHANNEL_NETWORK,
+    CHANNEL_TOOL,
+    CHANNELS,
+    FIREWALL_VERSION,
+    FirewallDecisionError,
+    authorize_data_egress,
+    authorize_network_egress,
+    authorize_tool_egress,
+    decide_egress,
+)
 from .evidence_engine import GovernanceEvidenceEngine
 from .governance_engine import GovernanceEngine
 from .guardrail_engine import (
@@ -127,6 +139,11 @@ from .policy_enforcement import (
 )
 from .policy_enforcement import (
     VERDICTS as PEP_VERDICTS,
+)
+from .rag_taint_gate import (
+    RAG_TAINT_GATE_VERSION,
+    RagTaintGateError,
+    gate_rag_context,
 )
 from .probe_engine import (
     PROBE_VERSION,
@@ -263,6 +280,16 @@ __all__ = [
     "GovernanceEvidenceEngine",
     "AgentRuntimeEngine",
     "AssuranceReportSnapshotEngine",
+    "FIREWALL_VERSION",
+    "CHANNEL_NETWORK",
+    "CHANNEL_TOOL",
+    "CHANNEL_DATA",
+    "CHANNELS",
+    "FirewallDecisionError",
+    "decide_egress",
+    "authorize_network_egress",
+    "authorize_tool_egress",
+    "authorize_data_egress",
     "TELEMETRY_VERSION",
     "TelemetryValidationError",
     "ingest_events",
@@ -333,6 +360,9 @@ __all__ = [
     "CONFIDENCE_HIGH", "CONFIDENCE_MODERATE", "CONFIDENCE_LOW", "CONFIDENCE_INSUFFICIENT",
     "RiskConfidenceError",
     "compute_risk_confidence",
+    "RAG_TAINT_GATE_VERSION",
+    "RagTaintGateError",
+    "gate_rag_context",
     # Feature F4 — Runtime policy enforcement point
     "POLICY_ENFORCEMENT_VERSION",
     "MODE_ENFORCE", "MODE_AUDIT", "MODE_PASSTHROUGH",
