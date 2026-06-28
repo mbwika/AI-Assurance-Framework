@@ -416,3 +416,65 @@ def api_link_incident(
         return link_to_incident(remediation_id, req.incident_id, store)
     except RemediationError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ── Incident package routes ────────────────────────────────────────────────────
+
+class IncidentPackageRequest(BaseModel):
+    incident_class: str | None = None
+    evidence_fields: dict | None = None
+
+
+@router.get("/incidents/{incident_id}/package")
+def api_incident_package(
+    incident_id: str,
+    fmt: str = "json",
+    incident_class: str | None = None,
+    store=Depends(get_store),
+    _=Depends(get_api_key),
+):
+    """Build and return a structured incident reporting package.
+
+    ``?format=json`` (default) returns the full portable bundle.
+    ``?format=stix`` returns a STIX 2.1 bundle dict.
+    ``?format=cef``  returns a CEF syslog string.
+    """
+    from ..reporting.incident_package import IncidentPackageError, export_package
+
+    try:
+        result = export_package(incident_id, store, fmt=fmt, incident_class=incident_class)
+    except IncidentPackageError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    if fmt == "cef":
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse(result, media_type="text/plain")
+    return result
+
+
+@router.post("/incidents/{incident_id}/package")
+def api_incident_package_with_evidence(
+    incident_id: str,
+    req: IncidentPackageRequest,
+    fmt: str = "json",
+    store=Depends(get_store),
+    _=Depends(get_api_key),
+):
+    """Build a package with additional evidence fields supplied by the caller."""
+    from ..reporting.incident_package import IncidentPackageError, export_package
+
+    try:
+        result = export_package(
+            incident_id, store, fmt=fmt,
+            incident_class=req.incident_class,
+            evidence_fields=req.evidence_fields,
+        )
+    except IncidentPackageError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    if fmt == "cef":
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse(result, media_type="text/plain")
+    return result

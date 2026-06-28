@@ -11,6 +11,7 @@ from aiaf.registry.hf_model_card import (
     STATUS_SUCCESS,
     enrich_ledger,
     parse_snapshot_dir,
+    summarize_disclosure_posture,
 )
 
 # ---------------------------------------------------------------------------
@@ -174,6 +175,20 @@ def test_model_card_disclosure_signals_detected(tmp_path):
     assert signals["intended_use_present"] is True
     assert signals["safety_disclosure_present"] is True
     assert signals["privacy_disclosure_present"] is True
+
+
+def test_summarize_disclosure_posture_rewards_complete_cards(tmp_path):
+    snap = _make_snapshot(tmp_path, readme=_DISCLOSURE_README, config=_CONFIG_JSON)
+    summary = summarize_disclosure_posture(parse_snapshot_dir(snap))
+    assert summary["assessment_complete"] is True
+    assert summary["risk_score"] < 4.0
+    assert summary["missing_disclosures"] == []
+
+
+def test_summarize_disclosure_posture_handles_missing_model_card():
+    summary = summarize_disclosure_posture({"status": STATUS_NO_CARD})
+    assert summary["assessment_complete"] is False
+    assert summary["risk_score"] >= 8.0
 
 
 def test_config_claims_extracted_for_phase_a_probes(tmp_path):

@@ -36,6 +36,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from .mbom_v2 import generate_ai_bom_v2
+
 CYCLONEDX_SPEC_VERSION = "1.7"
 AIAF_TOOL_VERSION = "0.2.0"
 BOM_SCHEMA_VERSION = "1.0"
@@ -59,13 +61,15 @@ def export_bom(model_record: dict[str, Any]) -> dict[str, Any]:
     metadata = model_record.get("metadata") or {}
     model_id = model_record.get("model_id") or model_record.get("id") or str(uuid.uuid4())
     bom_ref = f"aiaf:{model_id}"
+    ai_bom = generate_ai_bom_v2(model_record)
 
     component = _build_component(model_record, metadata, bom_ref)
     dep_refs, dep_components = _build_dependencies(model_record, bom_ref)
+    runtime_refs, runtime_components = _build_runtime_components(ai_bom, bom_ref)
 
     # CycloneDX: all components (model + deps) go in the top-level components
     # array; the dependencies block only lists the relationship graph.
-    all_components = [component] + dep_components
+    all_components = [component] + dep_components + runtime_components
 
     return {
         "bomFormat": "CycloneDX",
@@ -74,7 +78,7 @@ def export_bom(model_record: dict[str, Any]) -> dict[str, Any]:
         "version": 1,
         "metadata": _build_metadata(model_record),
         "components": all_components,
-        "dependencies": dep_refs,
+        "dependencies": dep_refs + runtime_refs,
     }
 
 
@@ -259,6 +263,82 @@ def _build_dependencies(
     return bom_deps, dep_components
 
 
+def _build_runtime_components(ai_bom: dict[str, Any], bom_ref: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    components = ((ai_bom.get("components") if isinstance(ai_bom.get("components"), dict) else {}) or {}).get("runtime_components") or []
+    runtime_components = []
+    runtime_refs = []
+    for component in components:
+        if not isinstance(component, dict):
+            continue
+        runtime_ref = str(component.get("bom_ref") or "")
+        if not runtime_ref:
+            continue
+        runtime_refs.append(runtime_ref)
+        runtime_components.append(_build_runtime_component(component))
+    if runtime_refs:
+        return [{"ref": bom_ref, "dependsOn": runtime_refs}], runtime_components
+    return [], runtime_components
+
+
+def _build_runtime_component(component: dict[str, Any]) -> dict[str, Any]:
+    runtime_type = str(component.get("type") or "runtime")
+    name = str(component.get("name") or runtime_type)
+    cyclonedx_type = _runtime_cyclonedx_type(runtime_type)
+    exported: dict[str, Any] = {
+        "type": cyclonedx_type,
+        "bom-ref": str(component.get("bom_ref")),
+        "name": name,
+        "properties": [{"name": "aiaf:runtime_type", "value": runtime_type}],
+    }
+
+    version = component.get("version")
+    if version:
+        exported["version"] = str(version)
+    hashes = component.get("hashes")
+    if isinstance(hashes, dict) and hashes.get("sha256"):
+        exported["hashes"] = [{"alg": "SHA-256", "content": str(hashes["sha256"])}]
+
+    for field in (
+        "role",
+        "source",
+        "manifest_id",
+        "risk_tier",
+        "server_id",
+        "endpoint",
+        "transport",
+        "store_id",
+        "collection_name",
+        "store_type",
+        "embedding_model",
+        "provider",
+        "service",
+        "mode",
+        "profile",
+        "policy_kind",
+        "scope",
+        "source_url",
+    ):
+        value = component.get(field)
+        if value is not None:
+            exported["properties"].append({"name": f"aiaf:{field}", "value": str(value)})
+    return exported
+
+
+def _runtime_cyclonedx_type(runtime_type: str) -> str:
+    return {
+        "prompt": "data",
+        "system-prompt-hash": "data",
+        "tool": "application",
+        "mcp-server": "service",
+        "rag-index": "data",
+        "embedding-model": "machine-learning-model",
+        "provider": "service",
+        "guardrail": "service",
+        "policy": "application",
+        "evaluator": "application",
+    }.get(runtime_type, "application")
+
+
 # ---------------------------------------------------------------------------
 # Import: CycloneDX BOM → AIAF registration parameters
 # ---------------------------------------------------------------------------
@@ -273,25 +353,35 @@ def import_bom(bom_dict: dict[str, Any]) -> dict[str, Any]:
     """
     bom_dict = bom_dict if isinstance(bom_dict, dict) else {}
 
-    # Find the machine-learning-model component.
-    components = bom_dict.get("components") or []
+    # Find the primary machine-learning-model component, not a runtime
+    # embedding-model component exported as CycloneDX machine-learning-model.
+    components = [component for component in (bom_dict.get("components") or []) if isinstance(component, dict)]
     component = next(
-        (c for c in components if c.get("type") == "machine-learning-model"),
-        components[0] if components else {},
+        (
+            c
+            for c in components
+            if c.get("type") == "machine-learning-model" and _runtime_component_type(c) is None
+        ),
+        next((c for c in components if c.get("type") == "machine-learning-model"), components[0] if components else {}),
     )
 
     result: dict[str, Any] = {
         "bom_format": bom_dict.get("bomFormat"),
         "spec_version": bom_dict.get("specVersion"),
+        "model_id": None,
         "model_name": component.get("name"),
         "version": component.get("version"),
+        "source": None,
         "publisher": None,
         "license": None,
         "sha256": None,
         "source_url": None,
         "dependencies": [],
+        "tools": [],
+        "runtime_components": [],
         "model_type": None,
         "pipeline_tag": None,
+        "metadata": {},
         "evidence_origin_hints": {},
         "aiaf_properties": {},
     }
@@ -337,9 +427,11 @@ def import_bom(bom_dict: dict[str, Any]) -> dict[str, Any]:
         name = str(prop.get("name", ""))
         if name.startswith("aiaf:"):
             result["aiaf_properties"][name[5:]] = prop.get("value")
+    result["model_id"] = result["aiaf_properties"].get("model_id")
+    result["source"] = result["aiaf_properties"].get("source")
 
     # Dependencies from components.
-    for comp in bom_dict.get("components") or []:
+    for comp in components:
         if comp.get("type") == "library" and comp.get("name"):
             result["dependencies"].append(
                 {
@@ -349,6 +441,7 @@ def import_bom(bom_dict: dict[str, Any]) -> dict[str, Any]:
                 }
             )
 
+    _import_runtime_components(components, result)
     return result
 
 
@@ -364,6 +457,159 @@ def _purl_ecosystem(purl: str) -> str:
         if parts:
             return parts[0]
     return "unknown"
+
+
+def _runtime_component_type(component: dict[str, Any]) -> str | None:
+    for prop in component.get("properties") or []:
+        if not isinstance(prop, dict):
+            continue
+        if str(prop.get("name") or "") == "aiaf:runtime_type":
+            value = str(prop.get("value") or "").strip()
+            return value or None
+    return None
+
+
+def _runtime_properties(component: dict[str, Any]) -> dict[str, str]:
+    properties: dict[str, str] = {}
+    for prop in component.get("properties") or []:
+        if not isinstance(prop, dict):
+            continue
+        name = str(prop.get("name") or "")
+        if not name.startswith("aiaf:") or name == "aiaf:runtime_type":
+            continue
+        key = name[5:]
+        value = prop.get("value")
+        if value is not None:
+            properties[key] = str(value)
+    return properties
+
+
+def _component_sha256(component: dict[str, Any]) -> str | None:
+    for item in component.get("hashes") or []:
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("alg", "")).upper() in {"SHA-256", "SHA256"}:
+            value = item.get("content")
+            if value is not None:
+                return str(value)
+    return None
+
+
+def _import_runtime_components(components: list[dict[str, Any]], result: dict[str, Any]) -> None:
+    metadata = result["metadata"]
+    runtime_components = result["runtime_components"]
+    for component in components:
+        runtime_type = _runtime_component_type(component)
+        if runtime_type is None:
+            continue
+        props = _runtime_properties(component)
+        imported = {
+            "type": runtime_type,
+            "bom_ref": component.get("bom-ref"),
+            "name": component.get("name"),
+            "version": component.get("version"),
+            "hashes": {"sha256": _component_sha256(component)} if _component_sha256(component) else {},
+            **props,
+        }
+        runtime_components.append(imported)
+
+        if runtime_type == "prompt":
+            metadata.setdefault("prompt_templates", []).append(
+                {
+                    "name": component.get("name"),
+                    "role": props.get("role"),
+                    "source": props.get("source"),
+                    "sha256": _component_sha256(component),
+                }
+            )
+            result["evidence_origin_hints"]["metadata.prompt_templates"] = "provider_declared"
+        elif runtime_type == "system-prompt-hash":
+            if metadata.get("system_prompt_hash") is None:
+                metadata["system_prompt_hash"] = _component_sha256(component)
+            result["evidence_origin_hints"]["metadata.system_prompt_hash"] = "provider_declared"
+        elif runtime_type == "tool":
+            result["tools"].append(
+                {
+                    "name": component.get("name"),
+                    "version": component.get("version"),
+                    "manifest_id": props.get("manifest_id"),
+                    "risk_tier": props.get("risk_tier"),
+                }
+            )
+            result["evidence_origin_hints"]["tools"] = "provider_declared"
+        elif runtime_type == "mcp-server":
+            metadata.setdefault("mcp_servers", []).append(
+                {
+                    "server_id": props.get("server_id"),
+                    "name": component.get("name"),
+                    "endpoint": props.get("endpoint"),
+                    "transport": props.get("transport"),
+                }
+            )
+            result["evidence_origin_hints"]["metadata.mcp_servers"] = "provider_declared"
+        elif runtime_type == "rag-index":
+            metadata.setdefault("rag_indexes", []).append(
+                {
+                    "store_id": props.get("store_id"),
+                    "collection_name": props.get("collection_name"),
+                    "store_type": props.get("store_type"),
+                    "embedding_model": props.get("embedding_model"),
+                }
+            )
+            result["evidence_origin_hints"]["metadata.rag_indexes"] = "provider_declared"
+        elif runtime_type == "embedding-model":
+            embedding = {
+                "name": component.get("name"),
+                "provider": props.get("provider"),
+                "source_url": props.get("source_url"),
+            }
+            if metadata.get("embedding_model") is None:
+                metadata["embedding_model"] = embedding
+            else:
+                metadata.setdefault("embedding_models", []).append(embedding)
+            result["evidence_origin_hints"]["metadata.embedding_model"] = "provider_declared"
+        elif runtime_type == "provider":
+            provider = {
+                "name": component.get("name"),
+                "service": props.get("service"),
+            }
+            if metadata.get("runtime_provider") is None:
+                metadata["runtime_provider"] = provider
+            else:
+                metadata.setdefault("runtime_providers", []).append(provider)
+            result["evidence_origin_hints"]["metadata.runtime_provider"] = "provider_declared"
+        elif runtime_type == "guardrail":
+            metadata.setdefault("guardrails", []).append(
+                {
+                    "name": component.get("name"),
+                    "provider": props.get("provider"),
+                    "mode": props.get("mode"),
+                }
+            )
+            result["evidence_origin_hints"]["metadata.guardrails"] = "provider_declared"
+        elif runtime_type == "policy":
+            metadata.setdefault("policies", []).append(
+                {
+                    "name": component.get("name"),
+                    "profile": props.get("profile"),
+                    "policy_kind": props.get("policy_kind"),
+                }
+            )
+            if metadata.get("agent_policy_profile") is None and props.get("profile"):
+                metadata["agent_policy_profile"] = props["profile"]
+            result["evidence_origin_hints"]["metadata.policies"] = "provider_declared"
+        elif runtime_type == "evaluator":
+            metadata.setdefault("evaluators", []).append(
+                {
+                    "name": component.get("name"),
+                    "version": component.get("version"),
+                    "scope": props.get("scope"),
+                }
+            )
+            result["evidence_origin_hints"]["metadata.evaluators"] = "provider_declared"
+
+    if runtime_components:
+        result["evidence_origin_hints"]["runtime_components"] = "provider_declared"
 
 
 def _utc_now() -> str:

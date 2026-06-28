@@ -83,6 +83,13 @@ VELOCITY_RISK_ELEVATED = "ELEVATED"
 VELOCITY_RISK_HIGH = "HIGH"
 VELOCITY_RISK_CRITICAL = "CRITICAL"
 
+_VELOCITY_RISK_SCORE: dict[str, float] = {
+    VELOCITY_RISK_NORMAL: 1.5,
+    VELOCITY_RISK_ELEVATED: 5.5,
+    VELOCITY_RISK_HIGH: 8.0,
+    VELOCITY_RISK_CRITICAL: 9.5,
+}
+
 # ── Defaults ───────────────────────────────────────────────────────────────────
 DEFAULT_SPIKE_MULTIPLIER = 5.0      # current_velocity > baseline * 5 → spike
 DEFAULT_COLD_START_HOURS = 24.0     # surge from 0 to > cold_start_threshold within this window
@@ -119,6 +126,72 @@ def _profile_key(artifact_id: str) -> str:
 
 def _load_meta(record: dict[str, Any] | None) -> dict[str, Any]:
     return (record or {}).get("metadata") or {}
+
+
+def summarize_velocity_risk(evidence: Any) -> dict[str, Any]:
+    """Normalize adoption-velocity evidence to a bounded 0-10 risk summary."""
+    if not isinstance(evidence, dict) or not evidence:
+        return {
+            "risk_score": 4.5,
+            "confidence": 0.0,
+            "risk_level": None,
+            "signals": [],
+            "anomaly_count": 0,
+            "assessment_complete": False,
+            "evidence_present": False,
+        }
+
+    risk_level = evidence.get("risk_level")
+    anomalies = evidence.get("anomalies") if isinstance(evidence.get("anomalies"), list) else []
+    signals = sorted(
+        {
+            str(item.get("signal"))
+            for item in anomalies
+            if isinstance(item, dict) and item.get("signal")
+        }
+    )
+    if isinstance(risk_level, str) and risk_level in _VELOCITY_RISK_SCORE:
+        confidence = 0.9 if isinstance(evidence.get("velocity_profile"), dict) else 0.7
+        return {
+            "risk_score": _VELOCITY_RISK_SCORE[risk_level],
+            "confidence": confidence,
+            "risk_level": risk_level,
+            "signals": signals,
+            "anomaly_count": len(anomalies),
+            "assessment_complete": True,
+            "evidence_present": True,
+        }
+
+    baseline = evidence.get("baseline_weight_per_hour")
+    current = evidence.get("current_velocity_per_hour")
+    if isinstance(current, (int, float)) and not isinstance(current, bool):
+        risk_score = 5.5
+        if isinstance(baseline, (int, float)) and not isinstance(baseline, bool):
+            if baseline > 0 and current <= baseline * 1.5:
+                risk_score = 2.5
+            elif baseline > 0 and current > baseline * 5.0:
+                risk_score = 7.5
+            elif baseline == 0 and current > 0:
+                risk_score = 6.0
+        return {
+            "risk_score": round(risk_score, 3),
+            "confidence": 0.5,
+            "risk_level": None,
+            "signals": [],
+            "anomaly_count": 0,
+            "assessment_complete": False,
+            "evidence_present": True,
+        }
+
+    return {
+        "risk_score": 4.5,
+        "confidence": 0.2,
+        "risk_level": None,
+        "signals": [],
+        "anomaly_count": 0,
+        "assessment_complete": False,
+        "evidence_present": True,
+    }
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────

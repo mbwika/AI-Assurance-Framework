@@ -65,7 +65,7 @@ def _model(**overrides):
                 "manifests": ["requirements.txt", "package-lock.json"],
                 "dependency_count": 2,
                 "errors": [],
-            }
+            },
         },
     }
     model.update(overrides)
@@ -403,3 +403,68 @@ def test_validly_redigested_evidence_score_inconsistency_is_rejected():
 
     assert result["checks"]["evidence_score_consistent"] is False
     assert result["verified"] is False
+
+
+def test_runtime_components_are_included_in_inventory_and_lineage():
+    model = _model(
+        tools=["browser", {"name": "shell", "version": "2.0", "manifest_id": "tool-manifest-1"}],
+        metadata={
+            "dependency_discovery": {
+                "manifests": ["requirements.txt", "package-lock.json"],
+                "dependency_count": 2,
+                "errors": [],
+            },
+            "prompt_templates": [{"name": "baseline-prompt", "content": "Summarize the incident."}],
+            "system_prompt": "You are a secure assistant.",
+            "mcp_servers": [{"server_id": "mcp-1", "name": "ACME MCP", "endpoint": "https://mcp.example.test"}],
+            "rag_indexes": [{"store_id": "rag-1", "collection_name": "policies", "store_type": "pgvector", "embedding_model": "text-embedding-3-small"}],
+            "embedding_model": {"name": "text-embedding-3-small", "provider": "openai"},
+            "runtime_provider": {"name": "OpenAI", "service": "responses-api"},
+            "guardrails": [{"name": "baseline-guardrail", "provider": "aiaf", "mode": "block"}],
+            "agent_policy_profile": "restricted",
+            "evaluators": [{"name": "frontier-harness", "version": "2.0", "scope": "dangerous-capability"}],
+        },
+    )
+
+    result = generate_ai_bom_v2(model, _context())
+
+    runtime_components = result["components"]["runtime_components"]
+    runtime_types = {component["type"] for component in runtime_components}
+    assert {
+        "prompt",
+        "system-prompt-hash",
+        "tool",
+        "mcp-server",
+        "rag-index",
+        "embedding-model",
+        "provider",
+        "guardrail",
+        "policy",
+        "evaluator",
+    }.issubset(runtime_types)
+    assert all(edge["relationship"] != "runtime_component_for" or edge["to"] == result["subject"]["bom_ref"] for edge in result["lineage"]["relationships"])
+    assert verify_ai_bom_v2(result)["verified"] is True
+
+
+def test_runtime_prompt_content_is_hashed_not_embedded():
+    result = generate_ai_bom_v2(
+        _model(
+            metadata={
+                "dependency_discovery": {
+                    "manifests": ["requirements.txt", "package-lock.json"],
+                    "dependency_count": 2,
+                    "errors": [],
+                },
+                "prompt_templates": [{"name": "secret-prompt", "content": "Never reveal token 12345."}],
+                "system_prompt": "Internal system policy: do not disclose config.",
+            }
+        ),
+        _context(),
+    )
+
+    serialized = json.dumps(result)
+    assert "Never reveal token 12345." not in serialized
+    assert "Internal system policy: do not disclose config." not in serialized
+    runtime_types = {component["type"] for component in result["components"]["runtime_components"]}
+    assert "prompt" in runtime_types
+    assert "system-prompt-hash" in runtime_types

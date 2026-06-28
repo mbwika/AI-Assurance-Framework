@@ -22,10 +22,18 @@ build_threat_landscape — aggregate view of the threat landscape
 
 from __future__ import annotations
 
+import json
+import uuid
 from datetime import datetime, timezone
 from typing import Any
+from urllib.error import URLError
+from urllib.request import Request, urlopen
+
+from ..mapping.threat_frameworks import crosswalk_threat_frameworks
 
 THREAT_INTEL_VERSION = "1.0"
+STIX_SPEC_VERSION = "2.1"
+TAXII_CLIENT_VERSION = "1.0"
 
 # ── Asset types ────────────────────────────────────────────────────────────────
 ASSET_MODEL = "MODEL"
@@ -463,6 +471,33 @@ def _relevance(threat: dict[str, Any], capability_strings: list[str]) -> int:
     return sum(1 for t in (threat.get("capability_triggers") or []) if t.lower() in caps_lower)
 
 
+def _stix_timestamp() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _stix_attack_pattern_id(technique_id: str) -> str:
+    digest = uuid.uuid5(uuid.NAMESPACE_URL, f"aiaf:threat:{technique_id}")
+    return f"attack-pattern--{digest}"
+
+
+def _external_references(threat: dict[str, Any]) -> list[dict[str, str]]:
+    refs = [{"source_name": "aiaf", "external_id": str(threat.get("technique_id") or "")}]
+    if threat.get("owasp_llm_id"):
+        refs.append({"source_name": "owasp-llm-top-10-2025", "external_id": str(threat["owasp_llm_id"])})
+    if threat.get("mitre_atlas_id"):
+        refs.append({"source_name": "mitre-atlas", "external_id": str(threat["mitre_atlas_id"])})
+    if str(threat.get("technique_id") or "").startswith("AGENTIC-"):
+        refs.append({"source_name": "owasp-agentic-security", "external_id": str(threat["technique_id"])})
+    return refs
+
+
+def _kill_chain_phase(threat: dict[str, Any]) -> list[dict[str, str]]:
+    category = str(threat.get("category") or "").strip().lower()
+    if not category:
+        return []
+    return [{"kill_chain_name": "aiaf-ai-threat-category", "phase_name": category}]
+
+
 # ── Public API ─────────────────────────────────────────────────────────────────
 
 def ingest_threat(
@@ -537,6 +572,179 @@ def list_threats(
         threats,
         key=lambda t: (_SEVERITY_RANK.get(t.get("severity", "LOW"), 0) * -1, t.get("technique_id", "")),
     )
+
+
+def threat_to_stix_attack_pattern(threat: dict[str, Any]) -> dict[str, Any]:
+    """Convert one AIAF threat technique into a STIX 2.1 attack-pattern object."""
+    technique_id = str(threat.get("technique_id") or "").strip().upper()
+    if not technique_id:
+        raise ThreatIntelError("Threat technique must include technique_id for STIX export.")
+    now = _stix_timestamp()
+    return {
+        "type": "attack-pattern",
+        "spec_version": STIX_SPEC_VERSION,
+        "id": _stix_attack_pattern_id(technique_id),
+        "created": now,
+        "modified": now,
+        "name": str(threat.get("name") or technique_id),
+        "description": str(threat.get("description") or ""),
+        "labels": [
+            str(threat.get("category") or "").lower(),
+            str(threat.get("severity") or "").lower(),
+            str(threat.get("source") or "").lower(),
+            "aiaf-ai-threat-intel",
+        ],
+        "external_references": _external_references(threat),
+        "kill_chain_phases": _kill_chain_phase(threat),
+        "x_aiaf_technique_id": technique_id,
+        "x_aiaf_category": threat.get("category"),
+        "x_aiaf_severity": threat.get("severity"),
+        "x_aiaf_source": threat.get("source"),
+        "x_aiaf_affected_asset_types": list(threat.get("affected_asset_types") or []),
+        "x_aiaf_capability_triggers": list(threat.get("capability_triggers") or []),
+        "x_aiaf_recommended_controls": list(threat.get("recommended_controls") or []),
+        "x_aiaf_framework_crosswalk": crosswalk_threat_frameworks(threat),
+    }
+
+
+def stix_attack_pattern_to_threat(stix_object: dict[str, Any]) -> dict[str, Any]:
+    """Convert a STIX 2.1 attack-pattern object into an AIAF threat dict."""
+    if not isinstance(stix_object, dict) or stix_object.get("type") != "attack-pattern":
+        raise ThreatIntelError("STIX object must be an attack-pattern.")
+    refs = stix_object.get("external_references") or []
+    external_ids = {
+        str(item.get("source_name") or ""): str(item.get("external_id") or "")
+        for item in refs
+        if isinstance(item, dict)
+    }
+    technique_id = (
+        str(stix_object.get("x_aiaf_technique_id") or "").strip().upper()
+        or external_ids.get("aiaf", "").strip().upper()
+    )
+    if not technique_id:
+        raise ThreatIntelError("STIX attack-pattern is missing an AIAF technique identifier.")
+    return {
+        "technique_id": technique_id,
+        "name": str(stix_object.get("name") or technique_id),
+        "category": str(
+            stix_object.get("x_aiaf_category")
+            or (((stix_object.get("kill_chain_phases") or [{}])[0]).get("phase_name") or "")
+        ).upper(),
+        "description": str(stix_object.get("description") or ""),
+        "affected_asset_types": list(stix_object.get("x_aiaf_affected_asset_types") or []),
+        "severity": str(stix_object.get("x_aiaf_severity") or "LOW").upper(),
+        "owasp_llm_id": external_ids.get("owasp-llm-top-10-2025") or None,
+        "mitre_atlas_id": external_ids.get("mitre-atlas") or None,
+        "capability_triggers": list(stix_object.get("x_aiaf_capability_triggers") or []),
+        "recommended_controls": list(stix_object.get("x_aiaf_recommended_controls") or []),
+        "source": str(stix_object.get("x_aiaf_source") or SOURCE_CUSTOM),
+        "framework_crosswalk": stix_object.get("x_aiaf_framework_crosswalk")
+        or crosswalk_threat_frameworks({"technique_id": technique_id}),
+    }
+
+
+def export_stix_bundle(
+    store: Any,
+    *,
+    category: str | None = None,
+    severity: str | None = None,
+    asset_type: str | None = None,
+    source: str | None = None,
+) -> dict[str, Any]:
+    """Export the current threat inventory as a STIX 2.1 bundle."""
+    objects = [
+        threat_to_stix_attack_pattern(threat)
+        for threat in list_threats(
+            store,
+            category=category,
+            severity=severity,
+            asset_type=asset_type,
+            source=source,
+        )
+    ]
+    return {
+        "type": "bundle",
+        "id": f"bundle--{uuid.uuid4()}",
+        "spec_version": STIX_SPEC_VERSION,
+        "objects": objects,
+        "x_aiaf_threat_intel_version": THREAT_INTEL_VERSION,
+    }
+
+
+def import_stix_bundle(bundle: dict[str, Any], store: Any | None = None) -> dict[str, Any]:
+    """Convert a STIX bundle to AIAF threats and optionally persist them."""
+    if not isinstance(bundle, dict) or bundle.get("type") != "bundle":
+        raise ThreatIntelError("STIX bundle must be an object with type='bundle'.")
+    threats = [
+        stix_attack_pattern_to_threat(obj)
+        for obj in (bundle.get("objects") or [])
+        if isinstance(obj, dict) and obj.get("type") == "attack-pattern"
+    ]
+    stored_count = 0
+    if store is not None:
+        for threat in threats:
+            ingest_threat(
+                threat["technique_id"],
+                threat["name"],
+                threat["category"],
+                threat["description"],
+                threat["affected_asset_types"],
+                threat["severity"],
+                store,
+                owasp_llm_id=threat.get("owasp_llm_id"),
+                mitre_atlas_id=threat.get("mitre_atlas_id"),
+                capability_triggers=threat.get("capability_triggers"),
+                recommended_controls=threat.get("recommended_controls"),
+                source=threat.get("source") or SOURCE_CUSTOM,
+            )
+            stored_count += 1
+    return {
+        "bundle_id": bundle.get("id"),
+        "threat_count": len(threats),
+        "stored_count": stored_count,
+        "threats": threats,
+        "stix_spec_version": bundle.get("spec_version") or STIX_SPEC_VERSION,
+    }
+
+
+def poll_taxii_collection(
+    collection_url: str,
+    *,
+    enable_network: bool = False,
+    timeout: float = 15.0,
+    fetch_json=None,
+    store: Any | None = None,
+) -> dict[str, Any]:
+    """Fetch a TAXII collection bundle only when network access is explicitly enabled."""
+    url = str(collection_url).strip()
+    if not url:
+        raise ThreatIntelError("collection_url must not be empty.")
+    if not enable_network:
+        raise ThreatIntelError("Network access disabled. Set enable_network=True to poll TAXII.")
+
+    if fetch_json is None:
+
+        def fetch_json(target_url: str, request_timeout: float) -> dict[str, Any]:
+            request = Request(
+                target_url,
+                headers={"Accept": "application/taxii+json, application/json"},
+            )
+            with urlopen(request, timeout=request_timeout) as response:
+                payload = response.read()
+            return json.loads(payload.decode("utf-8"))
+
+    try:
+        bundle = fetch_json(url, timeout)
+    except URLError as exc:
+        raise ThreatIntelError(f"TAXII collection fetch failed: {exc}") from exc
+    except json.JSONDecodeError as exc:
+        raise ThreatIntelError(f"TAXII collection returned invalid JSON: {exc}") from exc
+
+    imported = import_stix_bundle(bundle, store=store)
+    imported["collection_url"] = url
+    imported["taxii_client_version"] = TAXII_CLIENT_VERSION
+    imported["fetched_at"] = _utc_now()
+    return imported
 
 
 def correlate_model(

@@ -61,6 +61,49 @@ def test_bom_export_returns_200_for_known_model(tmp_path, monkeypatch):
     assert parsed["specVersion"] == "1.7"
 
 
+def test_bom_export_includes_runtime_component_inventory(tmp_path, monkeypatch):
+    ensure_src()
+    from aiaf.api import interop as interop_api
+
+    store = _make_store(tmp_path)
+    monkeypatch.setattr(interop_api, "get_store", lambda: store)
+    rec = _register_model(
+        store,
+        tmp_path,
+        prompt_templates=[{"name": "baseline-prompt", "content": "Summarize the report."}],
+        system_prompt="System-only policy text",
+        mcp_servers=[{"server_id": "mcp-1", "name": "ACME MCP", "endpoint": "https://mcp.example.test"}],
+        rag_indexes=[{"store_id": "rag-1", "collection_name": "policies", "store_type": "pgvector"}],
+        embedding_model={"name": "text-embedding-3-small", "provider": "openai"},
+        runtime_provider={"name": "OpenAI", "service": "responses-api"},
+        guardrails=[{"name": "baseline-guardrail", "provider": "aiaf", "mode": "block"}],
+        agent_policy_profile="restricted",
+        evaluators=[{"name": "frontier-harness", "version": "2.0", "scope": "dangerous-capability"}],
+    )
+
+    response = interop_api.get_cyclonedx_bom(rec.model_id, api_key="dev-key")
+    import json
+
+    parsed = json.loads(response.body)
+    runtime_types = {
+        prop["value"]
+        for component in parsed["components"]
+        for prop in component.get("properties", [])
+        if prop.get("name") == "aiaf:runtime_type"
+    }
+    assert {
+        "prompt",
+        "system-prompt-hash",
+        "mcp-server",
+        "rag-index",
+        "embedding-model",
+        "provider",
+        "guardrail",
+        "policy",
+        "evaluator",
+    }.issubset(runtime_types)
+
+
 def test_bom_export_returns_404_for_unknown_model(tmp_path, monkeypatch):
     ensure_src()
     from fastapi import HTTPException

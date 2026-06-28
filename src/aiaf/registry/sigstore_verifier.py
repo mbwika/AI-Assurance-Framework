@@ -59,22 +59,6 @@ _BUNDLE_SUFFIXES = (".sigstore.json", ".sigstore", ".bundle")
 # ---------------------------------------------------------------------------
 
 
-def verify_file(
-    artifact_path: str,
-    *,
-    bundle_path: str | None = None,
-    expected_identity: str | None = None,
-    expected_issuer: str | None = None,
-) -> dict[str, Any]:
-    """Compatibility wrapper that accepts string paths."""
-    return verify_resolved_file(
-        Path(artifact_path),
-        bundle_path=Path(bundle_path) if bundle_path else None,
-        expected_identity=expected_identity,
-        expected_issuer=expected_issuer,
-    )
-
-
 def verify_resolved_file(
     artifact_path: Path,
     *,
@@ -135,17 +119,16 @@ def verify_resolved_file(
 
     # Attempt Sigstore verification.
     return _verify_with_sigstore(
-        str(apath),
-        str(bpath),
+        apath,
+        bpath,
         expected_identity=expected_identity,
         expected_issuer=expected_issuer,
     )
 
 
-def find_bundle(artifact_path: str) -> str | None:
+def find_bundle(artifact_path: Path) -> Path | None:
     """Return the path to a Sigstore bundle beside ``artifact_path``, or None."""
-    bundle = _find_bundle_path(Path(artifact_path))
-    return str(bundle) if bundle is not None else None
+    return _find_bundle_path(artifact_path)
 
 
 # ---------------------------------------------------------------------------
@@ -154,8 +137,8 @@ def find_bundle(artifact_path: str) -> str | None:
 
 
 def _verify_with_sigstore(
-    artifact_path: str,
-    bundle_path: str,
+    artifact_path: Path,
+    bundle_path: Path,
     *,
     expected_identity: str | None,
     expected_issuer: str | None,
@@ -167,8 +150,8 @@ def _verify_with_sigstore(
         return _result(
             STATUS_NOT_AVAILABLE,
             verified=False,
-            artifact_path=artifact_path,
-            bundle_path=bundle_path,
+            artifact_path=str(artifact_path),
+            bundle_path=str(bundle_path),
             note=(
                 "The 'sigstore' package is not installed. "
                 "Install it with: pip install sigstore"
@@ -182,8 +165,8 @@ def _verify_with_sigstore(
         return _result(
             STATUS_ERROR,
             verified=False,
-            artifact_path=artifact_path,
-            bundle_path=bundle_path,
+            artifact_path=str(artifact_path),
+            bundle_path=str(bundle_path),
             note=f"Could not compute artifact digest: {exc}",
         )
 
@@ -198,16 +181,16 @@ def _verify_with_sigstore(
         return _result(
             STATUS_ERROR,
             verified=False,
-            artifact_path=artifact_path,
-            bundle_path=bundle_path,
+            artifact_path=str(artifact_path),
+            bundle_path=str(bundle_path),
             artifact_digest=artifact_digest,
             note=f"Verification error: {exc}",
         )
 
 
 def _sigstore_verify(
-    artifact_path: str,
-    bundle_path: str,
+    artifact_path: Path,
+    bundle_path: Path,
     artifact_digest: str,
     *,
     expected_identity: str | None,
@@ -226,8 +209,8 @@ def _sigstore_verify(
         return _result(
             STATUS_BUNDLE_INVALID,
             verified=False,
-            artifact_path=artifact_path,
-            bundle_path=bundle_path,
+            artifact_path=str(artifact_path),
+            bundle_path=str(bundle_path),
             artifact_digest=artifact_digest,
             note=f"Invalid bundle format: {exc}",
         )
@@ -262,8 +245,8 @@ def _sigstore_verify(
         return _result(
             STATUS_VERIFIED,
             verified=True,
-            artifact_path=artifact_path,
-            bundle_path=bundle_path,
+            artifact_path=str(artifact_path),
+            bundle_path=str(bundle_path),
             artifact_digest=artifact_digest,
             signer_identity=signer,
             issuer=issuer,
@@ -274,8 +257,8 @@ def _sigstore_verify(
         return _result(
             STATUS_VERIFICATION_FAILED,
             verified=False,
-            artifact_path=artifact_path,
-            bundle_path=bundle_path,
+            artifact_path=str(artifact_path),
+            bundle_path=str(bundle_path),
             artifact_digest=artifact_digest,
             signer_identity=signer,
             note=f"Signature invalid: {exc}",
@@ -298,7 +281,7 @@ def _find_bundle_path(artifact_path: Path) -> Path | None:
     return None
 
 
-def _sha256_file(path: str) -> str:
+def _sha256_file(path: Path) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as fh:
         for chunk in iter(lambda: fh.read(65536), b""):

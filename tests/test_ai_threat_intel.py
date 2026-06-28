@@ -24,14 +24,21 @@ from aiaf.registry.ai_threat_intel import (
     SOURCE_MITRE_ATLAS,
     SOURCE_OWASP_AGENTIC,
     SOURCE_OWASP_LLM,
+    STIX_SPEC_VERSION,
+    TAXII_CLIENT_VERSION,
     ThreatIntelError,
     build_threat_landscape,
     correlate_agent,
     correlate_model,
     correlate_tool,
+    export_stix_bundle,
     get_threat,
     ingest_threat,
+    import_stix_bundle,
     list_threats,
+    poll_taxii_collection,
+    stix_attack_pattern_to_threat,
+    threat_to_stix_attack_pattern,
 )
 
 
@@ -347,3 +354,52 @@ class TestBuildThreatLandscape:
         store = _Store()
         landscape = build_threat_landscape(store)
         assert landscape["evidence_origin"] == "LOCALLY_OBSERVED"
+
+
+class TestStixInterop:
+    def test_threat_to_stix_attack_pattern_exports_framework_refs(self):
+        stix_object = threat_to_stix_attack_pattern(_BUILTIN_INDEX["LLM01"])
+        refs = {ref["source_name"]: ref["external_id"] for ref in stix_object["external_references"]}
+        assert stix_object["type"] == "attack-pattern"
+        assert stix_object["spec_version"] == STIX_SPEC_VERSION
+        assert refs["aiaf"] == "LLM01"
+        assert refs["owasp-llm-top-10-2025"] == "LLM01"
+
+    def test_stix_attack_pattern_round_trips_to_threat(self):
+        stix_object = threat_to_stix_attack_pattern(_BUILTIN_INDEX["AML.T0020"])
+        threat = stix_attack_pattern_to_threat(stix_object)
+        assert threat["technique_id"] == "AML.T0020"
+        assert threat["mitre_atlas_id"] == "AML.T0020"
+        assert threat["category"] == CATEGORY_DATA_ATTACKS
+
+    def test_export_and_import_stix_bundle_preserve_attack_patterns(self):
+        store = _Store()
+        bundle = export_stix_bundle(store, severity=SEVERITY_CRITICAL)
+        imported = import_stix_bundle(bundle)
+        assert bundle["type"] == "bundle"
+        assert imported["threat_count"] > 0
+        assert all(threat["severity"] == SEVERITY_CRITICAL for threat in imported["threats"])
+
+    def test_poll_taxii_collection_is_network_gated(self):
+        store = _Store()
+        with pytest.raises(ThreatIntelError, match="Network access disabled"):
+            poll_taxii_collection("https://taxii.example.test/collections/1", store=store)
+
+    def test_poll_taxii_collection_accepts_injected_fetcher(self):
+        store = _Store()
+        bundle = export_stix_bundle(store, severity=SEVERITY_HIGH)
+
+        def fake_fetch_json(url, timeout):
+            assert url == "https://taxii.example.test/collections/1"
+            assert timeout == 5.0
+            return bundle
+
+        result = poll_taxii_collection(
+            "https://taxii.example.test/collections/1",
+            enable_network=True,
+            timeout=5.0,
+            fetch_json=fake_fetch_json,
+            store=store,
+        )
+        assert result["taxii_client_version"] == TAXII_CLIENT_VERSION
+        assert result["threat_count"] > 0

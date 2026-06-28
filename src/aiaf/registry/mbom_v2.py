@@ -19,6 +19,7 @@ _MAX_DEPENDENCIES = 2_000
 _MAX_TRAINING_ARTIFACTS = 500
 _MAX_ATTESTATIONS = 250
 _MAX_MANIFESTS = 500
+_MAX_RUNTIME_COMPONENTS = 500
 _MAX_ADVISORY_IDS = 2_000
 _MAX_DIAGNOSTICS = 250
 _MAX_TEXT = 2_048
@@ -86,6 +87,7 @@ def generate_ai_bom_v2(
         subject.get("hashes", {}).get("sha256"),
         diagnostics,
     )
+    runtime_components = _runtime_components(record, metadata, diagnostics)
     discovery = _discovery_summary(metadata.get("dependency_discovery"), diagnostics)
     provenance = _provenance_summary(record, context, diagnostics)
     vulnerabilities = _vulnerability_summary(
@@ -95,6 +97,7 @@ def generate_ai_bom_v2(
     nodes = [subject] + dependencies + training
     if deployment is not None:
         nodes.append(deployment)
+    nodes.extend(runtime_components)
     relationships = []
     for component in dependencies:
         relationships.append(
@@ -107,6 +110,10 @@ def generate_ai_bom_v2(
     if deployment is not None:
         relationships.append(
             {"from": subject["bom_ref"], "relationship": "deployed_as", "to": deployment["bom_ref"]}
+        )
+    for component in runtime_components:
+        relationships.append(
+            {"from": component["bom_ref"], "relationship": "runtime_component_for", "to": subject["bom_ref"]}
         )
     nodes.sort(key=lambda item: item["bom_ref"])
     relationships.sort(key=lambda item: (item["from"], item["relationship"], item["to"]))
@@ -145,6 +152,7 @@ def generate_ai_bom_v2(
             "conflicting_dependencies": conflicts,
             "training_artifacts": training,
             "deployment_artifact": deployment,
+            "runtime_components": runtime_components,
             "dependency_discovery": discovery,
         },
         "lineage": {"nodes": nodes, "relationships": relationships},
@@ -219,11 +227,18 @@ def verify_ai_bom_v2(document: Any) -> dict[str, Any]:
     dependencies = components.get("dependencies")
     training = components.get("training_artifacts")
     deployment = components.get("deployment_artifact")
-    collections_valid = isinstance(dependencies, list) and isinstance(training, list)
+    runtime_components = components.get("runtime_components")
+    collections_valid = (
+        isinstance(dependencies, list)
+        and isinstance(training, list)
+        and isinstance(runtime_components, list)
+    )
     checks["component_collections_valid"] = collections_valid
     all_components = [subject]
     if collections_valid:
-        all_components.extend(item for item in dependencies + training if isinstance(item, dict))
+        all_components.extend(
+            item for item in dependencies + training + runtime_components if isinstance(item, dict)
+        )
     if isinstance(deployment, dict):
         all_components.append(deployment)
     refs = [item.get("bom_ref") for item in all_components]
@@ -266,6 +281,11 @@ def verify_ai_bom_v2(document: Any) -> dict[str, Any]:
         expected_relationships.update(
             (item["bom_ref"], "training_input_to", subject_ref)
             for item in training
+            if isinstance(item, dict) and _valid_ref(item.get("bom_ref"))
+        )
+        expected_relationships.update(
+            (item["bom_ref"], "runtime_component_for", subject_ref)
+            for item in runtime_components
             if isinstance(item, dict) and _valid_ref(item.get("bom_ref"))
         )
         if isinstance(deployment, dict) and _valid_ref(deployment.get("bom_ref")):
@@ -488,6 +508,413 @@ def _deployment_component(value: Any, model_hash: str | None, diagnostics):
     }
 
 
+def _runtime_components(record: dict[str, Any], metadata: dict[str, Any], diagnostics):
+    components = []
+
+    prompt_items = _candidate_items(
+        record.get("prompt_templates"),
+        metadata.get("prompt_templates"),
+        record.get("prompts"),
+        metadata.get("prompts"),
+    )
+    for index, item in enumerate(prompt_items):
+        component = _prompt_component(item, index, diagnostics)
+        if component is not None:
+            components.append(component)
+
+    system_prompt_value = _first_non_null(
+        metadata.get("system_prompt_hash"),
+        metadata.get("system_prompt_sha256"),
+        record.get("system_prompt_hash"),
+        record.get("system_prompt_sha256"),
+        metadata.get("system_prompt"),
+        record.get("system_prompt"),
+    )
+    system_prompt_component = _system_prompt_component(system_prompt_value, diagnostics)
+    if system_prompt_component is not None:
+        components.append(system_prompt_component)
+
+    tool_items = _candidate_items(
+        record.get("tools"),
+        metadata.get("tools"),
+        metadata.get("declared_tools"),
+        metadata.get("tool_inventory"),
+    )
+    for item in tool_items:
+        component = _tool_component(item)
+        if component is not None:
+            components.append(component)
+
+    mcp_items = _candidate_items(
+        record.get("mcp_servers"),
+        metadata.get("mcp_servers"),
+        record.get("mcp_server_ids"),
+        metadata.get("mcp_server_ids"),
+        record.get("mcp_server_id"),
+        metadata.get("mcp_server_id"),
+    )
+    for item in mcp_items:
+        component = _mcp_component(item, diagnostics)
+        if component is not None:
+            components.append(component)
+
+    rag_items = _candidate_items(
+        record.get("rag_indexes"),
+        metadata.get("rag_indexes"),
+        record.get("rag_store_ids"),
+        metadata.get("rag_store_ids"),
+        record.get("rag_store_id"),
+        metadata.get("rag_store_id"),
+    )
+    for item in rag_items:
+        component = _rag_index_component(item)
+        if component is not None:
+            components.append(component)
+
+    embedding_items = _candidate_items(
+        record.get("embedding_models"),
+        metadata.get("embedding_models"),
+        record.get("embedding_model"),
+        metadata.get("embedding_model"),
+    )
+    for item in embedding_items:
+        component = _embedding_model_component(item, diagnostics)
+        if component is not None:
+            components.append(component)
+
+    provider_items = _candidate_items(
+        record.get("runtime_provider"),
+        metadata.get("runtime_provider"),
+        record.get("inference_provider"),
+        metadata.get("inference_provider"),
+        record.get("serving_provider"),
+        metadata.get("serving_provider"),
+    )
+    for item in provider_items:
+        component = _provider_component(item, diagnostics)
+        if component is not None:
+            components.append(component)
+
+    guardrail_items = _candidate_items(
+        record.get("guardrails"),
+        metadata.get("guardrails"),
+        record.get("guardrail"),
+        metadata.get("guardrail"),
+    )
+    for item in guardrail_items:
+        component = _guardrail_component(item, diagnostics)
+        if component is not None:
+            components.append(component)
+
+    policy_items = _candidate_items(
+        record.get("policies"),
+        metadata.get("policies"),
+        record.get("agent_policy"),
+        metadata.get("agent_policy"),
+        record.get("agent_policy_profile"),
+        metadata.get("agent_policy_profile"),
+    )
+    for item in policy_items:
+        component = _policy_component(item, diagnostics)
+        if component is not None:
+            components.append(component)
+
+    evaluator_items = _candidate_items(
+        record.get("evaluators"),
+        metadata.get("evaluators"),
+        record.get("safety_evaluations"),
+        metadata.get("safety_evaluations"),
+    )
+    for item in evaluator_items:
+        component = _evaluator_component(item, diagnostics)
+        if component is not None:
+            components.append(component)
+
+    unique = {item["bom_ref"]: item for item in components}
+    ordered = sorted(unique.values(), key=lambda item: item["bom_ref"])
+    if len(ordered) > _MAX_RUNTIME_COMPONENTS:
+        _diagnostic(
+            diagnostics,
+            "runtime_component_inventory_bounded",
+            "HIGH",
+            "Runtime component inventory exceeds the supported evidence bound.",
+            {"maximum": _MAX_RUNTIME_COMPONENTS},
+        )
+        return ordered[:_MAX_RUNTIME_COMPONENTS]
+    return ordered
+
+
+def _candidate_items(*values):
+    items = []
+    for value in values:
+        if value is None:
+            continue
+        if isinstance(value, list):
+            items.extend(value)
+        else:
+            items.append(value)
+    return items
+
+
+def _first_non_null(*values):
+    for value in values:
+        if value is not None:
+            return value
+    return None
+
+
+def _prompt_component(item: Any, index: int, diagnostics):
+    if isinstance(item, str):
+        prompt_hash = _content_hash(item)
+        if prompt_hash is None:
+            return None
+        _diagnostic(
+            diagnostics,
+            "prompt_content_hashed",
+            "MEDIUM",
+            "Prompt content was reduced to a SHA-256 digest before inclusion in the AI-BOM.",
+            {"source_index": index},
+        )
+        identity = {"type": "prompt", "name": f"prompt-{index}", "sha256": prompt_hash, "role": None}
+        return {
+            "bom_ref": "runtime:" + _digest(identity),
+            "type": "prompt",
+            "name": f"prompt-{index}",
+            "role": None,
+            "source": None,
+            "hashes": {"sha256": prompt_hash},
+        }
+    if not isinstance(item, dict):
+        return None
+    name = _text(item.get("name"), 512) or f"prompt-{index}"
+    role = _text(item.get("role"), 64)
+    source = _text(item.get("source"), 256)
+    prompt_hash = _hash(item.get("sha256")) or _content_hash(item.get("content"))
+    if prompt_hash is None:
+        return None
+    identity = {"type": "prompt", "name": name, "sha256": prompt_hash, "role": role}
+    return {
+        "bom_ref": "runtime:" + _digest(identity),
+        "type": "prompt",
+        "name": name,
+        "role": role,
+        "source": source,
+        "hashes": {"sha256": prompt_hash},
+    }
+
+
+def _system_prompt_component(value: Any, diagnostics):
+    prompt_hash = _hash(value) or _content_hash(value)
+    if prompt_hash is None:
+        return None
+    if isinstance(value, str) and _hash(value) is None:
+        _diagnostic(
+            diagnostics,
+            "system_prompt_content_hashed",
+            "MEDIUM",
+            "System prompt content was reduced to a SHA-256 digest before inclusion in the AI-BOM.",
+        )
+    identity = {"type": "system-prompt-hash", "sha256": prompt_hash}
+    return {
+        "bom_ref": "runtime:" + _digest(identity),
+        "type": "system-prompt-hash",
+        "name": "system-prompt",
+        "hashes": {"sha256": prompt_hash},
+    }
+
+
+def _tool_component(item: Any):
+    if isinstance(item, str):
+        name = _text(item, 512)
+        version = None
+        manifest_id = None
+        risk_tier = None
+    elif isinstance(item, dict):
+        name = _text(item.get("name") or item.get("tool_name"), 512)
+        version = _text(item.get("version"), 256)
+        manifest_id = _text(item.get("manifest_id"), 256)
+        risk_tier = _text(item.get("risk_tier"), 64)
+    else:
+        return None
+    if not name:
+        return None
+    identity = {"type": "tool", "name": name, "version": version, "manifest_id": manifest_id}
+    return {
+        "bom_ref": "runtime:" + _digest(identity),
+        "type": "tool",
+        "name": name,
+        "version": version,
+        "manifest_id": manifest_id,
+        "risk_tier": risk_tier,
+    }
+
+
+def _mcp_component(item: Any, diagnostics):
+    if isinstance(item, str):
+        server_id = _text(item, 256)
+        name = server_id
+        endpoint = None
+        transport = None
+    elif isinstance(item, dict):
+        server_id = _text(item.get("server_id") or item.get("id"), 256)
+        name = _text(item.get("name"), 512) or server_id
+        endpoint, _ = _safe_url(item.get("endpoint") or item.get("url"))
+        transport = _text(item.get("transport"), 64)
+    else:
+        return None
+    if not server_id:
+        return None
+    identity = {"type": "mcp-server", "server_id": server_id, "endpoint": endpoint}
+    return {
+        "bom_ref": "runtime:" + _digest(identity),
+        "type": "mcp-server",
+        "server_id": server_id,
+        "name": name,
+        "endpoint": endpoint,
+        "transport": transport,
+    }
+
+
+def _rag_index_component(item: Any):
+    if isinstance(item, str):
+        store_id = _text(item, 256)
+        collection_name = None
+        store_type = None
+        embedding_model = None
+    elif isinstance(item, dict):
+        store_id = _text(item.get("store_id") or item.get("id"), 256)
+        collection_name = _text(item.get("collection_name") or item.get("index_name"), 512)
+        store_type = _text(item.get("store_type"), 128)
+        embedding_model = _text(item.get("embedding_model"), 512)
+    else:
+        return None
+    if not store_id:
+        return None
+    identity = {"type": "rag-index", "store_id": store_id, "collection_name": collection_name}
+    return {
+        "bom_ref": "runtime:" + _digest(identity),
+        "type": "rag-index",
+        "store_id": store_id,
+        "collection_name": collection_name,
+        "store_type": store_type,
+        "embedding_model": embedding_model,
+    }
+
+
+def _embedding_model_component(item: Any, diagnostics):
+    if isinstance(item, str):
+        name = _text(item, 512)
+        provider = None
+        source_url = None
+    elif isinstance(item, dict):
+        name = _text(item.get("name") or item.get("model_name"), 512)
+        provider = _text(item.get("provider"), 256)
+        source_url, _ = _safe_url(item.get("source_url"))
+    else:
+        return None
+    if not name:
+        return None
+    identity = {"type": "embedding-model", "name": name, "provider": provider}
+    return {
+        "bom_ref": "runtime:" + _digest(identity),
+        "type": "embedding-model",
+        "name": name,
+        "provider": provider,
+        "source_url": source_url,
+    }
+
+
+def _provider_component(item: Any, diagnostics):
+    if isinstance(item, str):
+        name = _text(item, 512)
+        service = None
+    elif isinstance(item, dict):
+        name = _text(item.get("name") or item.get("provider"), 512)
+        service = _text(item.get("service"), 256)
+    else:
+        return None
+    if not name:
+        return None
+    identity = {"type": "provider", "name": name, "service": service}
+    return {
+        "bom_ref": "runtime:" + _digest(identity),
+        "type": "provider",
+        "name": name,
+        "service": service,
+    }
+
+
+def _guardrail_component(item: Any, diagnostics):
+    if isinstance(item, str):
+        name = _text(item, 512)
+        provider = None
+        mode = None
+    elif isinstance(item, dict):
+        name = _text(item.get("name") or item.get("id"), 512)
+        provider = _text(item.get("provider"), 256)
+        mode = _text(item.get("mode"), 128)
+    else:
+        return None
+    if not name:
+        return None
+    identity = {"type": "guardrail", "name": name, "provider": provider, "mode": mode}
+    return {
+        "bom_ref": "runtime:" + _digest(identity),
+        "type": "guardrail",
+        "name": name,
+        "provider": provider,
+        "mode": mode,
+    }
+
+
+def _policy_component(item: Any, diagnostics):
+    if isinstance(item, str):
+        name = _text(item, 512)
+        profile = None
+        policy_kind = None
+    elif isinstance(item, dict):
+        name = _text(item.get("name") or item.get("policy_id"), 512) or "policy"
+        profile = _text(item.get("profile"), 256)
+        policy_kind = _text(item.get("policy_kind"), 256)
+    else:
+        name = _text(item, 512)
+        profile = None
+        policy_kind = None
+    if not name:
+        return None
+    identity = {"type": "policy", "name": name, "profile": profile, "policy_kind": policy_kind}
+    return {
+        "bom_ref": "runtime:" + _digest(identity),
+        "type": "policy",
+        "name": name,
+        "profile": profile,
+        "policy_kind": policy_kind,
+    }
+
+
+def _evaluator_component(item: Any, diagnostics):
+    if isinstance(item, str):
+        name = _text(item, 512)
+        version = None
+        scope = None
+    elif isinstance(item, dict):
+        name = _text(item.get("name") or item.get("evaluator_id"), 512)
+        version = _text(item.get("version"), 256)
+        scope = _text(item.get("scope") or item.get("evaluation_scope"), 256)
+    else:
+        return None
+    if not name:
+        return None
+    identity = {"type": "evaluator", "name": name, "version": version, "scope": scope}
+    return {
+        "bom_ref": "runtime:" + _digest(identity),
+        "type": "evaluator",
+        "name": name,
+        "version": version,
+        "scope": scope,
+    }
+
+
 def _discovery_summary(value: Any, diagnostics):
     if value in (None, {}):
         return {"manifests": [], "declared_dependency_count": None, "errors_present": False}
@@ -664,6 +1091,13 @@ def _safe_artifact_ref(value):
     return text, False
 
 
+def _content_hash(value):
+    text = _text(value, _MAX_TEXT)
+    if text is None:
+        return None
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
 def _hash(value):
     if isinstance(value, str):
         candidate = value.lower()
@@ -750,9 +1184,95 @@ def _component_ref_matches(component):
                 "artifact_ref": component.get("artifact_ref"),
             }
         )
+    elif component_type in {
+        "prompt",
+        "system-prompt-hash",
+        "tool",
+        "mcp-server",
+        "rag-index",
+        "embedding-model",
+        "provider",
+        "guardrail",
+        "policy",
+        "evaluator",
+    }:
+        expected = "runtime:" + _digest(_runtime_component_identity(component))
     else:
         return False
     return component.get("bom_ref") == expected
+
+
+def _runtime_component_identity(component):
+    component_type = component.get("type")
+    if component_type == "prompt":
+        return {
+            "type": component_type,
+            "name": component.get("name"),
+            "sha256": component.get("hashes", {}).get("sha256")
+            if isinstance(component.get("hashes"), dict)
+            else None,
+            "role": component.get("role"),
+        }
+    if component_type == "system-prompt-hash":
+        return {
+            "type": component_type,
+            "sha256": component.get("hashes", {}).get("sha256")
+            if isinstance(component.get("hashes"), dict)
+            else None,
+        }
+    if component_type == "tool":
+        return {
+            "type": component_type,
+            "name": component.get("name"),
+            "version": component.get("version"),
+            "manifest_id": component.get("manifest_id"),
+        }
+    if component_type == "mcp-server":
+        return {
+            "type": component_type,
+            "server_id": component.get("server_id"),
+            "endpoint": component.get("endpoint"),
+        }
+    if component_type == "rag-index":
+        return {
+            "type": component_type,
+            "store_id": component.get("store_id"),
+            "collection_name": component.get("collection_name"),
+        }
+    if component_type == "embedding-model":
+        return {
+            "type": component_type,
+            "name": component.get("name"),
+            "provider": component.get("provider"),
+        }
+    if component_type == "provider":
+        return {
+            "type": component_type,
+            "name": component.get("name"),
+            "service": component.get("service"),
+        }
+    if component_type == "guardrail":
+        return {
+            "type": component_type,
+            "name": component.get("name"),
+            "provider": component.get("provider"),
+            "mode": component.get("mode"),
+        }
+    if component_type == "policy":
+        return {
+            "type": component_type,
+            "name": component.get("name"),
+            "profile": component.get("profile"),
+            "policy_kind": component.get("policy_kind"),
+        }
+    if component_type == "evaluator":
+        return {
+            "type": component_type,
+            "name": component.get("name"),
+            "version": component.get("version"),
+            "scope": component.get("scope"),
+        }
+    return {}
 
 
 def _diagnostic(diagnostics, indicator, severity, detail, evidence=None):
@@ -784,7 +1304,15 @@ def _minimal_failure_document(diagnostics):
         "serial_number": "urn:aiaf:ai-bom:" + _identity_digest(subject),
         "generated_at": None,
         "subject": subject,
-        "components": {"dependencies": [], "unresolved_dependencies": [], "conflicting_dependencies": [], "training_artifacts": [], "deployment_artifact": None, "dependency_discovery": {"manifests": [], "declared_dependency_count": None, "errors_present": True}},
+        "components": {
+            "dependencies": [],
+            "unresolved_dependencies": [],
+            "conflicting_dependencies": [],
+            "training_artifacts": [],
+            "deployment_artifact": None,
+            "runtime_components": [],
+            "dependency_discovery": {"manifests": [], "declared_dependency_count": None, "errors_present": True},
+        },
         "lineage": {"nodes": [subject], "relationships": []},
         "provenance": {"attestations": [], "attestation_count": 0, "trusted_verified_count": 0, "evidence_quality": 0},
         "vulnerability_intelligence": {"status": "NOT_ASSESSED", "match_count": 0, "by_severity": {key: 0 for key in _SEVERITIES}, "advisory_ids": [], "evidence_quality": 0},

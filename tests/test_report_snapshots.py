@@ -135,6 +135,47 @@ def test_report_snapshot_api_contract(tmp_path, monkeypatch):
     store.close()
 
 
+def test_report_snapshot_can_attach_eval_evidence(tmp_path):
+    ensure_src()
+    from aiaf.analysis.frontier_eval_harness import (
+        EvidenceStrength,
+        Finding,
+        Job,
+        JobState,
+        register_eval_run,
+    )
+    from aiaf.core import AssuranceReportSnapshotEngine
+    from aiaf.data.store import DataStore
+
+    store = DataStore(db_path=str(tmp_path / "snapshot-eval-evidence.db"))
+    job = Job(job_id="eval-job-1", state=JobState.COMPLETED)
+    job.findings = [
+        Finding(
+            probe_id="probe-1",
+            category="safety",
+            job_id="eval-job-1",
+            response="response",
+            strength=EvidenceStrength.INSUFFICIENT,
+            matched_indicators=[],
+            latency_ms=5.0,
+        )
+    ]
+    run = register_eval_run(job, store, target_id="model-a")
+
+    engine = AssuranceReportSnapshotEngine(store)
+    snapshot = engine.create(
+        created_by="auditor@example.test",
+        artifact_id="model-a",
+        eval_run_ids=[run["run_id"]],
+    )
+    verification = engine.verify(snapshot["id"])
+
+    assert snapshot["report"]["eval_evidence"]["run_count"] == 1
+    assert snapshot["report"]["eval_evidence"]["runs"][0]["run_id"] == run["run_id"]
+    assert verification["verified"] is True
+    store.close()
+
+
 def test_ed25519_signed_snapshot_verifies_with_public_key(tmp_path):
     ensure_src()
     from aiaf.core import AssuranceReportSnapshotEngine

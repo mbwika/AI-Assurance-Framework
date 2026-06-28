@@ -20,8 +20,17 @@ def test_package_imports():
     analysis = importlib.import_module("aiaf.analysis")
     assert hasattr(analysis, "assess_agent_risk_v2")
     assert hasattr(analysis, "estimate_model_risk_v2")
+    assert hasattr(analysis, "assess_provider_risk_intelligence")
+    assert hasattr(analysis, "find_influenced_by")
     assert hasattr(analysis, "detect_data_leakage")
+    assert hasattr(analysis, "label_rag_taint")
+    assert hasattr(analysis, "register_eval_run")
     assert hasattr(analysis, "validate_supply_chain")
+
+    core = importlib.import_module("aiaf.core")
+    assert hasattr(core, "decide_egress")
+    assert hasattr(core, "authorize_network_egress")
+    assert hasattr(core, "gate_rag_context")
 
     app = importlib.import_module("aiaf.api.app")
     routes = set(app.app.openapi()["paths"].keys())

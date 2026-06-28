@@ -8,7 +8,7 @@ from aiaf.registry.sigstore_verifier import (
     STATUS_NOT_AVAILABLE,
     STATUS_NOT_SIGNED,
     find_bundle,
-    verify_file,
+    verify_resolved_file,
 )
 
 # ---------------------------------------------------------------------------
@@ -28,56 +28,56 @@ def _write_file(path: Path, content: bytes = b"model weights") -> Path:
 
 def test_find_bundle_returns_none_when_no_bundle(tmp_path):
     artifact = _write_file(tmp_path / "model.bin")
-    assert find_bundle(str(artifact)) is None
+    assert find_bundle(artifact) is None
 
 
 def test_find_bundle_finds_sigstore_json(tmp_path):
     artifact = _write_file(tmp_path / "model.bin")
     bundle = tmp_path / "model.bin.sigstore.json"
     bundle.write_text('{"bundle": true}')
-    found = find_bundle(str(artifact))
-    assert found == str(bundle)
+    found = find_bundle(artifact)
+    assert found == bundle
 
 
 def test_find_bundle_finds_sigstore_extension(tmp_path):
     artifact = _write_file(tmp_path / "model.bin")
     bundle = tmp_path / "model.bin.sigstore"
     bundle.write_text('{"bundle": true}')
-    found = find_bundle(str(artifact))
-    assert found == str(bundle)
+    found = find_bundle(artifact)
+    assert found == bundle
 
 
 # ---------------------------------------------------------------------------
-# verify_file — no bundle / no artifact tests
+# verify_resolved_file — no bundle / no artifact tests
 # ---------------------------------------------------------------------------
 
 
-def test_verify_file_not_signed_when_artifact_missing(tmp_path):
-    result = verify_file(str(tmp_path / "nonexistent.bin"))
+def test_verify_resolved_file_not_signed_when_artifact_missing(tmp_path):
+    result = verify_resolved_file(tmp_path / "nonexistent.bin")
     assert result["status"] == STATUS_NOT_SIGNED
     assert result["verified"] is False
 
 
-def test_verify_file_not_signed_when_no_bundle(tmp_path):
+def test_verify_resolved_file_not_signed_when_no_bundle(tmp_path):
     artifact = _write_file(tmp_path / "model.bin")
-    result = verify_file(str(artifact))
+    result = verify_resolved_file(artifact)
     assert result["status"] == STATUS_NOT_SIGNED
     assert result["verified"] is False
 
 
-def test_verify_file_bundle_invalid_when_bundle_path_missing(tmp_path):
+def test_verify_resolved_file_bundle_invalid_when_bundle_path_missing(tmp_path):
     artifact = _write_file(tmp_path / "model.bin")
-    result = verify_file(str(artifact), bundle_path=str(tmp_path / "no_bundle.sigstore.json"))
+    result = verify_resolved_file(artifact, bundle_path=tmp_path / "no_bundle.sigstore.json")
     assert result["status"] == STATUS_BUNDLE_INVALID
     assert result["verified"] is False
 
 
 # ---------------------------------------------------------------------------
-# verify_file — sigstore not installed / NOT_AVAILABLE
+# verify_resolved_file — sigstore not installed / NOT_AVAILABLE
 # ---------------------------------------------------------------------------
 
 
-def test_verify_file_not_available_when_sigstore_not_installed(tmp_path, monkeypatch):
+def test_verify_resolved_file_not_available_when_sigstore_not_installed(tmp_path, monkeypatch):
     """Simulate sigstore package absent."""
     artifact = _write_file(tmp_path / "model.bin")
     bundle = tmp_path / "model.bin.sigstore.json"
@@ -93,7 +93,7 @@ def test_verify_file_not_available_when_sigstore_not_installed(tmp_path, monkeyp
         return real_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", _fake_import)
-    result = verify_file(str(artifact), bundle_path=str(bundle))
+    result = verify_resolved_file(artifact, bundle_path=bundle)
     assert result["status"] == STATUS_NOT_AVAILABLE
     assert result["verified"] is False
 
@@ -105,7 +105,7 @@ def test_verify_file_not_available_when_sigstore_not_installed(tmp_path, monkeyp
 
 def test_result_has_required_fields(tmp_path):
     artifact = _write_file(tmp_path / "model.bin")
-    result = verify_file(str(artifact))
+    result = verify_resolved_file(artifact)
     for field in (
         "verifier_version", "status", "verified", "artifact_path",
         "bundle_path", "artifact_digest", "signer_identity",
@@ -120,13 +120,13 @@ def test_verifier_version_constant():
 
 def test_verified_at_is_utc_iso(tmp_path):
     artifact = _write_file(tmp_path / "model.bin")
-    result = verify_file(str(artifact))
+    result = verify_resolved_file(artifact)
     assert "T" in result["verified_at"]
     assert result["verified_at"].endswith("Z")
 
 
 def test_not_signed_result_has_false_verified(tmp_path):
     artifact = _write_file(tmp_path / "model.bin")
-    result = verify_file(str(artifact))
+    result = verify_resolved_file(artifact)
     assert result["verified"] is False
     assert result["status"] == STATUS_NOT_SIGNED

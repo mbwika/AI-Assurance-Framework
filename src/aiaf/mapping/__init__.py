@@ -13,6 +13,16 @@ from .standards import (
     get_standard_profiles,
     map_finding_to_controls,
 )
+from .threat_frameworks import (
+    FRAMEWORK_AIAF,
+    FRAMEWORK_MITRE_ATLAS,
+    FRAMEWORK_OWASP_AGENTIC,
+    FRAMEWORK_OWASP_LLM,
+    FRAMEWORK_STIX,
+    THREAT_FRAMEWORK_PROFILES,
+    THREAT_FRAMEWORKS_VERSION,
+    crosswalk_threat_frameworks,
+)
 
 __all__ = [
     "CONTROL_CATALOG",
@@ -24,4 +34,12 @@ __all__ = [
     "get_framework_profile",
     "get_standard_profiles",
     "map_finding_to_controls",
+    "FRAMEWORK_AIAF",
+    "FRAMEWORK_MITRE_ATLAS",
+    "FRAMEWORK_OWASP_AGENTIC",
+    "FRAMEWORK_OWASP_LLM",
+    "FRAMEWORK_STIX",
+    "THREAT_FRAMEWORK_PROFILES",
+    "THREAT_FRAMEWORKS_VERSION",
+    "crosswalk_threat_frameworks",
 ]

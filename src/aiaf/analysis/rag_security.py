@@ -37,6 +37,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 SCAN_VERSION = "1.0"
+TAINT_VERSION = "1.0"
 
 # ── Status constants ──────────────────────────────────────────────────────────
 
@@ -52,6 +53,20 @@ _STATUS_RANK: dict[str, int] = {
     STATUS_TRUST_VIOLATION: 2,
     STATUS_LEAKAGE_DETECTED: 3,
     STATUS_INJECTION_DETECTED: 4,
+}
+
+TAINT_NONE = "NONE"
+TAINT_LOW = "LOW"
+TAINT_MEDIUM = "MEDIUM"
+TAINT_HIGH = "HIGH"
+TAINT_CRITICAL = "CRITICAL"
+
+_TAINT_RANK: dict[str, int] = {
+    TAINT_NONE: 0,
+    TAINT_LOW: 1,
+    TAINT_MEDIUM: 2,
+    TAINT_HIGH: 3,
+    TAINT_CRITICAL: 4,
 }
 
 # ── Trust label rank (imported pattern mirrors rag_inventory constants) ────────
@@ -185,6 +200,10 @@ def _worst_status(a: str, b: str) -> str:
     return a if _STATUS_RANK.get(a, 0) >= _STATUS_RANK.get(b, 0) else b
 
 
+def _worst_taint(a: str, b: str) -> str:
+    return a if _TAINT_RANK.get(a, 0) >= _TAINT_RANK.get(b, 0) else b
+
+
 def _by_severity(findings: list[dict[str, Any]]) -> dict[str, int]:
     result: dict[str, int] = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
     for f in findings:
@@ -199,6 +218,76 @@ def _by_type(findings: list[dict[str, Any]]) -> dict[str, int]:
         ft = f.get("type", "unknown")
         result[ft] = result.get(ft, 0) + 1
     return result
+
+
+def _severity_to_taint(severity: str | None) -> str:
+    return {
+        "LOW": TAINT_LOW,
+        "MEDIUM": TAINT_MEDIUM,
+        "HIGH": TAINT_HIGH,
+        "CRITICAL": TAINT_CRITICAL,
+    }.get(str(severity or "").upper(), TAINT_NONE)
+
+
+def _trust_taint(trust_label: str | None, minimum_trust_label: str | None) -> str:
+    label = str(trust_label or "").upper()
+    base = {
+        "VERIFIED": TAINT_NONE,
+        "INTERNAL": TAINT_NONE,
+        "EXTERNAL": TAINT_LOW,
+        "USER_GENERATED": TAINT_MEDIUM,
+        "UNTRUSTED": TAINT_HIGH,
+    }.get(label, TAINT_MEDIUM if label else TAINT_NONE)
+    min_rank = _TRUST_RANK.get(str(minimum_trust_label or "").upper(), 0)
+    label_rank = _TRUST_RANK.get(label, 0)
+    if min_rank > 0 and label_rank > 0 and label_rank < min_rank:
+        return _worst_taint(base, TAINT_HIGH if label == "UNTRUSTED" else TAINT_MEDIUM)
+    return base
+
+
+def _freshness_taint(chunk: dict[str, Any], freshness_sla_hours: int | None) -> str:
+    if not freshness_sla_hours:
+        return TAINT_NONE
+    metadata = chunk.get("metadata") or {}
+    raw_ts = (
+        chunk.get("retrieved_at")
+        or chunk.get("indexed_at")
+        or chunk.get("updated_at")
+        or chunk.get("ingested_at")
+        or metadata.get("retrieved_at")
+        or metadata.get("indexed_at")
+        or metadata.get("updated_at")
+        or metadata.get("ingested_at")
+    )
+    dt = _parse_iso8601(raw_ts)
+    if dt is None:
+        return TAINT_NONE
+    age_hours = max(0.0, (datetime.now(timezone.utc) - dt).total_seconds() / 3600.0)
+    if age_hours > freshness_sla_hours * 2:
+        return TAINT_HIGH
+    if age_hours > freshness_sla_hours:
+        return TAINT_MEDIUM
+    if age_hours > freshness_sla_hours * 0.75:
+        return TAINT_LOW
+    return TAINT_NONE
+
+
+def _sensitivity_taint(chunk: dict[str, Any]) -> str:
+    metadata = chunk.get("metadata") or {}
+    label = str(
+        chunk.get("sensitivity_label")
+        or metadata.get("sensitivity_label")
+        or metadata.get("data_sensitivity")
+        or metadata.get("classification")
+        or ""
+    ).upper()
+    return {
+        "PUBLIC": TAINT_NONE,
+        "INTERNAL": TAINT_LOW,
+        "CONFIDENTIAL": TAINT_HIGH,
+        "RESTRICTED": TAINT_CRITICAL,
+        "SECRET": TAINT_CRITICAL,
+    }.get(label, TAINT_NONE if not label else TAINT_MEDIUM)
 
 
 def _scan_content(content: str, patterns: list[tuple], dedup: set | None = None) -> list[dict[str, Any]]:
@@ -391,6 +480,105 @@ def scan_chunks(
         "trust_violation": trust_violated,
         "evidence_origin": "LOCALLY_OBSERVED",
         "scanned_at": _utc_now(),
+    }
+
+
+def label_rag_taint(
+    chunks: list[dict[str, Any]],
+    *,
+    minimum_trust_label: str | None = None,
+    freshness_sla_hours: int | None = None,
+    scan_for_leakage: bool = True,
+) -> dict[str, Any]:
+    """Assign 5-dimension taint labels to retrieved RAG chunks.
+
+    Dimensions:
+    ``trust``, ``injection``, ``leakage``, ``freshness``, ``sensitivity``.
+    """
+    scan_result = scan_chunks(
+        chunks,
+        minimum_trust_label=minimum_trust_label,
+        scan_for_leakage=scan_for_leakage,
+    )
+    findings_by_chunk: dict[int, list[dict[str, Any]]] = {}
+    for finding in scan_result.get("findings") or []:
+        chunk_index = finding.get("chunk_index")
+        if isinstance(chunk_index, int):
+            findings_by_chunk.setdefault(chunk_index, []).append(finding)
+
+    taint_levels = [
+        TAINT_NONE,
+        TAINT_LOW,
+        TAINT_MEDIUM,
+        TAINT_HIGH,
+        TAINT_CRITICAL,
+    ]
+    by_dimension: dict[str, dict[str, int]] = {
+        "trust": {level: 0 for level in taint_levels},
+        "injection": {level: 0 for level in taint_levels},
+        "leakage": {level: 0 for level in taint_levels},
+        "freshness": {level: 0 for level in taint_levels},
+        "sensitivity": {level: 0 for level in taint_levels},
+    }
+    by_taint_level = {level: 0 for level in taint_levels}
+    chunk_labels: list[dict[str, Any]] = []
+    overall_taint = TAINT_NONE
+
+    for idx, chunk in enumerate(chunks):
+        findings = findings_by_chunk.get(idx, [])
+        injection_taint = TAINT_NONE
+        leakage_taint = TAINT_NONE
+        for finding in findings:
+            ftype = str(finding.get("type") or "")
+            taint = _severity_to_taint(finding.get("severity"))
+            if ftype.startswith("leakage_"):
+                leakage_taint = _worst_taint(leakage_taint, taint)
+            else:
+                injection_taint = _worst_taint(injection_taint, taint)
+
+        dimensions = {
+            "trust": _trust_taint(chunk.get("trust_label"), minimum_trust_label),
+            "injection": injection_taint,
+            "leakage": leakage_taint,
+            "freshness": _freshness_taint(chunk, freshness_sla_hours),
+            "sensitivity": _sensitivity_taint(chunk),
+        }
+        chunk_overall = TAINT_NONE
+        for name, value in dimensions.items():
+            by_dimension[name][value] += 1
+            chunk_overall = _worst_taint(chunk_overall, value)
+        by_taint_level[chunk_overall] += 1
+        overall_taint = _worst_taint(overall_taint, chunk_overall)
+        chunk_labels.append({
+            "chunk_index": idx,
+            "doc_id": chunk.get("doc_id"),
+            "trust_label": str(chunk.get("trust_label") or "").upper() or None,
+            "sensitivity_label": str(
+                chunk.get("sensitivity_label")
+                or (chunk.get("metadata") or {}).get("sensitivity_label")
+                or (chunk.get("metadata") or {}).get("data_sensitivity")
+                or ""
+            ).upper() or None,
+            "dimensions": dimensions,
+            "overall_taint": chunk_overall,
+            "finding_count": len(findings),
+            "finding_types": sorted({str(f.get("type") or "") for f in findings if f.get("type")}),
+        })
+
+    return {
+        "taint_version": TAINT_VERSION,
+        "scan_version": scan_result.get("scan_version", SCAN_VERSION),
+        "chunk_count": len(chunks),
+        "overall_taint": overall_taint,
+        "by_taint_level": by_taint_level,
+        "by_dimension": by_dimension,
+        "chunk_labels": chunk_labels,
+        "scan_status": scan_result.get("status", STATUS_CLEAN),
+        "finding_count": scan_result.get("finding_count", 0),
+        "minimum_trust_label": str(minimum_trust_label).upper() if minimum_trust_label else None,
+        "freshness_sla_hours": freshness_sla_hours,
+        "evidence_origin": "LOCALLY_OBSERVED",
+        "labeled_at": _utc_now(),
     }
 
 

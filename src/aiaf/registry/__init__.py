@@ -71,15 +71,22 @@ from .ai_threat_intel import (
     SOURCE_MITRE_ATLAS,
     SOURCE_OWASP_AGENTIC,
     SOURCE_OWASP_LLM,
+    STIX_SPEC_VERSION,
+    TAXII_CLIENT_VERSION,
     THREAT_INTEL_VERSION,
     ThreatIntelError,
     build_threat_landscape,
     correlate_agent,
     correlate_model,
     correlate_tool,
+    export_stix_bundle,
     get_threat,
     ingest_threat,
+    import_stix_bundle,
     list_threats,
+    poll_taxii_collection,
+    stix_attack_pattern_to_threat,
+    threat_to_stix_attack_pattern,
 )
 from .ai_threat_intel import (
     SEVERITY_CRITICAL as THREAT_SEV_CRITICAL,
@@ -115,6 +122,14 @@ from .dependency_discovery_v2 import (
     DEPENDENCY_DISCOVERY_SCORING_VERSION,
     discover_dependencies_v2,
 )
+from .deployment_verifier import (
+    DEPLOYMENT_VERIFY_VERSION,
+    DeploymentVerifyError,
+    get_verify_result,
+    list_verify_results,
+    probe_endpoint,
+    verify_deployment,
+)
 from .evidence_origin import (
     EVIDENCE_ORIGIN_VERSION,
     ORIGIN_TRUST_WEIGHT,
@@ -138,6 +153,7 @@ from .hf_model_card import (
     enrich_ledger,
     fetch_from_hub,
     parse_snapshot_dir,
+    summarize_disclosure_posture,
 )
 from .identity_registry import (
     DELEGATION_ACTIVE,
@@ -285,7 +301,7 @@ from .sigstore_verifier import (
     find_bundle,
 )
 from .sigstore_verifier import (
-    verify_file as verify_sigstore,
+    verify_resolved_file as verify_sigstore,
 )
 from .skill_scanner import (
     RISK_CAPABILITY_MISMATCH,
@@ -384,6 +400,12 @@ __all__ = [
     "merge_dependencies",
     "DEPENDENCY_DISCOVERY_SCORING_VERSION",
     "discover_dependencies_v2",
+    "DEPLOYMENT_VERIFY_VERSION",
+    "DeploymentVerifyError",
+    "verify_deployment",
+    "get_verify_result",
+    "list_verify_results",
+    "probe_endpoint",
     "ARTIFACT_INTEGRITY_SCORING_VERSION",
     "measure_artifact_integrity_v2",
     "verify_artifact_integrity_v2",
@@ -412,6 +434,7 @@ __all__ = [
     "parse_snapshot_dir",
     "fetch_from_hub",
     "enrich_ledger",
+    "summarize_disclosure_posture",
     # Phase 3 — Sigstore verifier
     "SIGSTORE_VERIFIER_VERSION",
     "verify_sigstore",
@@ -492,6 +515,8 @@ __all__ = [
     "list_rag_documents",
     # Feature 1 — AI-native threat intelligence engine
     "THREAT_INTEL_VERSION",
+    "STIX_SPEC_VERSION",
+    "TAXII_CLIENT_VERSION",
     "SOURCE_OWASP_LLM", "SOURCE_MITRE_ATLAS", "SOURCE_OWASP_AGENTIC", "SOURCE_CUSTOM",
     "THREAT_SEV_CRITICAL", "THREAT_SEV_HIGH", "THREAT_SEV_MEDIUM", "THREAT_SEV_LOW",
     "CATEGORY_PROMPT_ATTACKS", "CATEGORY_DATA_ATTACKS", "CATEGORY_SUPPLY_CHAIN",
@@ -501,6 +526,8 @@ __all__ = [
     "ingest_threat", "get_threat", "list_threats",
     "correlate_model", "correlate_agent", "correlate_tool",
     "build_threat_landscape",
+    "threat_to_stix_attack_pattern", "stix_attack_pattern_to_threat",
+    "export_stix_bundle", "import_stix_bundle", "poll_taxii_collection",
     # Feature F3 — Non-human identity (NHI) lifecycle governance
     "NHI_VERSION",
     "NHI_MODEL_SERVING", "NHI_AGENT_WORKER", "NHI_TOOL_EXECUTOR",
