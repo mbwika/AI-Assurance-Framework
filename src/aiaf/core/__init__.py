@@ -140,15 +140,15 @@ from .policy_enforcement import (
 from .policy_enforcement import (
     VERDICTS as PEP_VERDICTS,
 )
-from .rag_taint_gate import (
-    RAG_TAINT_GATE_VERSION,
-    RagTaintGateError,
-    gate_rag_context,
-)
 from .probe_engine import (
     PROBE_VERSION,
     run_probes,
     run_probes_no_endpoint,
+)
+from .rag_taint_gate import (
+    RAG_TAINT_GATE_VERSION,
+    RagTaintGateError,
+    gate_rag_context,
 )
 from .redteam_engine import (
     BACKEND_GARAK,

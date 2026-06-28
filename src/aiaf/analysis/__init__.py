@@ -134,7 +134,6 @@ from .bias_fairness import (
     BiasSeverity,
     assess_bias_fairness,
 )
-from .data_leakage import DATA_LEAKAGE_SCORING_VERSION, detect_data_leakage
 from .context_provenance import (
     NODE_EVALUATION_RESULT,
     NODE_GUARDRAIL_DECISION,
@@ -148,6 +147,9 @@ from .context_provenance import (
     NODE_TOOL_OUTPUT,
     NODE_USER_INPUT,
     PROVENANCE_GRAPH_VERSION,
+    REL_EVALUATED_BY,
+    REL_FILTERED_BY,
+    REL_INFLUENCES,
     ContextProvenanceError,
     add_influence_edge,
     add_provenance_node,
@@ -163,15 +165,7 @@ from .context_provenance import (
 from .context_provenance import (
     RELATIONSHIP_TYPES as PROVENANCE_RELATIONSHIP_TYPES,
 )
-from .context_provenance import (
-    REL_EVALUATED_BY,
-)
-from .context_provenance import (
-    REL_FILTERED_BY,
-)
-from .context_provenance import (
-    REL_INFLUENCES,
-)
+from .data_leakage import DATA_LEAKAGE_SCORING_VERSION, detect_data_leakage
 from .extraction_tests import (
     EXTRACTION_VERSION,
     ExtractionTestError,
@@ -389,14 +383,6 @@ from .rag_security import (
     STATUS_TRUST_VIOLATION as RAG_STATUS_TRUST_VIOLATION,
 )
 from .rag_security import (
-    assess_store_security,
-    label_rag_taint,
-    scan_document_for_ingestion,
-)
-from .rag_security import (
-    scan_chunks as scan_rag_chunks,
-)
-from .rag_security import (
     TAINT_CRITICAL as RAG_TAINT_CRITICAL,
 )
 from .rag_security import (
@@ -413,6 +399,14 @@ from .rag_security import (
 )
 from .rag_security import (
     TAINT_VERSION as RAG_TAINT_VERSION,
+)
+from .rag_security import (
+    assess_store_security,
+    label_rag_taint,
+    scan_document_for_ingestion,
+)
+from .rag_security import (
+    scan_chunks as scan_rag_chunks,
 )
 from .resource_monitor import (
     DEFAULT_BUDGET,
