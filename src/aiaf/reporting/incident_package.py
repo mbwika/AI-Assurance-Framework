@@ -278,12 +278,7 @@ def _get_remediation(incident_id: str, store: Any) -> list[dict[str, Any]]:
     """Pull remediations linked to this incident."""
     try:
         from ..core.remediation_tracker import list_remediations
-        all_rems = list_remediations(store, limit=200)
-        linked = [
-            r for r in all_rems
-            if incident_id in (r.get("linked_incident_ids") or [])
-        ]
-        return linked[:20]
+        return list_remediations(store, incident_id=incident_id, limit=20)
     except Exception:
         return []
 

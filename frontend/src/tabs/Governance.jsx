@@ -12,17 +12,9 @@ export default function Governance({ refreshToken }) {
     () => Promise.all([api.assuranceReport(), api.compliance(), api.risks(200)]),
     [refreshToken, riskRefreshToken]
   );
-
-  if (loading && !data) return <Empty>Loading governance and compliance evidence…</Empty>;
-  if (error) return <Empty>{error}. A portfolio governance evaluation may not exist yet.</Empty>;
-
-  const [report, compliance, riskPayload] = data;
-  const gov = report.governance || {};
-  const summary = gov.control_summary || {};
-  const byStatus = summary.by_status || {};
-  const frameworks = compliance.frameworks || {};
-  const gaps = compliance.open_control_gaps || [];
-  const riskSummary = (riskPayload && riskPayload.summary) || {};
+  const riskPayload = data ? data[2] : null;
+  // Hooks must run unconditionally on every render, so this has to sit above
+  // the loading/error early returns below rather than after them.
   const risks = useMemo(() => {
     const severityOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
     return [...((riskPayload && riskPayload.risks) || [])].sort((a, b) => {
@@ -32,6 +24,17 @@ export default function Governance({ refreshToken }) {
       return String(a.due_at || "9999-12-31T23:59:59Z").localeCompare(String(b.due_at || "9999-12-31T23:59:59Z"));
     });
   }, [riskPayload]);
+
+  if (loading && !data) return <Empty>Loading governance and compliance evidence…</Empty>;
+  if (error) return <Empty>{error}. A portfolio governance evaluation may not exist yet.</Empty>;
+
+  const [report, compliance] = data;
+  const gov = report.governance || {};
+  const summary = gov.control_summary || {};
+  const byStatus = summary.by_status || {};
+  const frameworks = compliance.frameworks || {};
+  const gaps = compliance.open_control_gaps || [];
+  const riskSummary = (riskPayload && riskPayload.summary) || {};
 
   function frameworkLink(name, url) {
     if (!url) return <span className="font-bold">{name}</span>;

@@ -12,6 +12,8 @@ GET  /v1/rag/stores/{store_id}/assessment       Security posture assessment
 
 POST /v1/rag/scan/chunks          Scan retrieved chunks for injection / leakage
 POST /v1/rag/scan/document        Scan a document before ingestion
+
+POST /v1/rag/stores/{store_id}/gate   Pre-model taint gate decision (ALLOW/FLAG/DENY)
 """
 
 from __future__ import annotations
@@ -26,6 +28,7 @@ from ..analysis.rag_security import (
     scan_chunks,
     scan_document_for_ingestion,
 )
+from ..core.rag_taint_gate import RagTaintGateError, gate_rag_context
 from ..registry.rag_inventory import (
     ACCESS_CONTROL_MODES,
     INVENTORY_VERSION,
@@ -117,6 +120,17 @@ class ScanDocumentRequest(BaseModel):
     trust_label: str = Field(..., description="Intended trust label for this document")
     doc_id: str | None = Field(None, description="Document identifier (echoed in output)")
     scan_for_leakage: bool = Field(True, description="Check for PII/credentials")
+
+
+class GateChunksRequest(BaseModel):
+    session_id: str = Field(..., description="Agent/conversation session this retrieval belongs to")
+    chunks: list[ChunkItem] = Field(..., description="Retrieved chunks about to reach the model")
+    agent_id: str | None = Field(None, description="Agent identity making the retrieval")
+    minimum_trust_label: str | None = Field(
+        None, description="Minimum acceptable trust label; violations raise taint"
+    )
+    flag_at_or_above: str | None = Field(None, description="Taint level at/above which verdict is FLAG")
+    deny_at_or_above: str | None = Field(None, description="Taint level at/above which verdict is DENY")
 
 
 # ── Vector store routes ───────────────────────────────────────────────────────
@@ -242,6 +256,39 @@ def store_assessment(
     result = assess_store_security(store_id, store)
     if result.get("status") == "NOT_FOUND":
         raise HTTPException(status_code=404, detail=result.get("error"))
+    return result
+
+
+@router.post("/stores/{store_id}/gate")
+def gate_retrieved_chunks(
+    store_id: str,
+    req: GateChunksRequest,
+    _key: str = Depends(get_api_key),
+    store: Any = Depends(get_store),
+):
+    """Pre-model taint gate: assess retrieved chunks and log an ALLOW/FLAG/DENY
+
+    decision to the agent-action ledger before the chunks reach the model.
+    """
+    if get_vector_store(store_id, store) is None:
+        raise HTTPException(status_code=404, detail=f"Store '{store_id}' not found.")
+    kwargs: dict[str, Any] = {}
+    if req.flag_at_or_above is not None:
+        kwargs["flag_at_or_above"] = req.flag_at_or_above
+    if req.deny_at_or_above is not None:
+        kwargs["deny_at_or_above"] = req.deny_at_or_above
+    try:
+        result = gate_rag_context(
+            req.session_id,
+            [c.model_dump() for c in req.chunks],
+            store,
+            agent_id=req.agent_id,
+            store_id=store_id,
+            minimum_trust_label=req.minimum_trust_label,
+            **kwargs,
+        )
+    except RagTaintGateError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     return result
 
 

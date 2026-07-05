@@ -534,51 +534,71 @@ class DataStore:
             }
 
     def list_models(
-        self, limit: int = 100, registered_by: str | None = None
+        self,
+        limit: int = 100,
+        registered_by: str | None = None,
+        real_models_only: bool = False,
     ) -> list[dict[str, Any]]:
+        """List rows from the shared ``models`` table.
+
+        The ``models`` table backs both genuine registered AI models (whose
+        ``model_id`` is always a bare UUID) and every other registry object
+        that reuses this store as a generic key-value table with a
+        ``"prefix:id"`` scheme (agents, RAG stores, incidents, ledgers,
+        remediations, tool manifests, …). Most callers rely on getting every
+        row back so they can filter for their own prefix; pass
+        ``real_models_only=True`` to instead exclude anything with a colon in
+        its id, for callers that specifically mean "registered AI models"
+        (e.g. the model registry UI and portfolio inventory counts).
+        """
         with self._conn_lock:
             cur = self._conn.cursor()
+            id_filter = " AND model_id NOT LIKE '%:%'" if real_models_only else ""
             if registered_by:
                 cur.execute(
-                    """
+                    f"""
                     SELECT model_id, model_name, version, source, source_url, publisher,
                            sha256, registered_by, provenance_score, risk_level, metadata_json, created_at
-                    FROM models WHERE registered_by = ? ORDER BY created_at DESC LIMIT ?
+                    FROM models WHERE registered_by = ?{id_filter} ORDER BY created_at DESC LIMIT ?
                     """,
                     (registered_by, limit),
                 )
             else:
                 cur.execute(
-                    """
+                    f"""
                     SELECT model_id, model_name, version, source, source_url, publisher,
                            sha256, registered_by, provenance_score, risk_level, metadata_json, created_at
-                    FROM models ORDER BY created_at DESC LIMIT ?
+                    FROM models WHERE 1=1{id_filter} ORDER BY created_at DESC LIMIT ?
                     """,
                     (limit,),
                 )
             rows = cur.fetchall()
-            return [
-                {
-                    "model_id": row["model_id"],
-                    "model_name": row["model_name"],
-                    "version": row["version"],
-                    "source": row["source"],
-                    "source_url": row["source_url"],
-                    "publisher": row["publisher"],
-                    "sha256": row["sha256"],
-                    "registered_by": row["registered_by"],
-                    "provenance_score": row["provenance_score"],
-                    "risk_level": row["risk_level"],
-                    "dependencies": json.loads(row["metadata_json"] or "{}").get("dependencies", []),
-                    "training_artifacts": json.loads(row["metadata_json"] or "{}").get("training_artifacts", []),
-                    "deployment_pipeline": json.loads(row["metadata_json"] or "{}").get("deployment_pipeline", {}),
-                    "dependency_discovery": json.loads(row["metadata_json"] or "{}").get("dependency_discovery", {}),
-                    "provenance_attestations": json.loads(row["metadata_json"] or "{}").get("provenance_attestations", []),
-                    "vulnerability_scan": json.loads(row["metadata_json"] or "{}").get("vulnerability_scan", {}),
-                    "created_at": row["created_at"],
-                }
-                for row in rows
-            ]
+            result = []
+            for row in rows:
+                metadata = json.loads(row["metadata_json"] or "{}")
+                result.append(
+                    {
+                        "model_id": row["model_id"],
+                        "model_name": row["model_name"],
+                        "version": row["version"],
+                        "source": row["source"],
+                        "source_url": row["source_url"],
+                        "publisher": row["publisher"],
+                        "sha256": row["sha256"],
+                        "registered_by": row["registered_by"],
+                        "provenance_score": row["provenance_score"],
+                        "risk_level": row["risk_level"],
+                        "dependencies": metadata.get("dependencies", []),
+                        "training_artifacts": metadata.get("training_artifacts", []),
+                        "deployment_pipeline": metadata.get("deployment_pipeline", {}),
+                        "dependency_discovery": metadata.get("dependency_discovery", {}),
+                        "provenance_attestations": metadata.get("provenance_attestations", []),
+                        "vulnerability_scan": metadata.get("vulnerability_scan", {}),
+                        "metadata": metadata,
+                        "created_at": row["created_at"],
+                    }
+                )
+            return result
 
     def create_job(self) -> str:
         job_id = str(uuid.uuid4())

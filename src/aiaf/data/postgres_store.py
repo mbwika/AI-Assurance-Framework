@@ -429,24 +429,36 @@ class PostgresStore:
         }
 
     def list_models(
-        self, limit: int = 100, registered_by: str | None = None
+        self,
+        limit: int = 100,
+        registered_by: str | None = None,
+        real_models_only: bool = False,
     ) -> list[dict[str, Any]]:
+        """List rows from the shared ``models`` table.
+
+        See ``DataStore.list_models`` for why ``real_models_only`` exists:
+        this table also stores non-model registry objects keyed as
+        ``"prefix:id"``, and most callers need every row to filter for their
+        own prefix. Pass ``real_models_only=True`` to exclude those and keep
+        only genuine registered AI models (bare-UUID ids).
+        """
         cur = self._conn.cursor()
+        id_filter = " AND id NOT LIKE '%:%'" if real_models_only else ""
         if registered_by:
             cur.execute(
-                """
+                f"""
                 SELECT id, model_name, version, source, source_url, publisher,
                        sha256_hash, registered_by, provenance_score, risk_level, metadata, created_at
-                FROM models WHERE registered_by = %s ORDER BY created_at DESC LIMIT %s
+                FROM models WHERE registered_by = %s{id_filter} ORDER BY created_at DESC LIMIT %s
                 """,
                 (registered_by, limit),
             )
         else:
             cur.execute(
-                """
+                f"""
                 SELECT id, model_name, version, source, source_url, publisher,
                        sha256_hash, registered_by, provenance_score, risk_level, metadata, created_at
-                FROM models ORDER BY created_at DESC LIMIT %s
+                FROM models WHERE 1=1{id_filter} ORDER BY created_at DESC LIMIT %s
                 """,
                 (limit,),
             )
@@ -471,6 +483,7 @@ class PostgresStore:
                     "dependency_discovery": metadata.get("dependency_discovery", {}),
                     "provenance_attestations": metadata.get("provenance_attestations", []),
                     "vulnerability_scan": metadata.get("vulnerability_scan", {}),
+                    "metadata": metadata,
                     "created_at": _isoformat(row[11]),
                 }
             )

@@ -1081,6 +1081,8 @@ def _flatten_findings(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
             item = dict(finding)
             item["artifact_id"] = record.get("artifact_id")
             item["timestamp"] = record.get("timestamp")
+            if "risk_score" not in item and "score" in record:
+                item["risk_score"] = record.get("score")
             items.append(item)
     return items
 
@@ -1096,7 +1098,7 @@ def _safe_list_models(
         if not list_models:
             return []
         try:
-            return list_models(limit=1000, registered_by=registered_by)
+            return list_models(limit=1000, registered_by=registered_by, real_models_only=True)
         except Exception:
             return []
     selected_id = model_id or artifact_id
@@ -1113,7 +1115,7 @@ def _safe_list_models(
     if not list_models:
         return []
     try:
-        return list_models(limit=1000)
+        return list_models(limit=1000, real_models_only=True)
     except Exception:
         return []
 
@@ -1535,13 +1537,19 @@ def _declaration_summary(model: dict[str, Any] | None) -> dict[str, Any]:
 
 
 def _finding_explainability(finding: dict[str, Any]) -> dict[str, Any]:
-    detail = finding.get("detail") or {}
+    raw_detail = finding.get("detail")
+    # Some finding producers (e.g. deployment_verifier) set "detail" to a plain
+    # human-readable string rather than a structured dict; treat those as
+    # having no structured sub-fields instead of crashing on .get().
+    detail = raw_detail if isinstance(raw_detail, dict) else {}
+    detail_summary = raw_detail if isinstance(raw_detail, str) else None
     tool_results = list(detail.get("tool_results") or [])
     return {
         "finding_type": finding.get("type"),
         "severity": finding.get("severity"),
         "risk_score": finding.get("risk_score"),
         "timestamp": finding.get("timestamp"),
+        "summary": detail_summary or finding.get("title"),
         "methodology": detail.get("methodology"),
         "confidence": detail.get("confidence"),
         "assessment_complete": detail.get("assessment_complete"),

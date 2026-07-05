@@ -6,7 +6,7 @@ import react from "@vitejs/plugin-react";
 // installed. In dev (`npm run dev`), API calls are proxied to a running server.
 const API_TARGET = process.env.AIAF_API_TARGET || "http://127.0.0.1:8000";
 const proxy = Object.fromEntries(
-  ["/v1", "/models", "/jobs", "/health"].map((path) => [
+  ["/v1", "/models", "/jobs", "/health", "/openapi.json", "/docs"].map((path) => [
     path,
     { target: API_TARGET, changeOrigin: true },
   ])

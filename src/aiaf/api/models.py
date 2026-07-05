@@ -25,6 +25,7 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 from ..core import VulnerabilityIntelligenceEngine
 from ..data.postgres_store import PostgresStore
@@ -40,6 +41,7 @@ from ..registry import (
     calculate_sha256,
     create_provenance_attestation_v2,
     discover_dependencies_v2,
+    generate_ai_bom_v2,
     generate_mbom,
     merge_dependencies,
     verify_provenance_attestation,
@@ -261,7 +263,7 @@ def _register_from_file(
             "diagnostics": discovery["diagnostics"],
         }
     rec = ModelRecord.create(
-        model_name=meta.get("repository") or Path(file_path).name,
+        model_name=meta.get("repository") or (Path(artifact_name).name if artifact_name else "") or Path(file_path).name,
         version=record_metadata.get("version", "1.0"),
         source=meta.get("provider") or "upload",
         source_url=source_url or "",
@@ -808,6 +810,55 @@ def get_mbom(model_id: str, api_key: str = Depends(get_api_key)):
     return {"mbom": mbom}
 
 
+class RuntimeComponentsUpdate(BaseModel):
+    """Declares the runtime surface of a deployed model for AI-BOM v2 generation.
+
+    Every field is optional and additive — omitted fields leave previously
+    recorded components untouched. Shapes mirror what
+    ``registry.mbom_v2._runtime_components`` reads from model metadata
+    (see that module for the exact per-item fields accepted, e.g. a tool may
+    be a bare name string or ``{"name", "version", "manifest_id", "risk_tier"}``).
+    """
+
+    prompts: list[Any] | None = None
+    system_prompt_hash: str | None = None
+    tools: list[Any] | None = None
+    mcp_servers: list[Any] | None = None
+    rag_indexes: list[Any] | None = None
+    embedding_models: list[Any] | None = None
+    runtime_provider: list[Any] | None = None
+    guardrails: list[Any] | None = None
+    policies: list[Any] | None = None
+    evaluators: list[Any] | None = None
+
+
+@router.patch("/models/{model_id}/runtime-components")
+def update_runtime_components(
+    model_id: str,
+    update: RuntimeComponentsUpdate,
+    api_key: str = Depends(get_api_key),
+):
+    """Attach runtime components (prompts/tools/RAG/guardrails/policies/evaluators)
+
+    to a registered model so the AI-BOM v2 export (``generate_ai_bom_v2``, exposed
+    via ``GET /v1/interop/models/{model_id}/bom/cyclonedx``) can populate its
+    ``runtime_components`` section beyond identity and dependencies.
+    """
+    store = get_store()
+    rec = store.get_model(model_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Model not found")
+    metadata = dict(rec.get("metadata") or {})
+    for field, value in update.model_dump(exclude_unset=True).items():
+        if value is not None:
+            metadata[field] = value
+    rec["metadata"] = metadata
+    store.save_model(rec)
+    updated = store.get_model(model_id)
+    bom = generate_ai_bom_v2(updated)
+    return {"model_id": model_id, "runtime_components": bom.get("components", {}).get("runtime_components", [])}
+
+
 @router.get("/models/{model_id}/assurance")
 def get_unknown_model_assurance(model_id: str, api_key: str = Depends(get_api_key)):
     store = get_store()
@@ -1016,7 +1067,7 @@ def list_models(
     registered_by: str | None = None,
 ):
     store = get_store()
-    return {"models": store.list_models(limit=limit, registered_by=registered_by)}
+    return {"models": store.list_models(limit=limit, registered_by=registered_by, real_models_only=True)}
 
 
 @router.get("/jobs")
