@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from . import adoption_velocity as adoption_velocity_router
+from . import assistant as assistant_router
 from . import agent_security as agent_security_module
 from . import agent_topology as agent_topology_router
 from . import agentic as agentic_router
@@ -38,6 +39,7 @@ from . import threat_intel as threat_intel_router
 
 app = FastAPI(title="AI Assurance Framework API")
 app.include_router(portal_router.router)
+app.include_router(assistant_router.router)
 app.include_router(agentic_router.router)
 app.include_router(guardrail_router.router)
 app.include_router(ledger_router.router)

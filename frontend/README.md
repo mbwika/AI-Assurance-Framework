@@ -1,9 +1,11 @@
 # AIAF Dashboard (frontend)
 
 Vite + React + Tailwind CSS + Recharts single-page dashboard for the AI Assurance
-Framework. It consumes the public API and renders the Overview, Risk Analyzer,
-Governance & Compliance, Model Registry, and Architecture tabs — with trend lines,
-drift-over-time charts, and live auto-refresh (15s polling on live tabs).
+Framework. It consumes the public API and renders the Overview, Adoption Triage,
+Risk Analyzer, Governance & Compliance, Model Registry, RAG Inventory, Agent
+Authorization, Architecture, and API Explorer tabs — with trend lines,
+drift-over-time charts, live auto-refresh (15s polling on live tabs), and a
+CycloneDX-backed runtime-component inventory panel in the registry view.
 
 ## Develop
 

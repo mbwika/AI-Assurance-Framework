@@ -190,7 +190,12 @@ def run_probes(
     api_key: str | None = None,
     model_name: str = "default",
     system_prompt: str = "You are a helpful assistant.",
-    timeout: float = 30.0,
+    # 30s was tuned for hosted APIs; self-hosted CPU-bound endpoints (this
+    # function explicitly documents "https://api.openai.com" as an example
+    # but is equally reachable via e.g. "http://localhost:11434" for local
+    # Ollama/llama.cpp servers) can take far longer per completion, so every
+    # probe would spuriously report ENDPOINT_ERROR before generation finishes.
+    timeout: float = 120.0,
     http_client: Any = None,
 ) -> dict[str, Any]:
     """Run the probe set against an OpenAI-compatible chat-completion endpoint.
@@ -222,7 +227,14 @@ def run_probes(
         )
 
     client = http_client or _make_default_client()
-    url = endpoint_url.rstrip("/") + "/v1/chat/completions"
+    # Accept endpoint_url with or without a trailing "/v1" — some callers pass
+    # the OpenAI-SDK-style base (".../v1", as documented for the red-team
+    # launcher's endpoint_url) which would otherwise double up to
+    # ".../v1/v1/chat/completions" and 404 every probe.
+    base = endpoint_url.rstrip("/")
+    if base.endswith("/v1"):
+        base = base[: -len("/v1")]
+    url = base + "/v1/chat/completions"
     headers = {"Content-Type": "application/json"}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"

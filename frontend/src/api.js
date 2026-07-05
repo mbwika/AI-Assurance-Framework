@@ -3,6 +3,7 @@
 
 const KEY_STORAGE = "aiaf_api_key";
 const HF_TOKEN_STORAGE = "aiaf_hf_token";
+const ASSISTANT_ACTOR_STORAGE = "aiaf_assistant_actor";
 
 export function getApiKey() {
   return (localStorage.getItem(KEY_STORAGE) || "dev-key").trim() || "dev-key";
@@ -23,6 +24,27 @@ export function setHfToken(value) {
   } else {
     localStorage.removeItem(HF_TOKEN_STORAGE);
   }
+}
+
+export function getAssistantActor() {
+  try {
+    const raw = localStorage.getItem(ASSISTANT_ACTOR_STORAGE) || "";
+    const parsed = raw ? JSON.parse(raw) : {};
+    return {
+      display_name: String(parsed.display_name || ""),
+      role: String(parsed.role || ""),
+    };
+  } catch {
+    return { display_name: "", role: "" };
+  }
+}
+
+export function setAssistantActor(value) {
+  const actor = {
+    display_name: String(value?.display_name || "").trim(),
+    role: String(value?.role || "").trim(),
+  };
+  localStorage.setItem(ASSISTANT_ACTOR_STORAGE, JSON.stringify(actor));
 }
 
 async function request(path, options = {}) {
@@ -103,6 +125,12 @@ export const api = {
     requestText(`/v1/reporting/assurance-report?format=html${scopeQuery(scope).replace("?", "&")}`),
   compliance: (scope = {}) => request(`/v1/reporting/compliance${scopeQuery(scope)}`),
   controls: () => request("/v1/governance/controls"),
+  assistantCapabilities: () => request("/v1/assistant/capabilities"),
+  assistantQuery: (payload) =>
+    request("/v1/assistant/query", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   metrics: (limit = 500, scope = {}) => request(`/v1/reporting/metrics?limit=${limit}${scopeQuery(scope).replace("?", "&")}`),
   risks: (limit = 200, filters = {}) => {
     const params = new URLSearchParams({ limit: String(limit) });
@@ -121,6 +149,33 @@ export const api = {
   models: (limit = 250, registeredBy = "") =>
     request(`/models?limit=${limit}${registeredBy ? `&registered_by=${encodeURIComponent(registeredBy)}` : ""}`),
   architecture: () => request("/v1/architecture"),
+  ragStores: (limit = 50) => request(`/v1/rag/stores?limit=${limit}`),
+  ragStore: (storeId) => request(`/v1/rag/stores/${encodeURIComponent(storeId)}`),
+  ragDocuments: (storeId, { offset = 0, limit = 100, trustLabel = "" } = {}) => {
+    const params = new URLSearchParams({
+      offset: String(offset),
+      limit: String(limit),
+    });
+    if (trustLabel) params.set("trust_label", trustLabel);
+    return request(`/v1/rag/stores/${encodeURIComponent(storeId)}/documents?${params.toString()}`);
+  },
+  ragAssessment: (storeId) =>
+    request(`/v1/rag/stores/${encodeURIComponent(storeId)}/assessment`),
+  agentPolicyProfiles: () => request("/v1/agentic/policy-profiles"),
+  agentSessions: ({ limit = 100, artifactId = "", status = "" } = {}) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (artifactId) params.set("artifact_id", artifactId);
+    if (status) params.set("status", status);
+    return request(`/v1/agentic/sessions?${params.toString()}`);
+  },
+  agentInvocations: ({ limit = 100, sessionId = "", decision = "" } = {}) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (sessionId) params.set("session_id", sessionId);
+    if (decision) params.set("decision", decision);
+    return request(`/v1/agentic/invocations?${params.toString()}`);
+  },
+  cycloneDxBom: (modelId) =>
+    request(`/v1/interop/models/${encodeURIComponent(modelId)}/bom/cyclonedx`),
   analyze: (artifact) =>
     request("/v1/risk/analyze", { method: "POST", body: JSON.stringify(artifact) }),
   modelArtifact: (modelId, kind) =>

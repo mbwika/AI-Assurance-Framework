@@ -12,17 +12,20 @@ const METHOD_CLS = {
 };
 
 const TAG_ORDER = [
-  "system", "risk", "reporting", "governance", "monitoring",
-  "agentic assurance", "supply chain", "risk register", "architecture",
+  "system", "assistant", "risk", "reporting", "governance", "monitoring",
+  "agentic assurance", "rag", "interop", "supply chain", "risk register", "architecture",
 ];
 
 const TAG_LABELS = {
   "system":            "System",
+  "assistant":         "Assistant",
   "risk":              "Risk Analysis",
   "reporting":         "Reporting",
   "governance":        "Governance",
   "monitoring":        "Monitoring",
   "agentic assurance": "Agentic Assurance",
+  "rag":               "RAG Security",
+  "interop":           "Interoperability",
   "supply chain":      "Supply Chain",
   "risk register":     "Risk Register",
   "architecture":      "Architecture",

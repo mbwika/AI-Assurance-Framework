@@ -3,8 +3,9 @@
 The dashboard is a Vite + React + Tailwind + Recharts application built into
 ``src/aiaf/web/`` and served by FastAPI. It consumes the public API (assurance
 report, compliance matrix, governance controls, risk analyzer, model registry,
-and architecture catalog) so it always reflects the running framework's real
-capabilities — with trend lines, drift-over-time charts, and live auto-refresh.
+RAG inventory, agent runtime authorization, and architecture catalog) so it
+always reflects the running framework's real capabilities — with trend lines,
+drift-over-time charts, live auto-refresh, and curated runtime inventory views.
 
 Run ``npm install && npm run build`` in ``frontend/`` to (re)generate the build
 output. The compiled assets are mounted at ``/assets`` in ``app.py``.

@@ -137,3 +137,69 @@ test("triage sends endpoint runtime options when provided", async () => {
     },
   });
 });
+
+test("inventory and authorization helpers call the curated backend routes", async () => {
+  installLocalStorage({ aiaf_api_key: "ops-key" });
+
+  const calls = [];
+  globalThis.fetch = async (path, options) => {
+    calls.push({ path, options });
+    return new Response('{"ok":true}', {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  await api.ragStores(25);
+  await api.ragDocuments("rag-1", { offset: 5, limit: 10, trustLabel: "VERIFIED" });
+  await api.agentSessions({ limit: 20, artifactId: "artifact-1", status: "ACTIVE" });
+  await api.agentInvocations({ limit: 15, sessionId: "session-1", decision: "DENY" });
+  await api.cycloneDxBom("model-42");
+
+  assert.deepEqual(
+    calls.map((call) => call.path),
+    [
+      "/v1/rag/stores?limit=25",
+      "/v1/rag/stores/rag-1/documents?offset=5&limit=10&trust_label=VERIFIED",
+      "/v1/agentic/sessions?limit=20&artifact_id=artifact-1&status=ACTIVE",
+      "/v1/agentic/invocations?limit=15&session_id=session-1&decision=DENY",
+      "/v1/interop/models/model-42/bom/cyclonedx",
+    ]
+  );
+  for (const call of calls) {
+    assert.deepEqual(call.options?.headers, { "X-API-Key": "ops-key" });
+  }
+});
+
+test("assistant helpers call the assistant routes", async () => {
+  installLocalStorage({ aiaf_api_key: "assistant-key" });
+
+  const calls = [];
+  globalThis.fetch = async (path, options) => {
+    calls.push({ path, options });
+    return new Response('{"ok":true}', {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  await api.assistantCapabilities();
+  await api.assistantQuery({
+    message: "Generate a governance report",
+    scope_hint: { artifact_id: "artifact-1" },
+  });
+
+  assert.deepEqual(
+    calls.map((call) => call.path),
+    ["/v1/assistant/capabilities", "/v1/assistant/query"]
+  );
+  assert.deepEqual(calls[0].options?.headers, { "X-API-Key": "assistant-key" });
+  assert.deepEqual(calls[1].options?.headers, {
+    "X-API-Key": "assistant-key",
+    "Content-Type": "application/json",
+  });
+  assert.deepEqual(JSON.parse(calls[1].options?.body || "{}"), {
+    message: "Generate a governance report",
+    scope_hint: { artifact_id: "artifact-1" },
+  });
+});

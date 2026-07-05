@@ -94,8 +94,10 @@ PYTHONPATH=src python -m aiaf.cli run --host 0.0.0.0 --port 8000
 
 Then open the dashboard at **http://localhost:8000/** — a React single-page
 console (Overview · Adoption Triage · Risk Analyzer · Governance & Compliance ·
-Model Registry · Architecture) that reflects the running framework, with trend lines,
-drift-over-time charts, and live auto-refresh. Interactive API docs are at `/docs`.
+Model Registry · RAG Inventory · Agent Authorization · Architecture · API Explorer)
+that reflects the running framework, with trend lines, drift-over-time charts,
+live auto-refresh, curated retrieval and authorization views, and a CycloneDX-backed
+runtime-component inventory. Interactive API docs are at `/docs`.
 Enter the API key (default `dev-key`) in the dashboard header.
 
 The dashboard is a Vite + React + Tailwind + Recharts app in [`frontend/`](frontend/),
@@ -325,7 +327,7 @@ python -m pytest -q
   and a conservative decision confidence. Identity that rests only on operator-typed
   claims cannot earn a clean approval; a verified signed attestation can.
 - `GET /v1/intake/{model_id}`: return the most recent persisted adoption verdict.
-- `GET /`: React single-page operational dashboard (Overview, Adoption Triage, Risk Analyzer, Governance & Compliance, Model Registry, Architecture) with trend lines, drift-over-time charts, and live auto-refresh — backed entirely by the public API.
+- `GET /`: React single-page operational dashboard (Overview, Adoption Triage, Risk Analyzer, Governance & Compliance, Model Registry, RAG Inventory, Agent Authorization, Architecture, API Explorer) with trend lines, drift-over-time charts, live auto-refresh, and curated views for retrieval inventory and runtime tool authorization — backed entirely by the public API.
 - `GET /v1/reporting/metrics`: time-series of historical assurance metrics grouped by metric name (oldest-first), powering the dashboard trend and drift charts.
 - `GET /v1/architecture`: inspect the implemented architecture catalog and layer/component map.
 - `POST /v1/risk/analyze`: run the security analysis layer through the risk engine.

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { useResource } from "../useResource.js";
-import { Card, Metric, Pill, Empty, fmtDate } from "../ui.jsx";
+import { Card, Metric, Pill, Empty, Tag, fmtDate, humanLabel } from "../ui.jsx";
 
 // ---------------------------------------------------------------------------
 // Terminal log viewer for a single job
@@ -219,6 +219,152 @@ function JobsPanel() {
   );
 }
 
+function runtimeProperty(component, name) {
+  const match = (component?.properties || []).find((property) => property?.name === name);
+  return match?.value || "";
+}
+
+function runtimeComponentsFromBom(bom) {
+  return (bom?.components || [])
+    .map((component) => {
+      const runtimeType = runtimeProperty(component, "aiaf:runtime_type");
+      if (!runtimeType) return null;
+      return {
+        bomRef: component["bom-ref"] || "",
+        name: component.name || runtimeType,
+        version: component.version || "",
+        runtimeType,
+        provider: runtimeProperty(component, "aiaf:provider"),
+        role: runtimeProperty(component, "aiaf:role"),
+        scope: runtimeProperty(component, "aiaf:scope"),
+        storeId: runtimeProperty(component, "aiaf:store_id"),
+        collectionName: runtimeProperty(component, "aiaf:collection_name"),
+        service: runtimeProperty(component, "aiaf:service"),
+        endpoint: runtimeProperty(component, "aiaf:endpoint"),
+        profile: runtimeProperty(component, "aiaf:profile"),
+        policyKind: runtimeProperty(component, "aiaf:policy_kind"),
+      };
+    })
+    .filter(Boolean);
+}
+
+function RuntimeComponentsPanel({ models, refreshToken }) {
+  const [selectedModelId, setSelectedModelId] = useState("");
+
+  useEffect(() => {
+    if (!selectedModelId && models.length) {
+      setSelectedModelId(models[0].model_id || "");
+    }
+    if (selectedModelId && !models.some((model) => model.model_id === selectedModelId)) {
+      setSelectedModelId(models[0]?.model_id || "");
+    }
+  }, [models, selectedModelId]);
+
+  const resource = useResource(
+    () => (selectedModelId ? api.cycloneDxBom(selectedModelId) : Promise.resolve(null)),
+    [refreshToken, selectedModelId]
+  );
+  const runtimeComponents = runtimeComponentsFromBom(resource.data);
+  const selectedModel = models.find((model) => model.model_id === selectedModelId) || null;
+  const byType = runtimeComponents.reduce((acc, component) => {
+    acc[component.runtimeType] = (acc[component.runtimeType] || 0) + 1;
+    return acc;
+  }, {});
+
+  return (
+    <Card title="Runtime components (CycloneDX export)">
+      <div className="grid gap-4 lg:grid-cols-[0.82fr,1.18fr]">
+        <div className="space-y-3">
+          <p className="text-sm leading-6 text-muted">
+            The older v1 <code>mbom</code> artifact does not include a <code>runtime_components</code> section. This inventory is sourced live from the richer CycloneDX export at <code>GET /v1/interop/models/{`{model_id}`}/bom/cyclonedx</code>.
+          </p>
+          <label className="block">
+            <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Model</span>
+            <select
+              value={selectedModelId}
+              onChange={(e) => setSelectedModelId(e.target.value)}
+              className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm shadow-sm"
+            >
+              {!models.length && <option value="">No models available</option>}
+              {models.map((model) => (
+                <option key={model.model_id} value={model.model_id}>
+                  {model.model_id}
+                  {model.model_name ? ` — ${model.model_name}` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          {selectedModel && (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm">
+              <div className="font-semibold text-ink">{selectedModel.model_name || selectedModel.model_id}</div>
+              <div className="mt-1 text-muted">{selectedModel.publisher || "Undeclared publisher"}</div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Tag>{runtimeComponents.length} runtime items</Tag>
+                <Tag>{Object.keys(byType).length} types</Tag>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div>
+          {resource.loading && !resource.data ? (
+            <Empty>Loading CycloneDX runtime inventory…</Empty>
+          ) : resource.error ? (
+            <Empty>{resource.error}</Empty>
+          ) : !selectedModelId ? (
+            <Empty>Select a model to inspect its runtime components.</Empty>
+          ) : !runtimeComponents.length ? (
+            <Empty>No runtime components were exported for this model.</Empty>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(byType)
+                  .sort((a, b) => a[0].localeCompare(b[0]))
+                  .map(([type, count]) => (
+                    <Tag key={type}>
+                      {humanLabel(type)}: {count}
+                    </Tag>
+                  ))}
+              </div>
+              <div className="overflow-auto rounded-lg border border-slate-200">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                      <th className="p-2.5">Component</th>
+                      <th className="p-2.5">Type</th>
+                      <th className="p-2.5">Context</th>
+                      <th className="p-2.5">Reference</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {runtimeComponents.map((component) => (
+                      <tr key={component.bomRef} className="border-t border-slate-100 align-top">
+                        <td className="p-2.5">
+                          <div className="font-semibold text-ink">{component.name}</div>
+                          <div className="mt-1 text-xs text-muted">
+                            {component.version || component.service || component.endpoint || "no version or endpoint metadata"}
+                          </div>
+                        </td>
+                        <td className="p-2.5"><Pill value={component.runtimeType} /></td>
+                        <td className="p-2.5 text-muted">
+                          {component.provider || component.role || component.scope || component.profile || component.policyKind || component.collectionName || component.storeId || "—"}
+                        </td>
+                        <td className="p-2.5 font-mono text-xs text-slate-500" title={component.bomRef}>
+                          {component.bomRef ? `${component.bomRef.slice(0, 20)}…` : "Unavailable"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Main Registry tab
 // ---------------------------------------------------------------------------
@@ -258,6 +404,10 @@ export default function Registry({ refreshToken }) {
         <Metric label="Avg Provenance" value={avg} sub="score across records" />
         <Metric label="Publishers" value={publishers} sub="distinct" />
       </div>
+
+      {!loading && !error && models.length ? (
+        <RuntimeComponentsPanel models={models} refreshToken={refreshToken} />
+      ) : null}
 
       <Card>
         <div className="mb-3 flex flex-wrap items-center gap-2">

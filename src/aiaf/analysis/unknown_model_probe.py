@@ -72,7 +72,9 @@ def probe_unknown_model(
     endpoint_api_key: str | None = None,
     endpoint_model_name: str = "default",
     http_client: Any = None,
-    timeout: float = 20.0,
+    # See the identical reasoning in core/probe_engine.py: self-hosted
+    # CPU-bound endpoints can take far longer per completion than hosted APIs.
+    timeout: float = 120.0,
 ) -> dict[str, Any]:
     model_record = model_record if isinstance(model_record, dict) else {}
     metadata = model_record.get("metadata") or {}
@@ -329,7 +331,13 @@ def _run_runtime_probes(
     if endpoint_api_key:
         headers["Authorization"] = f"Bearer {endpoint_api_key}"
 
-    url = endpoint_url.rstrip("/") + "/v1/chat/completions"
+    # Accept endpoint_url with or without a trailing "/v1" (see the identical
+    # fix in core/probe_engine.py) — otherwise a base like ".../v1" doubles up
+    # to ".../v1/v1/chat/completions" and every probe 404s.
+    base = endpoint_url.rstrip("/")
+    if base.endswith("/v1"):
+        base = base[: -len("/v1")]
+    url = base + "/v1/chat/completions"
     probe_results: list[dict[str, Any]] = []
     errors = 0
 
@@ -344,6 +352,11 @@ def _run_runtime_probes(
                         {"role": "user", "content": probe["prompt"]},
                     ],
                     "temperature": 0,
+                    # Bounded like core/probe_engine.py's probes — these only
+                    # need enough tokens to judge compliance, and leaving this
+                    # unset lets a slow backend run to its own (possibly much
+                    # larger) default length, wasting the request's timeout budget.
+                    "max_tokens": 128,
                 },
                 headers=headers,
                 timeout=timeout,

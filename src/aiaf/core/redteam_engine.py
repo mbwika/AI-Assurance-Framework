@@ -164,7 +164,9 @@ def run_redteam(
     ----------
     endpoint_url:
         Base URL of an OpenAI-compatible chat completions API
-        (e.g. ``http://localhost:11434/v1`` for Ollama).
+        (e.g. ``http://localhost:11434`` for Ollama). A trailing ``/v1`` is
+        accepted and normalised away if present — see
+        ``_openai_sdk_base_url()``.
     backend:
         ``"garak"`` (default) or ``"pyrit"``.
     api_key:
@@ -218,6 +220,25 @@ def run_redteam(
 # ---------------------------------------------------------------------------
 
 
+def _openai_sdk_base_url(endpoint_url: str) -> str:
+    """Normalise ``endpoint_url`` for consumers built on the official OpenAI SDK.
+
+    garak and PyRIT's ``OpenAIChatTarget`` both hand ``endpoint_url`` straight
+    to the ``openai`` Python SDK as ``base_url``, which appends only
+    ``/chat/completions`` — so it must already end in ``/v1``. That is the
+    opposite of AIAF's own probe modules (``core/probe_engine.py``,
+    ``analysis/unknown_model_probe.py``), which append ``/v1/chat/completions``
+    themselves and so expect ``endpoint_url`` *without* a trailing ``/v1``.
+    Accepting either form here and normalising it avoids that footgun: a
+    caller passing ``http://host:11434`` or ``http://host:11434/v1`` both end
+    up hitting garak/PyRIT correctly.
+    """
+    base = endpoint_url.rstrip("/")
+    if not base.endswith("/v1"):
+        base = base + "/v1"
+    return base
+
+
 def _run_garak(
     endpoint_url: str,
     *,
@@ -258,15 +279,23 @@ def _run_garak(
             "--model_type", "openai",
             "--model_name", model_name,
             "--probes", probe_str,
-            "--generations", "3",
+            # 1, not garak's multi-completion default: many OpenAI-compatible
+            # local servers (e.g. Ollama, llama.cpp) don't support requesting
+            # multiple choices (n>1) per call. When the generator returns
+            # fewer completions than asked for, garak silently drops the
+            # attempt instead of recording it, so every probe against those
+            # backends would otherwise report zero results despite a clean
+            # exit code.
+            "--generations", "1",
             "--report_prefix", run_prefix,
         ]
 
+        sdk_base_url = _openai_sdk_base_url(endpoint_url)
         env = os.environ.copy()
-        env["OPENAI_API_BASE"] = endpoint_url.rstrip("/")
+        env["OPENAI_API_BASE"] = sdk_base_url
         env["OPENAI_API_KEY"] = api_key or "sk-nokey"
         # Newer garak versions also read these:
-        env["OPENAI_BASE_URL"] = endpoint_url.rstrip("/")
+        env["OPENAI_BASE_URL"] = sdk_base_url
 
         logger.info("Starting garak red-team: families=%s endpoint=%s", probe_str, endpoint_url)
 
@@ -371,7 +400,12 @@ def _parse_garak_output(
             probe_cls = str(entry.get("probe_classname") or "").lower()
             if entry_type == "attempt":
                 for fam in probe_families:
-                    if f".{fam}." in probe_cls or probe_cls.endswith(f".{fam}"):
+                    # probe_cls is lowercased above; fam can be a specific
+                    # mixed-case garak probe class (e.g. "dan.DAN_Jailbreak"),
+                    # not just a whole lowercase family module (e.g. "dan"),
+                    # so it must be lowercased the same way before comparing.
+                    fam_lower = fam.lower()
+                    if f".{fam_lower}." in probe_cls or probe_cls.endswith(f".{fam_lower}"):
                         family_stats[fam]["total"] += 1
                         # garak: status 0 in report = failure (hit/vulnerable)
                         if entry.get("status") == 0:
@@ -391,7 +425,8 @@ def _parse_garak_output(
                 continue
             probe_cls = str(entry.get("probe_classname") or "").lower()
             for fam in probe_families:
-                if f".{fam}." in probe_cls or probe_cls.endswith(f".{fam}"):
+                fam_lower = fam.lower()
+                if f".{fam_lower}." in probe_cls or probe_cls.endswith(f".{fam_lower}"):
                     family_stats[fam]["failures"] += 1
                     family_stats[fam]["total"] = max(
                         family_stats[fam]["total"], family_stats[fam]["failures"]
@@ -414,7 +449,7 @@ def _parse_stdout_summary(
     for line in stdout.splitlines():
         line_lower = line.lower()
         for fam in probe_families:
-            if fam not in line_lower:
+            if fam.lower() not in line_lower:
                 continue
             # Pattern: "passed N/M" or "pass rate N/M" or "✔ ... N/M" or "✗ ... N/M"
             import re
@@ -543,7 +578,7 @@ def _run_pyrit_campaign(
     default_values.load_default_env()
 
     target = OpenAIChatTarget(
-        endpoint=endpoint_url,
+        endpoint=_openai_sdk_base_url(endpoint_url),
         api_key=api_key or "sk-nokey",
         model_name=model_name,
     )

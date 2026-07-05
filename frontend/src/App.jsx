@@ -5,8 +5,11 @@ import Analyzer from "./tabs/Analyzer.jsx";
 import Adoption from "./tabs/Adoption.jsx";
 import Governance from "./tabs/Governance.jsx";
 import Registry from "./tabs/Registry.jsx";
+import RagInventory from "./tabs/RagInventory.jsx";
+import AgentAuthorization from "./tabs/AgentAuthorization.jsx";
 import Architecture from "./tabs/Architecture.jsx";
 import ApiExplorer from "./tabs/ApiExplorer.jsx";
+import AssistantDrawer from "./AssistantDrawer.jsx";
 
 const TABS = [
   { id: "overview",     label: "Overview",               live: true  },
@@ -14,6 +17,8 @@ const TABS = [
   { id: "analyzer",     label: "Risk Analyzer",           live: false },
   { id: "governance",   label: "Governance & Compliance", live: true  },
   { id: "registry",     label: "Model Registry",          live: true  },
+  { id: "rag",          label: "RAG Inventory",           live: true  },
+  { id: "agent-auth",   label: "Agent Authorization",     live: true  },
   { id: "architecture", label: "Architecture",            live: false },
   { id: "api",          label: "API Explorer",            live: false },
 ];
@@ -57,6 +62,8 @@ export default function App() {
     analyzer:     <Analyzer />,
     governance:   <Governance refreshToken={refreshToken} />,
     registry:     <Registry refreshToken={refreshToken} />,
+    rag:          <RagInventory refreshToken={refreshToken} />,
+    "agent-auth": <AgentAuthorization refreshToken={refreshToken} />,
     architecture: <Architecture refreshToken={refreshToken} />,
     api:          <ApiExplorer />,
   };
@@ -78,7 +85,7 @@ export default function App() {
               AI Assurance Framework
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted sm:text-[15px]">
-              Portfolio assurance, governance evidence, model registry posture, and exportable compliance reporting in one shared workspace.
+              Portfolio assurance, governance evidence, retrieval inventory, agent runtime controls, and exportable compliance reporting in one shared workspace.
             </p>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -189,6 +196,7 @@ export default function App() {
       </div>
 
       <main className="mt-3">{panels[tab]}</main>
+      <AssistantDrawer currentTabLabel={TABS.find((t) => t.id === tab)?.label || "Workspace"} />
     </div>
   );
 }
