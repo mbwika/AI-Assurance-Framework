@@ -8,13 +8,13 @@ from typing import Any
 
 from .assistant_actor import normalize_actor
 from .assistant_authorization import evaluate_write_policy
+from .assistant_llm import AssistantLLMIntentResolver
 from .assistant_prompts import (
     ASSISTANT_MODE,
     ASSISTANT_VERSION,
     SUGGESTED_PROMPTS,
     SUPPORTED_INTENTS,
 )
-from .assistant_llm import AssistantLLMIntentResolver
 from .assistant_workflows import (
     compare_snapshots,
     create_report_snapshot,

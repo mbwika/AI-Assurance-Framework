@@ -6,7 +6,6 @@ from typing import Any
 
 from ..registry.rag_inventory import list_vector_stores
 from .assistant_actor import actor_summary
-from .evidence_engine import GovernanceEvidenceEngine
 from .report_snapshot_engine import AssuranceReportSnapshotEngine
 from .reporting_engine import ReportingEngine
 

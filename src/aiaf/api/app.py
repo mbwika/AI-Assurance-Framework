@@ -2,11 +2,11 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from . import adoption_velocity as adoption_velocity_router
-from . import assistant as assistant_router
 from . import agent_security as agent_security_module
 from . import agent_topology as agent_topology_router
 from . import agentic as agentic_router
 from . import architecture as architecture_router
+from . import assistant as assistant_router
 from . import assurance as assurance_router
 from . import context_provenance as context_provenance_router
 from . import deployment_verify as deployment_verify_router
