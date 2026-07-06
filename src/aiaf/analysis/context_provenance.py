@@ -180,12 +180,40 @@ def _reachable(start: str, adjacency: dict[str, list[str]]) -> set[str]:
     return visited
 
 
-def _all_graph_records(store: Any) -> list[dict[str, Any]]:
+def _all_graph_records(store: Any, limit: int = 100) -> list[dict[str, Any]]:
     return [
         record
-        for record in (store.list_models() if hasattr(store, "list_models") else [])
+        for record in (store.list_models(limit=limit) if hasattr(store, "list_models") else [])
         if str(record.get("model_id") or record.get("id") or "").startswith(_PROVENANCE_PREFIX)
     ]
+
+
+def list_provenance_graphs(store: Any, limit: int = 100) -> list[dict[str, Any]]:
+    """Return a summary (no node/edge bodies) of every registered graph,
+
+    newest-updated first. Used by callers that need to discover which graphs
+    exist rather than inspect one graph's full contents.
+    """
+    summaries = []
+    for record in _all_graph_records(store, limit=limit):
+        meta = _load_meta(record)
+        if not meta:
+            continue
+        summaries.append(
+            {
+                "graph_id": meta.get("graph_id"),
+                "name": meta.get("name"),
+                "session_id": meta.get("session_id"),
+                "model_id": meta.get("model_id"),
+                "node_count": meta.get("node_count", 0),
+                "edge_count": meta.get("edge_count", 0),
+                "registered_at": meta.get("registered_at"),
+                "updated_at": meta.get("updated_at"),
+                "graph_sha256": meta.get("graph_sha256"),
+            }
+        )
+    summaries.sort(key=lambda item: item.get("updated_at") or "", reverse=True)
+    return summaries
 
 
 def register_provenance_graph(

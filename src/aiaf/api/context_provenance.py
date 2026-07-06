@@ -3,6 +3,7 @@
 Routes
 ------
 POST /v1/context-provenance/graphs                    Register an empty provenance graph
+GET  /v1/context-provenance/graphs                     List all registered graphs (summary)
 GET  /v1/context-provenance/graphs/{graph_id}          Get graph metadata
 POST /v1/context-provenance/graphs/{graph_id}/nodes    Add a node
 GET  /v1/context-provenance/graphs/{graph_id}/nodes    List nodes
@@ -28,6 +29,7 @@ from ..analysis.context_provenance import (
     find_influenced_by,
     get_provenance_graph,
     list_provenance_edges,
+    list_provenance_graphs,
     list_provenance_nodes,
     register_provenance_graph,
 )
@@ -77,6 +79,17 @@ def create_graph(
         )
     except ContextProvenanceError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
+
+
+@router.get("/graphs")
+def list_graphs(
+    limit: int = 100,
+    _key: str = Depends(get_api_key),
+    store: Any = Depends(get_store),
+):
+    """List every registered provenance graph, newest-updated first."""
+    graphs = list_provenance_graphs(store, limit=limit)
+    return {"graphs": graphs, "count": len(graphs)}
 
 
 @router.get("/graphs/{graph_id}")

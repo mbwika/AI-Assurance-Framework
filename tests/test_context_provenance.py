@@ -34,8 +34,8 @@ class _Store:
         key = record.get("model_id") or record.get("id")
         self._data[key] = record
 
-    def list_models(self):
-        return list(self._data.values())
+    def list_models(self, limit=100):
+        return list(self._data.values())[:limit]
 
 
 class TestRegisterGraph(unittest.TestCase):

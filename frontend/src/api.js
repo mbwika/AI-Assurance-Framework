@@ -161,6 +161,14 @@ export const api = {
   },
   ragAssessment: (storeId) =>
     request(`/v1/rag/stores/${encodeURIComponent(storeId)}/assessment`),
+  provenanceGraphs: (limit = 100) => request(`/v1/context-provenance/graphs?limit=${limit}`),
+  provenanceGraph: (graphId) =>
+    request(`/v1/context-provenance/graphs/${encodeURIComponent(graphId)}`),
+  provenanceInfluence: (sourceRef, graphId = "") => {
+    const params = new URLSearchParams({ source_ref: sourceRef });
+    if (graphId) params.set("graph_id", graphId);
+    return request(`/v1/context-provenance/influence?${params.toString()}`);
+  },
   agentPolicyProfiles: () => request("/v1/agentic/policy-profiles"),
   agentSessions: ({ limit = 100, artifactId = "", status = "" } = {}) => {
     const params = new URLSearchParams({ limit: String(limit) });

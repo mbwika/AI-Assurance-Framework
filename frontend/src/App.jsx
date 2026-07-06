@@ -7,6 +7,7 @@ import Governance from "./tabs/Governance.jsx";
 import Registry from "./tabs/Registry.jsx";
 import RagInventory from "./tabs/RagInventory.jsx";
 import AgentAuthorization from "./tabs/AgentAuthorization.jsx";
+import ContextProvenance from "./tabs/ContextProvenance.jsx";
 import Architecture from "./tabs/Architecture.jsx";
 import ApiExplorer from "./tabs/ApiExplorer.jsx";
 import AssistantDrawer from "./AssistantDrawer.jsx";
@@ -19,6 +20,7 @@ const TABS = [
   { id: "registry",     label: "Model Registry",          live: true  },
   { id: "rag",          label: "RAG Inventory",           live: true  },
   { id: "agent-auth",   label: "Agent Authorization",     live: true  },
+  { id: "context-prov", label: "Context Provenance",      live: true  },
   { id: "architecture", label: "Architecture",            live: false },
   { id: "api",          label: "API Explorer",            live: false },
 ];
@@ -64,6 +66,7 @@ export default function App() {
     registry:     <Registry refreshToken={refreshToken} />,
     rag:          <RagInventory refreshToken={refreshToken} />,
     "agent-auth": <AgentAuthorization refreshToken={refreshToken} />,
+    "context-prov": <ContextProvenance refreshToken={refreshToken} />,
     architecture: <Architecture refreshToken={refreshToken} />,
     api:          <ApiExplorer />,
   };
