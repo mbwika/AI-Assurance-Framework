@@ -1,0 +1,27 @@
+.git/
+.github/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+.coverage
+htmlcov/
+
+# Local runtime data / caches — never bake dev state into the image
+data/
+
+# Frontend build inputs — only the compiled src/aiaf/web output ships
+frontend/node_modules/
+frontend/.vite/
+
+# Editor / misc
+.vscode/
+.claude/
+.codex/
+.agents/
+memory/

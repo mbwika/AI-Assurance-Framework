@@ -95,4 +95,4 @@ def health():
 
 @app.get("/v1/info")
 def info():
-    return {"name": "AI Assurance Framework", "version": "0.1.0"}
+    return {"name": "AI Assurance Framework", "version": "0.2.0"}

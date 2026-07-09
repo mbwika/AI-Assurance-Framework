@@ -3,7 +3,7 @@
 Light skeleton package that mirrors the architecture: API layer, core engines,
 analysis modules, data connectors, and mapping/standards helpers.
 """
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 from .core import (
     AgenticAssuranceEngine,

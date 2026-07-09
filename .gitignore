@@ -8,6 +8,10 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
+build/
+dist/
+.coverage
+htmlcov/
 
 # Node / frontend
 # The dashboard's compiled output (src/aiaf/web/) is committed so the installed
@@ -29,3 +33,5 @@ memory/
 
 # Editor / IDE
 .vscode/
+
+outreach/article-drafts/

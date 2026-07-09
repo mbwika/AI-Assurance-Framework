@@ -16,7 +16,7 @@ FROM base AS final
 WORKDIR /app
 
 COPY src/ ./src/
-COPY data/ ./data/
+RUN mkdir -p data
 
 # Non-root user for security
 RUN useradd -r -u 1001 -g root aiaf && \

@@ -1,8 +1,16 @@
-# AI Assurance Framework (AIAF)
+# AI Assurance Framework (AIAF Sentry)
 
-AI Assurance Framework (AIAF) is an open-source platform designed to improve the security, trustworthiness, resilience, and governance of Artificial Intelligence systems through continuous assurance methodologies.
+AI Assurance Framework (AIAF) is an open-source, evidence-driven assurance
+platform designed to improve the security, trustworthiness, resilience, and
+governance of Artificial Intelligence systems through continuous assurance
+methodologies.
 
 The framework enables organizations to assess AI security risks, validate governance controls, monitor AI deployments, and strengthen AI supply chain integrity across the lifecycle of modern AI systems.
+
+**AIAF Sentry** is the Apache-2.0 Community package: the open assurance and
+evidence layer across models, RAG, agents, runtime, deployment, and compliance.
+Future commercial tiers build on top of this core, but Sentry itself is fully
+usable today.
 
 ## Key Capabilities
 
@@ -56,12 +64,55 @@ The framework aligns with:
 
 To advance secure, trustworthy, and resilient AI adoption through practical open-source assurance technologies that support innovation, economic competitiveness, and national security objectives.
 
-## SETUP
+## Quickstart
 
-### Quickstart
+### Fastest path: Docker Compose
 
-- Prerequisites: Python 3.10+ and `pip`.
-- (Optional) Create and activate a virtual environment:
+Prerequisites:
+
+- Docker
+- Docker Compose
+
+From the repository root:
+
+```bash
+cd deploy/docker
+docker compose up --build
+```
+
+Then open:
+
+- Dashboard: `http://localhost:8000/`
+- API docs: `http://localhost:8000/docs`
+
+Default API key:
+
+- `changeme` when using Compose defaults
+
+Optional: seed a realistic demo workspace in a second terminal:
+
+```bash
+cd /path/to/AI-Assurance-Framework
+PYTHONPATH=src python scripts/seed_demo_data.py
+```
+
+That seeds:
+
+- sample model inventory
+- risk findings and metrics
+- approved governance evidence
+- assurance report snapshots
+- RAG inventory with trusted and untrusted documents
+- agent runtime authorization sessions and decisions
+
+### Local development setup
+
+Prerequisites:
+
+- Python 3.10+ and `pip`
+- Node 18+ only if you want to modify the dashboard frontend
+
+(Optional) Create and activate a virtual environment:
 
 ```bash
 python -m venv .venv
@@ -80,7 +131,7 @@ pip install -r requirements.txt
 pip install ruff
 ```
 
-## EXECUTION
+## Execution
 
 ### Run the API locally
 
@@ -99,6 +150,12 @@ that reflects the running framework, with trend lines, drift-over-time charts,
 live auto-refresh, curated retrieval and authorization views, and a CycloneDX-backed
 runtime-component inventory. Interactive API docs are at `/docs`.
 Enter the API key (default `dev-key`) in the dashboard header.
+
+To populate a useful demo workspace after first boot:
+
+```bash
+PYTHONPATH=src python scripts/seed_demo_data.py
+```
 
 The dashboard is a Vite + React + Tailwind + Recharts app in [`frontend/`](frontend/),
 built into `src/aiaf/web/` and served by FastAPI. The compiled output is committed,
@@ -121,7 +178,7 @@ GET /health -> { "status": "ok" }
 GET /v1/info -> basic project info
 ```
 
-For production persistence, set `AIAF_PG_DSN` to a PostgreSQL connection URI.
+For persistent or shared deployments, set `AIAF_PG_DSN` to a PostgreSQL connection URI.
 The PostgreSQL backend stores model provenance, registration jobs, security
 findings, governance audit evidence, and historical risk and trust metrics.
 
@@ -195,6 +252,24 @@ Supported job types include red-team runs, telemetry batch ingest, anomaly
 scans, vulnerability scans, and assurance report snapshots. Scheduled anomaly
 and vulnerability runs can automatically open incidents in the local incident
 tracker.
+
+## What Sentry Includes Today
+
+The Community package includes:
+
+- framework, CLI, API, and dashboard
+- garak / PyRIT adapters
+- AI-BOM / CycloneDX
+- RAG taint gate
+- agent authorization
+- egress firewall
+- context provenance
+- deployment verification
+- incident packages
+- compliance evidence packs
+- standards mappings
+- SIEM / OSCAL / SARIF exports
+- SQLite by default, PostgreSQL when configured
 
 ### Run Red-Team Evaluation (garak / PyRIT)
 
@@ -471,3 +546,18 @@ ruff check .
 │ Immutable Assurance Report Snapshots                    │
 │ Continuous Monitoring Alerts                            │
 └─────────────────────────────────────────────────────────┘
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for
+attribution and trademark information.
+
+"AIAF" and "AI Assurance Framework" are trademarks of Code & Security. The
+Apache-2.0 license covers the source code; it does not grant rights to the
+project name or marks.
+
+## Contributing
+
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md)
+before opening a pull request — all contributions require a signed
+Contributor License Agreement ([CLA.md](CLA.md)).

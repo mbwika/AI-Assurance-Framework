@@ -1,0 +1,7 @@
+include README.md
+include LICENSE
+include NOTICE
+include CLA.md
+include CONTRIBUTING.md
+recursive-include src/aiaf/web *.html *.css *.js
+
