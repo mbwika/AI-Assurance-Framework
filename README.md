@@ -552,7 +552,7 @@ ruff check .
 Licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for
 attribution and trademark information.
 
-"AIAF" and "AI Assurance Framework" are trademarks of Code & Security. The
+"AIAF Sentry", "AIAF Vanguard" and "AIAF Aegis" are trademarks of Code & Security. The
 Apache-2.0 license covers the source code; it does not grant rights to the
 project name or marks.
 
