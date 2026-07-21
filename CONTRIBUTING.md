@@ -69,7 +69,7 @@ PYTHONPATH=src python -m pytest -q # full test suite
 ## Reporting security issues
 
 Do **not** open a public issue for a security vulnerability. Email
-security@codensecurity.com with details and a proof of concept. You'll get an
+info@codensecurity.com with details and a proof of concept. You'll get an
 acknowledgement and a coordinated-disclosure timeline.
 
 ## Where contributions go
