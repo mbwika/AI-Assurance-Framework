@@ -11,8 +11,7 @@ agree to these terms for all present and future Contributions.
 
 > This is a template adapted from the Apache Software Foundation Individual and
 > Corporate CLAs, extended with a relicensing grant so the Project can sustain
-> itself under an open-core model. **It is not legal advice.** Have it reviewed
-> by a qualified attorney before you rely on it commercially.
+> itself under an open-core model.
 
 ## 1. Definitions
 
